@@ -1,0 +1,12 @@
+on: push
+name: on push
+jobs:
+  gitHubActionForPylint:
+    name: CI - pylint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: GitHub Action for pylint
+        uses: zerodaysec/github-action-for-python@main
+        with:
+          args: pylint **/*.py
