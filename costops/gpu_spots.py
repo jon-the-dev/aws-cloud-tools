@@ -4,14 +4,17 @@ import argparse
 from datetime import datetime, timezone
 import concurrent.futures
 import json
+from random import shuffle
 
 MAX_WORKERS = 6
 
 
-def get_gpu_instance_types(client, min_gpu_ram, min_cores, min_ram):
+def get_gpu_instance_types(client, min_gpu_ram, min_cores, min_ram, args, region):
     gpu_instance_types = {}
     paginator = client.get_paginator("describe_instance_types")
+    region_data = []
     for page in paginator.paginate():
+        region_data.extend(page["InstanceTypes"])
         for itype in page["InstanceTypes"]:
             if "GpuInfo" not in itype:
                 continue
@@ -47,6 +50,10 @@ def get_gpu_instance_types(client, min_gpu_ram, min_cores, min_ram):
                 "vcpus": vcpus,
                 "memory": memory,
             }
+
+    if args.save_data:
+        with open(f"{region}-ec2.json", "w") as f:
+            json.dump(region_data, f, default=str, indent=2)
     return gpu_instance_types
 
 
@@ -80,18 +87,20 @@ def process_region(region, args):
     print(f"Checking region: {region}")
     client = boto3.client("ec2", region_name=region)
     gpu_instance_dict = get_gpu_instance_types(
-        client, args.min_gpu_ram, args.min_cores, args.min_ram
+        client, args.min_gpu_ram, args.min_cores, args.min_ram, args, region
     )
-    # with open(f"{region}-gpu.json", "w") as f:
-    #     json.dump(gpu_instance_dict, f)
+    if args.save_data:
+        with open(f"{region}-gpu.json", "w") as f:
+            json.dump(gpu_instance_dict, f)
     if not gpu_instance_dict:
         print(f"[!]  No GPU instance types meeting criteria in {region}.")
         return None
 
     instance_types = list(gpu_instance_dict.keys())
     spot_record = get_cheapest_spot_price(client, instance_types)
-    # with open(f"{region}-spot.json", "w") as f:
-    #     json.dump(spot_record, f, default=str)
+    if args.save_data:
+        with open(f"{region}-spot.json", "w") as f:
+            json.dump(spot_record, f, default=str)
     if not spot_record:
         print(f"[-]  No spot price data found in {region}.")
         return None
@@ -127,6 +136,7 @@ def main():
     parser.add_argument(
         "--auto-mode", action="store_true", help="Act like lambda and output json"
     )
+    parser.add_argument("--save-data", action="store_true", help="Save the RAW data")
     parser.add_argument(
         "--us-only", action="store_true", help="Limit search to US regions"
     )
@@ -141,6 +151,7 @@ def main():
     ec2_global = boto3.client("ec2")
     regions_data = ec2_global.describe_regions()["Regions"]
     regions = [r["RegionName"] for r in regions_data]
+    shuffle(regions)
 
     if args.us_only:
         regions = [r for r in regions if r.startswith("us-")]
