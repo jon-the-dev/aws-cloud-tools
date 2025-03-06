@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 import boto3
 import argparse
+import json
 from datetime import datetime, timezone
 import concurrent.futures
-import json
-from random import shuffle
-
-MAX_WORKERS = 6
+import botocore.exceptions
 
 
-def get_gpu_instance_types(client, min_gpu_ram, min_cores, min_ram, args, region):
+def get_gpu_instance_types(client, min_gpu_ram, min_cores, min_ram):
+    """
+    Retrieve instance types in the region that have NVIDIA GPUs
+    and meet the minimum resource criteria.
+    """
     gpu_instance_types = {}
     paginator = client.get_paginator("describe_instance_types")
-    region_data = []
     for page in paginator.paginate():
-        region_data.extend(page["InstanceTypes"])
         for itype in page["InstanceTypes"]:
             if "GpuInfo" not in itype:
                 continue
@@ -50,15 +50,14 @@ def get_gpu_instance_types(client, min_gpu_ram, min_cores, min_ram, args, region
                 "vcpus": vcpus,
                 "memory": memory,
             }
-
-    if args.save_data:
-        with open(f"{region}-ec2.json", "w") as f:
-            json.dump(region_data, f, default=str, indent=2)
     return gpu_instance_types
 
 
 def get_cheapest_spot_price(client, instance_types):
-    # Use timezone-aware datetime to avoid deprecation warnings
+    """
+    Query the spot price history for the given instance types (Linux/UNIX)
+    using a narrow time window and return the record with the lowest price.
+    """
     now = datetime.now(timezone.utc)
     try:
         response = client.describe_spot_price_history(
@@ -68,6 +67,9 @@ def get_cheapest_spot_price(client, instance_types):
             ProductDescriptions=["Linux/UNIX (Amazon VPC)"],
             MaxResults=1000,
         )
+    except botocore.exceptions.ConnectTimeoutError as e:
+        print("Connection timeout when retrieving spot price history:", e)
+        return None
     except Exception as e:
         print("Error retrieving spot price history:", e)
         return None
@@ -84,25 +86,48 @@ def get_cheapest_spot_price(client, instance_types):
 
 
 def process_region(region, args):
+    """
+    Process a single region: retrieve qualifying GPU instance types and
+    determine the cheapest spot price available.
+    """
     print(f"Checking region: {region}")
-    client = boto3.client("ec2", region_name=region)
-    gpu_instance_dict = get_gpu_instance_types(
-        client, args.min_gpu_ram, args.min_cores, args.min_ram, args, region
-    )
-    if args.save_data:
-        with open(f"{region}-gpu.json", "w") as f:
-            json.dump(gpu_instance_dict, f)
+    try:
+        client = boto3.client("ec2", region_name=region)
+    except botocore.exceptions.BotoCoreError as e:
+        print(f"Error connecting to region {region}: {e}")
+        return None
+
+    try:
+        gpu_instance_dict = get_gpu_instance_types(
+            client, args.min_gpu_ram, args.min_cores, args.min_ram
+        )
+    except botocore.exceptions.ConnectTimeoutError as e:
+        print(
+            f"Connection timeout when retrieving instance types for region {region}: {e}"
+        )
+        return None
+    except Exception as e:
+        print(f"Error retrieving instance types in region {region}: {e}")
+        return None
+
     if not gpu_instance_dict:
-        print(f"[!]  No GPU instance types meeting criteria in {region}.")
+        print(f"  No GPU instance types meeting criteria in {region}.")
         return None
 
     instance_types = list(gpu_instance_dict.keys())
-    spot_record = get_cheapest_spot_price(client, instance_types)
-    if args.save_data:
-        with open(f"{region}-spot.json", "w") as f:
-            json.dump(spot_record, f, default=str)
+    try:
+        spot_record = get_cheapest_spot_price(client, instance_types)
+    except botocore.exceptions.ConnectTimeoutError as e:
+        print(
+            f"Connection timeout when retrieving spot prices for region {region}: {e}"
+        )
+        return None
+    except Exception as e:
+        print(f"Error retrieving spot price data in region {region}: {e}")
+        return None
+
     if not spot_record:
-        print(f"[-]  No spot price data found in {region}.")
+        print(f"  No spot price data found in {region}.")
         return None
 
     price = float(spot_record["SpotPrice"])
@@ -115,7 +140,7 @@ def process_region(region, args):
     gpu_memory_gb = round(gpu_memory_mib / 1024, 2) if gpu_memory_mib else "N/A"
 
     print(
-        f"[+]  Best in {region}: {instance_type} at ${spot_record['SpotPrice']} in {spot_record['AvailabilityZone']}"
+        f"  Best in {region}: {instance_type} at ${spot_record['SpotPrice']} in {spot_record['AvailabilityZone']}"
     )
     return {
         "region": region,
@@ -134,10 +159,6 @@ def main():
         description="Find the cheapest AWS GPU spot instance for your workload."
     )
     parser.add_argument(
-        "--auto-mode", action="store_true", help="Act like lambda and output json"
-    )
-    parser.add_argument("--save-data", action="store_true", help="Save the RAW data")
-    parser.add_argument(
         "--us-only", action="store_true", help="Limit search to US regions"
     )
     parser.add_argument(
@@ -146,13 +167,16 @@ def main():
     parser.add_argument("--min-gpu-ram", type=float, help="Minimum total GPU RAM in GB")
     parser.add_argument("--min-cores", type=int, help="Minimum number of CPU cores")
     parser.add_argument("--min-ram", type=float, help="Minimum system RAM in GB")
+    parser.add_argument(
+        "--save-data",
+        action="store_true",
+        help="Save the results to JSON files locally",
+    )
     args = parser.parse_args()
 
     ec2_global = boto3.client("ec2")
     regions_data = ec2_global.describe_regions()["Regions"]
     regions = [r["RegionName"] for r in regions_data]
-    shuffle(regions)
-
     if args.us_only:
         regions = [r for r in regions if r.startswith("us-")]
     elif args.eu_only:
@@ -160,38 +184,45 @@ def main():
 
     overall_best = None
     overall_details = None
+    region_results = []
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
         future_to_region = {
             executor.submit(process_region, region, args): region for region in regions
         }
         for future in concurrent.futures.as_completed(future_to_region):
             result = future.result()
             if result:
+                region_results.append(result)
                 if overall_best is None or result["price"] < overall_best:
                     overall_best = result["price"]
                     overall_details = result
 
-    if overall_details and not args.auto_mode:
+    if overall_details:
         print("\nCheapest GPU spot instance found:")
         print("  Region:              ", overall_details["region"])
         print("  Availability Zone:   ", overall_details["availability_zone"])
         print("  Instance Type:       ", overall_details["instance_type"])
         print("  Spot Price:          $", overall_details["price"], " per hour")
-        print("  Daily Price:         $", overall_details["price"] * 24, " per day")
-        print(
-            "  Monthly Price:        $",
-            overall_details["price"] * 24 * 31,
-            " per month",
-        )
         print("  Price Timestamp:     ", overall_details["timestamp"])
         print("  vCPUs:               ", overall_details["vcpus"])
         print("  System Memory (GB):  ", overall_details["memory_gb"])
         print("  GPU Memory (GB):     ", overall_details["gpu_memory_gb"])
-    elif args.auto_mode and overall_details:
-        print(json.dumps(overall_details, default=str, indent=4))
     else:
         print("No suitable GPU instance found in the selected regions.")
+
+    if args.save_data:
+        try:
+            with open("gpu_spot_region_results.json", "w") as f:
+                json.dump(region_results, f, default=str, indent=2)
+            if overall_details:
+                with open("gpu_spot_best_result.json", "w") as f:
+                    json.dump(overall_details, f, default=str, indent=2)
+            print(
+                "Data saved to 'gpu_spot_region_results.json' and 'gpu_spot_best_result.json'"
+            )
+        except Exception as e:
+            print("Error saving data to JSON:", e)
 
 
 if __name__ == "__main__":
