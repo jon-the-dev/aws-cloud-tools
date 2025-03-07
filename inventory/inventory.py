@@ -1,16 +1,14 @@
 """inventory4."""
 
+import boto3
+import botocore
 import os
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
+from datetime import datetime
 from botocore.client import Config
 
-config = Config(connect_timeout=5, retries={"max_attempts": 0})
-
-
-import boto3
-import botocore
+config = Config(connect_timeout=15, retries={"max_attempts": 0})
 
 
 def get_aws_account_id():
@@ -20,7 +18,8 @@ def get_aws_account_id():
 
 AWS_ID = get_aws_account_id()
 WORKERS = 35
-DATA_DIR = f"./data/{AWS_ID}"
+NOW = datetime.now().strftime("%Y-%m-%d")
+DATA_DIR = f"./data/{NOW}/{AWS_ID}"
 
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
@@ -29,9 +28,7 @@ if not os.path.exists(DATA_DIR):
 def get_all_regions():
     """get all regions."""
     ec2 = boto3.client("ec2")
-    # FIXME: this is a temp hardcoded region
-    # return [region["RegionName"] for region in ec2.describe_regions()["Regions"]]
-    return ["us-east-1"]
+    return [region["RegionName"] for region in ec2.describe_regions()["Regions"]]
 
 
 def paginate_and_collect(client, method_name, key):
@@ -170,8 +167,6 @@ def get_ec2_info(client, region):
         ]
     ):
         all_resources.extend(page.get("Images", []))
-
-        # print(f"Collected findings for {detector_id}")
 
     file_name = f"{AWS_ID}-ec2-{region}-details.json"
     write_to_file(all_resources, file_name)
