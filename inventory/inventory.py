@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from botocore.client import Config
 
-config = Config(connect_timeout=15, retries={"max_attempts": 0})
+config = Config(connect_timeout=5, retries={"max_attempts": 0})
 
 
 def get_aws_account_id():
