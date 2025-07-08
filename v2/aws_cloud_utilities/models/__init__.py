@@ -6,7 +6,12 @@ from .aws_resources import (
     S3Bucket,
     BedrockModel,
     BedrockCustomModel,
-    BedrockModelCustomizationJob
+    BedrockModelCustomizationJob,
+    IAMRole,
+    IAMPolicy,
+    IAMUser,
+    IAMGroup,
+    CloudWatchLogGroup
 )
 
 __all__ = [
@@ -16,4 +21,9 @@ __all__ = [
     "BedrockModel",
     "BedrockCustomModel",
     "BedrockModelCustomizationJob",
+    "IAMRole",
+    "IAMPolicy",
+    "IAMUser",
+    "IAMGroup",
+    "CloudWatchLogGroup",
 ]

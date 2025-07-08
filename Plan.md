@@ -415,7 +415,7 @@ This plan provides a structured approach to converting the existing AWS scripts 
 
 ## ✅ **Migration Progress Update**
 
-### Recently Completed (Support & Account Commands)
+### Recently Completed (Support, Account & Bedrock Commands)
 - [x] **Support Commands** (`commands/support.py`) - MIGRATED ✅
   - `check-level`: Check AWS support level using severity levels method
   - `severity-levels`: List available support severity levels  
@@ -433,10 +433,20 @@ This plan provides a structured approach to converting the existing AWS scripts 
   - `validate`: Validate credentials (existing)
   - Migrated from `account/aws_get_acct_info.py` and `account/detect_control_tower.py`
 
-### Testing Infrastructure Added
-- [x] **Migration Test Script** (`test_migration.py`) - Tests imports, config, and CLI help
-- [x] **Development Installation** (`install_dev.sh`) - Easy setup script
-- [x] **Enhanced Error Handling** - Better error messages and graceful degradation
+- [x] **Bedrock Commands** (`commands/bedrock.py`) - MIGRATED & ENHANCED ✅
+  - `list-models`: List foundation models across regions (migrated with major enhancements)
+  - `model-details`: Get detailed information about specific models (new)
+  - `list-custom-models`: List custom trained models (new)
+  - `list-model-jobs`: List model customization jobs (new)
+  - `regions`: List Bedrock-available regions (new)
+  - Migrated from `bedrock/bedrock_models.py` with significant improvements
+
+### Key Bedrock Enhancements
+- **Parallel Processing**: Multi-region scanning with configurable workers
+- **Provider Filtering**: Filter by amazon, anthropic, ai21, cohere, etc.
+- **Enhanced Output**: Rich tables, multiple formats, file export with account ID/timestamp
+- **Comprehensive Coverage**: Foundation models, custom models, and training jobs
+- **Better Error Handling**: Graceful handling of unsupported regions
 
 ### Available Commands Now
 ```bash
@@ -444,14 +454,18 @@ This plan provides a structured approach to converting the existing AWS scripts 
 aws-cloud-utilities account info
 aws-cloud-utilities account contact-info
 aws-cloud-utilities account detect-control-tower --verbose
-aws-cloud-utilities account regions
-aws-cloud-utilities account validate
 
 # Support commands  
 aws-cloud-utilities support check-level
 aws-cloud-utilities support severity-levels
 aws-cloud-utilities support cases --status open
-aws-cloud-utilities support services
+
+# Bedrock commands (NEW!)
+aws-cloud-utilities bedrock list-models
+aws-cloud-utilities bedrock list-models --provider anthropic --output-file models.csv
+aws-cloud-utilities bedrock model-details anthropic.claude-3-sonnet-20240229-v1:0
+aws-cloud-utilities bedrock list-custom-models
+aws-cloud-utilities bedrock regions
 ```
 
-**Status**: Support & Account Migration Complete ✅ - Ready for Next Service Migration
+**Status**: Support, Account & Bedrock Migration Complete ✅ - Ready for Next Service Migration

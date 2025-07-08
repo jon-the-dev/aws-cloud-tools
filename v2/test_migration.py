@@ -22,6 +22,7 @@ def test_imports():
         # Test command modules
         from aws_cloud_utilities.commands.account import account_group
         from aws_cloud_utilities.commands.bedrock import bedrock_group
+        from aws_cloud_utilities.commands.iam import iam_group
         from aws_cloud_utilities.commands.support import support_group
         print("✓ Command modules imported successfully")
         
@@ -93,6 +94,14 @@ def test_cli_help():
             print("✓ Bedrock command help works")
         else:
             print(f"✗ Bedrock command help failed: {result.output}")
+            return False
+        
+        # Test iam help
+        result = runner.invoke(main, ["iam", "--help"])
+        if result.exit_code == 0 and "IAM management" in result.output:
+            print("✓ IAM command help works")
+        else:
+            print(f"✗ IAM command help failed: {result.output}")
             return False
         
         # Test support help

@@ -4,11 +4,11 @@ from . import (
     account,
     bedrock,
     costops,
+    iam,
     inventory,
     logs,
     security,
     s3,
-    iam,
     networking,
     support
 )
@@ -17,11 +17,11 @@ __all__ = [
     "account",
     "bedrock",
     "costops", 
+    "iam",
     "inventory",
     "logs",
     "security",
     "s3",
-    "iam",
     "networking",
     "support",
 ]

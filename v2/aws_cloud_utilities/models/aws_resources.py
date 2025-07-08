@@ -144,18 +144,72 @@ class BedrockCustomModel(AWSResource):
         return "BedrockCustomModel"
 
 
-class BedrockModelCustomizationJob(AWSResource):
-    """Bedrock model customization job."""
+class IAMRole(AWSResource):
+    """IAM role model."""
     
-    job_name: str = Field(..., description="Job name")
-    job_arn: str = Field(..., description="Job ARN")
-    base_model_arn: str = Field(..., description="Base model ARN")
-    status: str = Field(..., description="Job status")
-    custom_model_name: Optional[str] = Field(None, description="Custom model name")
-    custom_model_arn: Optional[str] = Field(None, description="Custom model ARN")
-    end_time: Optional[datetime] = Field(None, description="Job end time")
+    role_name: str = Field(..., description="Role name")
+    path: str = Field("/", description="Role path")
+    assume_role_policy: Dict[str, Any] = Field(..., description="Assume role policy document")
+    max_session_duration: int = Field(3600, description="Maximum session duration")
+    attached_policies: List[str] = Field(default_factory=list, description="Attached policy ARNs")
+    inline_policies: List[str] = Field(default_factory=list, description="Inline policy names")
+    description: Optional[str] = Field(None, description="Role description")
+    permissions_boundary: Optional[str] = Field(None, description="Permissions boundary ARN")
     
     @property
     def resource_type(self) -> str:
         """Resource type."""
-        return "BedrockModelCustomizationJob"
+        return "IAMRole"
+
+
+class IAMPolicy(AWSResource):
+    """IAM policy model."""
+    
+    policy_name: str = Field(..., description="Policy name")
+    policy_arn: str = Field(..., description="Policy ARN")
+    path: str = Field("/", description="Policy path")
+    policy_document: Dict[str, Any] = Field(..., description="Policy document")
+    default_version_id: str = Field(..., description="Default version ID")
+    attachment_count: int = Field(0, description="Number of entities attached to")
+    permissions_boundary_usage_count: int = Field(0, description="Permissions boundary usage count")
+    is_attachable: bool = Field(True, description="Whether policy is attachable")
+    description: Optional[str] = Field(None, description="Policy description")
+    is_aws_managed: bool = Field(False, description="Whether this is an AWS managed policy")
+    
+    @property
+    def resource_type(self) -> str:
+        """Resource type."""
+        return "IAMPolicy"
+
+
+class IAMUser(AWSResource):
+    """IAM user model."""
+    
+    user_name: str = Field(..., description="User name")
+    path: str = Field("/", description="User path")
+    user_id: str = Field(..., description="User ID")
+    arn: str = Field(..., description="User ARN")
+    password_last_used: Optional[datetime] = Field(None, description="Password last used")
+    attached_policies: List[str] = Field(default_factory=list, description="Attached policy ARNs")
+    inline_policies: List[str] = Field(default_factory=list, description="Inline policy names")
+    groups: List[str] = Field(default_factory=list, description="Group memberships")
+    permissions_boundary: Optional[str] = Field(None, description="Permissions boundary ARN")
+    
+    @property
+    def resource_type(self) -> str:
+        """Resource type."""
+        return "IAMUser"
+
+
+class CloudWatchLogGroup(AWSResource):
+    """CloudWatch log group model."""
+    
+    log_group_name: str = Field(..., description="Log group name")
+    retention_in_days: Optional[int] = Field(None, description="Retention period in days")
+    stored_bytes: Optional[int] = Field(None, description="Stored bytes")
+    metric_filter_count: int = Field(0, description="Number of metric filters")
+    
+    @property
+    def resource_type(self) -> str:
+        """Resource type."""
+        return "CloudWatchLogGroup"

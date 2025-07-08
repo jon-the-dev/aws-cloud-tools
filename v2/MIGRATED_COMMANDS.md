@@ -139,6 +139,34 @@ aws-cloud-utilities bedrock list-model-jobs --status Completed
 aws-cloud-utilities bedrock regions
 ```
 
+## IAM Commands
+
+### Original Scripts → New Commands
+
+| Original Script | New Command | Description |
+|----------------|-------------|-------------|
+| `iam/iam_auditor.py` | `aws-cloud-utilities iam audit` | Audit IAM roles and policies |
+
+### New Enhanced Commands
+
+```bash
+# Enhanced migration of original functionality
+aws-cloud-utilities iam audit
+aws-cloud-utilities iam audit --output-dir ./my_audit
+aws-cloud-utilities iam audit --include-aws-managed
+aws-cloud-utilities iam audit --roles-only
+aws-cloud-utilities iam audit --policies-only
+aws-cloud-utilities iam audit --format yaml
+
+# New functionality not in original
+aws-cloud-utilities iam list-roles
+aws-cloud-utilities iam list-roles --path-prefix /service-role/
+aws-cloud-utilities iam list-policies --scope Local
+aws-cloud-utilities iam list-policies --only-attached
+aws-cloud-utilities iam role-details MyRole
+aws-cloud-utilities iam policy-details arn:aws:iam::123456789012:policy/MyPolicy
+```
+
 ## Next Services to Migrate
 
 1. **CostOps** - Cost optimization tools
@@ -146,4 +174,3 @@ aws-cloud-utilities bedrock regions
 3. **Logs** - CloudWatch logs management
 4. **Security** - Security auditing tools
 5. **S3** - S3 operations
-6. **IAM** - IAM management
