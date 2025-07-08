@@ -493,8 +493,84 @@ DEFAULT_SNS_TOPIC = "FIXME-DONT-HARDCODE-TOPIC"
 - **Missing SNS Topic**: "⚠️ Warning: No --sns-topic specified. Alarms will be created without notification actions."
 - **Usage Guidance**: Clear instructions on how to provide missing parameters
 
+## CloudWatch Logs Management Commands
+
+### Original Scripts → New Commands
+
+| Original Script | New Command | Description |
+|----------------|-------------|-------------|
+| `old/logs/1_manage_cw_logs.py` | `aws-cloud-utilities logs list-groups` | List CloudWatch log groups with details |
+| `old/logs/1_manage_cw_logs.py` | `aws-cloud-utilities logs download` | Download logs from CloudWatch log groups |
+| `old/logs/1_manage_cw_logs.py` | `aws-cloud-utilities logs set-retention` | Set retention policies for log groups |
+| `old/logs/1_manage_cw_logs.py` | `aws-cloud-utilities logs delete-group` | Delete CloudWatch log groups |
+| `old/logs/2_combine_logs.py` | `aws-cloud-utilities logs combine` | Combine multiple log files into sorted output |
+| `old/logs/3_aws_logs_aggregator.py` | `aws-cloud-utilities logs aggregate` | Aggregate AWS log files for efficient processing |
+
+### New Enhanced Commands
+
+```bash
+# Enhanced CloudWatch log group management (migrated with major improvements)
+aws-cloud-utilities logs list-groups --all-regions --include-size --output-file log_groups.csv
+aws-cloud-utilities logs download my-log-group --days 30 --output-dir ./logs
+aws-cloud-utilities logs download ALL --days 7 --region us-east-1
+aws-cloud-utilities logs set-retention my-log-group 30 --if-never --dry-run
+aws-cloud-utilities logs delete-group my-log-group --confirm
+
+# Enhanced log file processing (migrated with major improvements)
+aws-cloud-utilities logs combine ./log_files --output-file combined.log --sort-lines
+aws-cloud-utilities logs aggregate ./aws_logs --target-size 500 --log-type cloudtrail --compress
+
+# Advanced log aggregation with auto-detection
+aws-cloud-utilities logs aggregate ./mixed_logs --output-dir ./processed --keep-structure --delete-source
+```
+
+### Key CloudWatch Logs Enhancements
+
+#### **Enhanced Log Group Management** (Migrated with Major Improvements)
+- **Multi-Region Support**: List and manage log groups across all AWS regions simultaneously
+- **Rich Metadata**: Include storage size, retention policies, and creation timestamps
+- **Parallel Processing**: Download from multiple log groups concurrently with progress indicators
+- **Smart Filtering**: Advanced filtering options with size calculations and retention analysis
+
+#### **Advanced Log Processing** (Migrated with Major Improvements)
+- **Intelligent Sorting**: Chronological log line sorting with timestamp detection
+- **Progress Tracking**: Visual progress indicators for long-running operations
+- **Error Resilience**: Comprehensive error handling with detailed recovery suggestions
+- **Flexible Output**: Multiple output formats with automatic timestamping
+
+#### **Comprehensive Log Aggregation** (Migrated with Major Improvements)
+- **Auto-Detection**: Intelligent log type detection for CloudTrail, CloudFront, ELB, ALB, Route53
+- **Configurable Sizing**: Flexible target file sizes with compression options
+- **Structure Preservation**: Optional directory structure preservation in output
+- **Batch Processing**: Efficient processing of large log file collections
+
+#### **New Advanced Features** (Not in Original Scripts)
+- **Retention Management**: Bulk retention policy management with conditional updates
+- **Size Analytics**: Storage usage analysis across log groups and regions
+- **Export Integration**: Seamless integration with CloudWatch Logs export functionality
+- **Dry Run Support**: Preview operations before execution with detailed impact analysis
+
+### Migration Improvements
+
+#### **Performance Enhancements**
+- **Parallel Processing**: Multi-threaded operations for faster log group scanning and downloads
+- **Progress Indicators**: Real-time progress tracking for long-running operations
+- **Memory Optimization**: Efficient handling of large log files with streaming processing
+- **Batch Operations**: Optimized batch processing for multiple log groups and files
+
+#### **User Experience Improvements**
+- **Rich Console Output**: Color-coded status messages with detailed progress information
+- **Flexible Parameters**: Comprehensive parameter options with intelligent defaults
+- **Error Recovery**: Detailed error messages with actionable recovery suggestions
+- **Output Formats**: Multiple output formats (table, JSON, CSV) with automatic file naming
+
+#### **Operational Excellence**
+- **Dry Run Support**: Preview changes before execution across all operations
+- **Confirmation Prompts**: Safety prompts for destructive operations with bypass options
+- **Comprehensive Logging**: Detailed operation logging with configurable verbosity levels
+- **Resource Management**: Intelligent resource cleanup and temporary file management
+
 ## Next Services to Migrate
 
 1. **CostOps** - Cost optimization tools
-2. **Logs** - CloudWatch logs management
-3. **S3** - S3 operations
+2. **S3** - S3 operations
