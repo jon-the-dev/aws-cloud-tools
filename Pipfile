@@ -5,6 +5,9 @@ name = "pypi"
 
 [packages]
 boto3 = "*"
+streamlit = "*"
+pandas = "*"
+python-dotenv = "*"
 
 [dev-packages]
 
