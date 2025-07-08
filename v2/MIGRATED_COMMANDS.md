@@ -197,6 +197,38 @@ aws-cloud-utilities inventory workspaces --metric-names "Available,InSessionLate
 aws-cloud-utilities inventory services  # List all supported services
 ```
 
+## CloudFormation & Networking Commands
+
+### Original Scripts → New Commands
+
+| Original Script | New Command | Description |
+|----------------|-------------|-------------|
+| `cloudformation/backup_stacks.py` | `aws-cloud-utilities inventory cloudformation` | CloudFormation stack backup utility |
+| `networking/get_aws_ip_ranges.py` | `aws-cloud-utilities networking ip-ranges` | Download and analyze AWS IP ranges |
+
+### New Enhanced Commands
+
+```bash
+# Enhanced CloudFormation backup (migrated with improvements)
+aws-cloud-utilities inventory cloudformation
+aws-cloud-utilities inventory cloudformation --regions us-east-1,us-west-2
+aws-cloud-utilities inventory cloudformation --output-dir ./cfn_backups
+aws-cloud-utilities inventory cloudformation --stack-status CREATE_COMPLETE,UPDATE_COMPLETE
+aws-cloud-utilities inventory cloudformation --parallel-regions 8 --parallel-stacks 4
+
+# Enhanced AWS IP ranges (migrated with major improvements)
+aws-cloud-utilities networking ip-ranges
+aws-cloud-utilities networking ip-ranges --filter-service EC2
+aws-cloud-utilities networking ip-ranges --filter-region us-east-1
+aws-cloud-utilities networking ip-ranges --ipv6 --output-file ip_ranges.json
+aws-cloud-utilities networking ip-ranges --show-summary
+
+# New functionality not in original
+aws-cloud-utilities networking ip-summary
+aws-cloud-utilities networking ip-summary --service S3
+aws-cloud-utilities networking ip-summary --region eu-west-1
+```
+
 ## Next Services to Migrate
 
 1. **CostOps** - Cost optimization tools

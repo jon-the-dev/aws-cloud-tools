@@ -1,5 +1,7 @@
 # AWS Cloud Tools
 
+WE ARE MOVING ALL THESE SCRIPTS TO A SINGLE PYTHON PACKAGE IN `./v2`
+
 A collection of snippets used for AWS APIs.
 
 ## Prerequisites

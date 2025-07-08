@@ -415,7 +415,7 @@ This plan provides a structured approach to converting the existing AWS scripts 
 
 ## ✅ **Migration Progress Update**
 
-### Recently Completed (Support, Account, Bedrock & IAM Commands)
+### Recently Completed (Support, Account, Bedrock, IAM & Inventory Commands)
 - [x] **Support Commands** (`commands/support.py`) - MIGRATED ✅
   - `check-level`: Check AWS support level using severity levels method
   - `severity-levels`: List available support severity levels  
@@ -449,12 +449,19 @@ This plan provides a structured approach to converting the existing AWS scripts 
   - `policy-details`: Get detailed policy information (new)
   - Migrated from `iam/iam_auditor.py` with significant enhancements
 
-### Key IAM Enhancements
-- **Enhanced Audit**: Progress indicators, structured output, metadata preservation
-- **Multiple Formats**: JSON and YAML output with comprehensive metadata
-- **Selective Auditing**: Roles-only, policies-only, AWS managed policy options
-- **Rich Output**: Detailed summaries, error handling, structured directories
-- **New Commands**: Role/policy listing and detailed inspection capabilities
+- [x] **Inventory Commands** (`commands/inventory.py`) - MIGRATED & ENHANCED ✅
+  - `scan`: Comprehensive AWS resource discovery across 35+ services (migrated with major improvements)
+  - `workspaces`: WorkSpaces inventory with CloudWatch metrics (migrated with enhancements)
+  - `services`: List all supported services for inventory scanning (new)
+  - Migrated from `inventory/inventory.py` and `inventory/workspaces_inventory.py`
+
+### Key Inventory Enhancements
+- **Massive Scale**: Support for 35+ AWS services with 80+ API methods
+- **Parallel Processing**: Configurable worker pools for dramatically improved performance
+- **Smart Filtering**: Service and region filtering with validation
+- **Rich Output**: Progress indicators, structured directories, comprehensive summaries
+- **Tag Enrichment**: Automatic tag collection for supported services
+- **Multiple Formats**: JSON, YAML, CSV output with metadata preservation
 
 ### Available Commands Now
 ```bash
@@ -472,15 +479,17 @@ aws-cloud-utilities support cases --status open
 aws-cloud-utilities bedrock list-models
 aws-cloud-utilities bedrock list-models --provider anthropic --output-file models.csv
 aws-cloud-utilities bedrock model-details anthropic.claude-3-sonnet-20240229-v1:0
-aws-cloud-utilities bedrock list-custom-models
 
-# IAM commands (NEW!)
-aws-cloud-utilities iam audit
+# IAM commands
 aws-cloud-utilities iam audit --include-aws-managed --format yaml
 aws-cloud-utilities iam list-roles --path-prefix /service-role/
-aws-cloud-utilities iam list-policies --scope Local --only-attached
 aws-cloud-utilities iam role-details MyRole
-aws-cloud-utilities iam policy-details arn:aws:iam::123456789012:policy/MyPolicy
+
+# Inventory commands (NEW!)
+aws-cloud-utilities inventory scan
+aws-cloud-utilities inventory scan --services ec2,s3,rds --regions us-east-1,us-west-2
+aws-cloud-utilities inventory workspaces --include-metrics --output-file report.csv
+aws-cloud-utilities inventory services  # List all 35+ supported services
 ```
 
-**Status**: Support, Account, Bedrock & IAM Migration Complete ✅ - Ready for Next Service Migration
+**Status**: Support, Account, Bedrock, IAM & Inventory Migration Complete ✅ - Ready for Next Service Migration

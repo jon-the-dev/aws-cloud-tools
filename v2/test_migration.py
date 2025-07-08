@@ -24,6 +24,7 @@ def test_imports():
         from aws_cloud_utilities.commands.bedrock import bedrock_group
         from aws_cloud_utilities.commands.iam import iam_group
         from aws_cloud_utilities.commands.inventory import inventory_group
+        from aws_cloud_utilities.commands.networking import networking_group
         from aws_cloud_utilities.commands.support import support_group
         print("✓ Command modules imported successfully")
         
@@ -111,6 +112,14 @@ def test_cli_help():
             print("✓ Inventory command help works")
         else:
             print(f"✗ Inventory command help failed: {result.output}")
+            return False
+        
+        # Test networking help
+        result = runner.invoke(main, ["networking", "--help"])
+        if result.exit_code == 0 and "networking and IP management" in result.output:
+            print("✓ Networking command help works")
+        else:
+            print(f"✗ Networking command help failed: {result.output}")
             return False
         
         # Test support help
