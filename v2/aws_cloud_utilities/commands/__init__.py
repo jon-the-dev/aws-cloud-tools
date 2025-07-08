@@ -2,6 +2,7 @@
 
 from . import (
     account,
+    awsconfig,
     bedrock,
     cloudformation,
     costops,
@@ -18,6 +19,7 @@ from . import (
 
 __all__ = [
     "account",
+    "awsconfig",
     "bedrock",
     "cloudformation",
     "costops",

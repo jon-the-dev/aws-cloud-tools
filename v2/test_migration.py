@@ -21,6 +21,7 @@ def test_imports():
         
         # Test command modules
         from aws_cloud_utilities.commands.account import account_group
+        from aws_cloud_utilities.commands.awsconfig import awsconfig_group
         from aws_cloud_utilities.commands.bedrock import bedrock_group
         from aws_cloud_utilities.commands.cloudformation import cloudformation_group
         from aws_cloud_utilities.commands.ecr import ecr_group
@@ -108,6 +109,14 @@ def test_cli_help():
             print("✓ CloudFormation command help works")
         else:
             print(f"✗ CloudFormation command help failed: {result.output}")
+            return False
+        
+        # Test awsconfig help
+        result = runner.invoke(main, ["awsconfig", "--help"])
+        if result.exit_code == 0 and "Config service management" in result.output:
+            print("✓ AWS Config command help works")
+        else:
+            print(f"✗ AWS Config command help failed: {result.output}")
             return False
         
         # Test ecr help

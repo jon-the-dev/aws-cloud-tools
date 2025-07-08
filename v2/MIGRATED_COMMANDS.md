@@ -380,6 +380,57 @@ aws-cloud-utilities ecr get-login --print-command --region us-east-1
 - **Multi-Region Support**: Login to ECR in any AWS region
 - **Error Recovery**: Fallback to manual commands when Docker unavailable
 
+## AWS Config Service Commands
+
+### Original Scripts → New Commands
+
+| Original Script | New Command | Description |
+|----------------|-------------|-------------|
+| `config/aws_config_download_combined.py` | `aws-cloud-utilities awsconfig download` | Download and process Config files from S3 |
+
+### New Enhanced Commands
+
+```bash
+# Enhanced Config data download (migrated with major improvements)
+aws-cloud-utilities awsconfig download --bucket my-config-bucket --prefix config/data/ --start-date 2024-01-01 --end-date 2024-01-31
+aws-cloud-utilities awsconfig download --bucket my-bucket --prefix logs/ --start-date 2024-01-15 --end-date 2024-01-20 --format json
+aws-cloud-utilities awsconfig download --bucket config-data --prefix prod/ --start-date 2024-01-01 --end-date 2024-01-31 --keep-temp-files
+
+# New Config management functionality not in original
+aws-cloud-utilities awsconfig show-rules
+aws-cloud-utilities awsconfig show-rules --all-regions --include-metrics --output-file rules_analysis.json
+aws-cloud-utilities awsconfig show-rules --rule-name "required-tags" --include-metrics
+
+aws-cloud-utilities awsconfig list-rules
+aws-cloud-utilities awsconfig list-rules --all-regions --compliance-state NON_COMPLIANT
+aws-cloud-utilities awsconfig list-rules --output-file config_rules.csv
+
+aws-cloud-utilities awsconfig compliance-status
+aws-cloud-utilities awsconfig compliance-status --all-regions --resource-type AWS::EC2::Instance
+aws-cloud-utilities awsconfig compliance-status --compliance-type NON_COMPLIANT --output-file compliance_report.json
+```
+
+### Key AWS Config Enhancements
+
+#### **Enhanced Data Download** (Migrated with Major Improvements)
+- **Progress Indicators**: Visual feedback for S3 scanning and file processing
+- **Multiple Formats**: Support for both CSV and JSON output formats
+- **Enhanced Processing**: Improved JSON flattening with source file tracking
+- **Temp File Management**: Optional retention of downloaded files for debugging
+- **Rich Error Handling**: Comprehensive error recovery and detailed reporting
+
+#### **Comprehensive Config Management Suite** (New Functionality)
+- **Rules Analysis**: Deep analysis of Config rules with compliance metrics and statistics
+- **Multi-Region Support**: Analyze rules and compliance across all AWS regions
+- **Compliance Monitoring**: Real-time compliance status with resource type filtering
+- **Rich Reporting**: Multiple output formats with detailed summaries and breakdowns
+
+#### **Advanced Analytics and Insights**
+- **Meaningful Statistics**: Compliance percentages, rule effectiveness metrics
+- **Resource Type Analysis**: Breakdown by AWS resource types with evaluation counts
+- **Regional Comparisons**: Compare compliance posture across different regions
+- **Trend Analysis**: Historical compliance data processing and analysis
+
 ## Next Services to Migrate
 
 1. **CostOps** - Cost optimization tools
