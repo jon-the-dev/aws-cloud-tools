@@ -23,6 +23,7 @@ def test_imports():
         from aws_cloud_utilities.commands.account import account_group
         from aws_cloud_utilities.commands.bedrock import bedrock_group
         from aws_cloud_utilities.commands.cloudformation import cloudformation_group
+        from aws_cloud_utilities.commands.ecr import ecr_group
         from aws_cloud_utilities.commands.iam import iam_group
         from aws_cloud_utilities.commands.inventory import inventory_group
         from aws_cloud_utilities.commands.networking import networking_group
@@ -107,6 +108,14 @@ def test_cli_help():
             print("✓ CloudFormation command help works")
         else:
             print(f"✗ CloudFormation command help failed: {result.output}")
+            return False
+        
+        # Test ecr help
+        result = runner.invoke(main, ["ecr", "--help"])
+        if result.exit_code == 0 and "ECR" in result.output and "Container Registry" in result.output:
+            print("✓ ECR command help works")
+        else:
+            print(f"✗ ECR command help failed: {result.output}")
             return False
         
         # Test iam help

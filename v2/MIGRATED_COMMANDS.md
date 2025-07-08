@@ -326,6 +326,60 @@ aws-cloud-utilities stepfunctions logs arn:aws:states:us-east-1:123456789012:exe
 - **Error Handling**: Comprehensive error recovery and detailed reporting
 - **Rich CLI Interface**: Extensive help system and intuitive commands
 
+## ECR (Elastic Container Registry) Commands
+
+### Original Scripts → New Commands
+
+| Original Script | New Command | Description |
+|----------------|-------------|-------------|
+| `ecr/download_and_push_docker_image_to_ecr.py` | `aws-cloud-utilities ecr copy-image` | Copy Docker images to ECR with enhancements |
+
+### New Enhanced Commands
+
+```bash
+# Enhanced image copying (migrated with major improvements)
+aws-cloud-utilities ecr copy-image ubuntu:latest my-app
+aws-cloud-utilities ecr copy-image nginx:alpine my-nginx --tag v1.0
+aws-cloud-utilities ecr copy-image my-image:latest my-repo --create-repo --force
+aws-cloud-utilities ecr copy-image docker.io/library/redis:latest my-redis --region us-west-2
+
+# New ECR management functionality not in original
+aws-cloud-utilities ecr list-repositories
+aws-cloud-utilities ecr list-repositories --all-regions --output-file repos.csv
+aws-cloud-utilities ecr list-images my-repository
+aws-cloud-utilities ecr list-images my-repository --max-results 50 --output-file images.json
+
+# Repository management (new functionality)
+aws-cloud-utilities ecr create-repository my-new-repo
+aws-cloud-utilities ecr create-repository my-secure-repo --scan-on-push --image-tag-mutability IMMUTABLE
+aws-cloud-utilities ecr delete-repository old-repo --force --confirm
+
+# Authentication helpers (enhanced)
+aws-cloud-utilities ecr get-login
+aws-cloud-utilities ecr get-login --print-command --region us-east-1
+```
+
+### Key ECR Enhancements
+
+#### **Enhanced Image Copying**
+- **Progress Indicators**: Visual feedback for pull, tag, and push operations
+- **Smart Repository Handling**: Auto-create repositories with --create-repo flag
+- **Conflict Resolution**: Force overwrite existing images with --force flag
+- **Rich Error Handling**: Detailed error messages and recovery suggestions
+- **Image Details**: Automatic display of pushed image metadata
+
+#### **Comprehensive Repository Management**
+- **Multi-Region Listing**: List repositories across all regions simultaneously
+- **Detailed Information**: Repository URIs, creation dates, encryption settings
+- **Image Inventory**: List images with tags, sizes, and scan results
+- **Repository Lifecycle**: Create and delete repositories with comprehensive options
+
+#### **Enhanced Authentication**
+- **Simplified Login**: Direct Docker authentication with ECR
+- **Command Generation**: Print login commands for manual execution
+- **Multi-Region Support**: Login to ECR in any AWS region
+- **Error Recovery**: Fallback to manual commands when Docker unavailable
+
 ## Next Services to Migrate
 
 1. **CostOps** - Cost optimization tools

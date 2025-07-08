@@ -15,6 +15,7 @@ from .commands import (
     bedrock,
     cloudformation,
     costops,
+    ecr,
     inventory,
     logs,
     security,
@@ -174,6 +175,7 @@ main.add_command(account.account_group)
 main.add_command(bedrock.bedrock_group)
 main.add_command(cloudformation.cloudformation_group)
 main.add_command(costops.costops_group)
+main.add_command(ecr.ecr_group)
 main.add_command(inventory.inventory_group)
 main.add_command(logs.logs_group)
 main.add_command(security.security_group)
