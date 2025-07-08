@@ -679,6 +679,127 @@ aws-cloud-utilities s3 restore-objects my-bucket --check-status --include-versio
 - **Storage Class Awareness**: Smart handling of different S3 storage classes
 - **Usage Reporting**: Detailed reporting of operations and associated costs
 
+## Cost Optimization and Analysis Commands
+
+### Original Scripts → New Commands
+
+| Original Script | New Command | Description |
+|----------------|-------------|-------------|
+| `old/costops/aws_pricing.py` | `aws-cloud-utilities costops pricing` | Get AWS pricing information for services |
+| `old/costops/costexplorer_click.py` | `aws-cloud-utilities costops cost-analysis` | Analyze AWS costs using Cost Explorer |
+| `old/costops/costexplorer_click.py` | `aws-cloud-utilities costops usage-metrics` | Get detailed usage metrics for AWS services |
+| `old/costops/aws-ec2-gp2-search.py` | `aws-cloud-utilities costops ebs-optimization` | Analyze EBS volumes for cost optimization |
+
+### New Enhanced Commands
+
+```bash
+# Enhanced AWS pricing data collection (migrated with major improvements)
+aws-cloud-utilities costops pricing --list-services
+aws-cloud-utilities costops pricing --service AmazonEC2 --format summary --output-dir ./pricing_data
+aws-cloud-utilities costops pricing --format json --output-dir ./all_pricing
+
+# Enhanced cost analysis with Cost Explorer (migrated with major improvements)
+aws-cloud-utilities costops cost-analysis --months 6 --group-by service --output-file cost_analysis.csv
+aws-cloud-utilities costops cost-analysis --service "Amazon Elastic Compute Cloud - Compute" --months 12
+aws-cloud-utilities costops usage-metrics "Amazon Simple Storage Service" --months 3 --metric-type both
+
+# Enhanced EBS optimization analysis (migrated with major improvements)
+aws-cloud-utilities costops ebs-optimization --all-regions --show-recommendations --output-file ebs_analysis.json
+aws-cloud-utilities costops ebs-optimization --volume-type gp2 --include-cost-estimates --region us-east-1
+```
+
+### Key Cost Optimization Enhancements
+
+#### **Enhanced Pricing Data Collection** (Migrated with Major Improvements)
+- **Comprehensive Service Coverage**: Access pricing for all AWS services with parallel processing
+- **Multiple Output Formats**: Raw JSON data or processed summaries with intelligent analysis
+- **Batch Processing**: Download pricing data for all services with progress tracking
+- **Smart Caching**: Efficient data retrieval with organized output structure
+
+#### **Advanced Cost Analysis** (Migrated with Major Improvements)
+- **Flexible Time Periods**: Analyze costs over custom time ranges with monthly granularity
+- **Multi-Dimensional Grouping**: Group costs by service, usage type, region, or account
+- **Service Filtering**: Focus analysis on specific AWS services with detailed breakdowns
+- **Rich Reporting**: Comprehensive cost breakdowns with percentage analysis and trends
+
+#### **Comprehensive Usage Metrics** (Migrated with Major Improvements)
+- **Dual Metric Support**: Analyze both cost and usage quantity metrics simultaneously
+- **Advanced Grouping**: Group metrics by usage type, region, instance type, or operation
+- **Historical Analysis**: Track usage patterns over multiple months with trend analysis
+- **Detailed Breakdowns**: Top usage types with quantity and cost correlations
+
+#### **Intelligent EBS Optimization** (Migrated with Major Improvements)
+- **Multi-Region Analysis**: Scan EBS volumes across all AWS regions with parallel processing
+- **Smart Recommendations**: Intelligent optimization suggestions based on volume types
+- **Cost Estimation**: Calculate potential savings from volume type migrations
+- **Comprehensive Reporting**: Detailed analysis with instance relationships and tagging
+
+### Migration Improvements
+
+#### **Performance Enhancements**
+- **Parallel Processing**: Multi-threaded operations for pricing data collection and EBS analysis
+- **Progress Indicators**: Real-time progress tracking for long-running cost analysis operations
+- **Batch Operations**: Efficient batch processing for large-scale pricing and cost data retrieval
+- **Memory Optimization**: Streaming operations for handling large datasets and pricing information
+
+#### **User Experience Improvements**
+- **Rich Console Output**: Color-coded status messages with detailed progress information
+- **Flexible Parameters**: Comprehensive parameter options with intelligent defaults
+- **Multiple Output Formats**: Support for JSON, CSV, and YAML output formats
+- **Error Recovery**: Detailed error messages with actionable recovery suggestions
+
+#### **Operational Excellence**
+- **Comprehensive Logging**: Detailed operation logging with configurable verbosity levels
+- **Data Organization**: Intelligent file naming and directory structure for output data
+- **Resource Management**: Efficient API usage with rate limiting and retry logic
+- **Cost Awareness**: Built-in cost optimization recommendations and savings calculations
+
+#### **Advanced Features Not in Original Scripts**
+- **Service Discovery**: Automatic discovery of available AWS services for pricing analysis
+- **Cross-Region Analysis**: Comprehensive multi-region cost and resource analysis
+- **Trend Analysis**: Historical cost and usage trend identification with pattern recognition
+- **Optimization Scoring**: Intelligent scoring system for cost optimization opportunities
+
+### Cost Optimization Analysis Features
+
+#### **Comprehensive Pricing Intelligence**
+- **Real-Time Data**: Access to current AWS pricing information across all services
+- **Historical Tracking**: Track pricing changes over time with version management
+- **Regional Comparison**: Compare pricing across different AWS regions
+- **Service Coverage**: Complete coverage of all AWS services with detailed pricing models
+
+#### **Advanced Cost Analytics**
+- **Multi-Dimensional Analysis**: Analyze costs across multiple dimensions simultaneously
+- **Trend Identification**: Identify cost trends and anomalies with statistical analysis
+- **Budget Impact**: Calculate budget impact and forecast future costs
+- **Cost Attribution**: Detailed cost attribution with service and resource breakdowns
+
+#### **Intelligent Resource Optimization**
+- **EBS Volume Analysis**: Comprehensive analysis of EBS volumes for optimization opportunities
+- **Instance Recommendations**: Smart recommendations for instance type optimizations
+- **Storage Class Analysis**: Analyze S3 storage classes for cost optimization
+- **Reserved Instance Planning**: Analyze usage patterns for Reserved Instance recommendations
+
+#### **Enterprise-Grade Reporting**
+- **Executive Dashboards**: High-level cost summaries for executive reporting
+- **Detailed Breakdowns**: Granular cost analysis for technical teams
+- **Compliance Reporting**: Cost allocation reports for compliance and chargeback
+- **Trend Analysis**: Historical cost trends with forecasting capabilities
+
+### Cost Optimization Workflow Integration
+
+#### **Automated Analysis**
+- **Scheduled Reports**: Automated cost analysis reports with configurable schedules
+- **Threshold Alerts**: Cost threshold monitoring with automated alerting
+- **Optimization Tracking**: Track optimization implementation and savings realization
+- **ROI Calculation**: Calculate return on investment for optimization initiatives
+
+#### **Decision Support**
+- **Cost-Benefit Analysis**: Detailed cost-benefit analysis for optimization decisions
+- **Risk Assessment**: Risk assessment for cost optimization recommendations
+- **Implementation Planning**: Step-by-step implementation plans for optimizations
+- **Impact Modeling**: Model the impact of optimization decisions before implementation
+
 ## Next Services to Migrate
 
-1. **CostOps** - Cost optimization tools
+All major service categories have been successfully migrated! 🎉
