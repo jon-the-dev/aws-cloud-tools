@@ -415,7 +415,7 @@ This plan provides a structured approach to converting the existing AWS scripts 
 
 ## ✅ **Migration Progress Update**
 
-### Recently Completed (Support, Account & Bedrock Commands)
+### Recently Completed (Support, Account, Bedrock & IAM Commands)
 - [x] **Support Commands** (`commands/support.py`) - MIGRATED ✅
   - `check-level`: Check AWS support level using severity levels method
   - `severity-levels`: List available support severity levels  
@@ -441,12 +441,20 @@ This plan provides a structured approach to converting the existing AWS scripts 
   - `regions`: List Bedrock-available regions (new)
   - Migrated from `bedrock/bedrock_models.py` with significant improvements
 
-### Key Bedrock Enhancements
-- **Parallel Processing**: Multi-region scanning with configurable workers
-- **Provider Filtering**: Filter by amazon, anthropic, ai21, cohere, etc.
-- **Enhanced Output**: Rich tables, multiple formats, file export with account ID/timestamp
-- **Comprehensive Coverage**: Foundation models, custom models, and training jobs
-- **Better Error Handling**: Graceful handling of unsupported regions
+- [x] **IAM Commands** (`commands/iam.py`) - MIGRATED & ENHANCED ✅
+  - `audit`: Comprehensive IAM audit with enhanced features (migrated with major improvements)
+  - `list-roles`: List IAM roles with filtering (new)
+  - `list-policies`: List IAM policies with scope filtering (new)
+  - `role-details`: Get detailed role information (new)
+  - `policy-details`: Get detailed policy information (new)
+  - Migrated from `iam/iam_auditor.py` with significant enhancements
+
+### Key IAM Enhancements
+- **Enhanced Audit**: Progress indicators, structured output, metadata preservation
+- **Multiple Formats**: JSON and YAML output with comprehensive metadata
+- **Selective Auditing**: Roles-only, policies-only, AWS managed policy options
+- **Rich Output**: Detailed summaries, error handling, structured directories
+- **New Commands**: Role/policy listing and detailed inspection capabilities
 
 ### Available Commands Now
 ```bash
@@ -460,12 +468,19 @@ aws-cloud-utilities support check-level
 aws-cloud-utilities support severity-levels
 aws-cloud-utilities support cases --status open
 
-# Bedrock commands (NEW!)
+# Bedrock commands
 aws-cloud-utilities bedrock list-models
 aws-cloud-utilities bedrock list-models --provider anthropic --output-file models.csv
 aws-cloud-utilities bedrock model-details anthropic.claude-3-sonnet-20240229-v1:0
 aws-cloud-utilities bedrock list-custom-models
-aws-cloud-utilities bedrock regions
+
+# IAM commands (NEW!)
+aws-cloud-utilities iam audit
+aws-cloud-utilities iam audit --include-aws-managed --format yaml
+aws-cloud-utilities iam list-roles --path-prefix /service-role/
+aws-cloud-utilities iam list-policies --scope Local --only-attached
+aws-cloud-utilities iam role-details MyRole
+aws-cloud-utilities iam policy-details arn:aws:iam::123456789012:policy/MyPolicy
 ```
 
-**Status**: Support, Account & Bedrock Migration Complete ✅ - Ready for Next Service Migration
+**Status**: Support, Account, Bedrock & IAM Migration Complete ✅ - Ready for Next Service Migration

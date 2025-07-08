@@ -23,6 +23,7 @@ def test_imports():
         from aws_cloud_utilities.commands.account import account_group
         from aws_cloud_utilities.commands.bedrock import bedrock_group
         from aws_cloud_utilities.commands.iam import iam_group
+        from aws_cloud_utilities.commands.inventory import inventory_group
         from aws_cloud_utilities.commands.support import support_group
         print("✓ Command modules imported successfully")
         
@@ -102,6 +103,14 @@ def test_cli_help():
             print("✓ IAM command help works")
         else:
             print(f"✗ IAM command help failed: {result.output}")
+            return False
+        
+        # Test inventory help
+        result = runner.invoke(main, ["inventory", "--help"])
+        if result.exit_code == 0 and "inventory and discovery" in result.output:
+            print("✓ Inventory command help works")
+        else:
+            print(f"✗ Inventory command help failed: {result.output}")
             return False
         
         # Test support help

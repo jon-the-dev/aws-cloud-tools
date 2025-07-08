@@ -7,9 +7,9 @@ from . import (
     iam,
     inventory,
     logs,
-    security,
-    s3,
     networking,
+    s3,
+    security,
     support
 )
 
@@ -20,8 +20,8 @@ __all__ = [
     "iam",
     "inventory",
     "logs",
-    "security",
-    "s3",
     "networking",
+    "s3",
+    "security",
     "support",
 ]

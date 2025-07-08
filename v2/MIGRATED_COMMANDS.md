@@ -167,10 +167,39 @@ aws-cloud-utilities iam role-details MyRole
 aws-cloud-utilities iam policy-details arn:aws:iam::123456789012:policy/MyPolicy
 ```
 
+## Inventory Commands
+
+### Original Scripts → New Commands
+
+| Original Script | New Command | Description |
+|----------------|-------------|-------------|
+| `inventory/inventory.py` | `aws-cloud-utilities inventory scan` | Comprehensive AWS resource discovery |
+| `inventory/workspaces_inventory.py` | `aws-cloud-utilities inventory workspaces` | WorkSpaces inventory with metrics |
+
+### New Enhanced Commands
+
+```bash
+# Enhanced migration of comprehensive inventory
+aws-cloud-utilities inventory scan
+aws-cloud-utilities inventory scan --services ec2,s3,rds
+aws-cloud-utilities inventory scan --regions us-east-1,us-west-2
+aws-cloud-utilities inventory scan --include-tags --format yaml
+aws-cloud-utilities inventory scan --output-dir ./my_inventory
+
+# Enhanced WorkSpaces inventory (migrated with improvements)
+aws-cloud-utilities inventory workspaces
+aws-cloud-utilities inventory workspaces --region us-east-1
+aws-cloud-utilities inventory workspaces --include-metrics --lookback-days 30
+aws-cloud-utilities inventory workspaces --output-file workspaces_report.csv
+aws-cloud-utilities inventory workspaces --metric-names "Available,InSessionLatency"
+
+# New functionality not in original
+aws-cloud-utilities inventory services  # List all supported services
+```
+
 ## Next Services to Migrate
 
 1. **CostOps** - Cost optimization tools
-2. **Inventory** - Resource discovery
-3. **Logs** - CloudWatch logs management
-4. **Security** - Security auditing tools
-5. **S3** - S3 operations
+2. **Logs** - CloudWatch logs management
+3. **Security** - Security auditing tools
+4. **S3** - S3 operations
