@@ -431,6 +431,68 @@ aws-cloud-utilities awsconfig compliance-status --compliance-type NON_COMPLIANT 
 - **Regional Comparisons**: Compare compliance posture across different regions
 - **Trend Analysis**: Historical compliance data processing and analysis
 
+## CloudFront Distribution Management Commands
+
+### Original Scripts → New Commands
+
+| Original Script | New Command | Description |
+|----------------|-------------|-------------|
+| `cloudfront/update_cf_dist_best_practices.py` | `aws-cloud-utilities cloudfront update-logging` | Update CloudFront logging and alarms with flexible parameters |
+
+### New Enhanced Commands
+
+```bash
+# Enhanced CloudFront logging configuration (migrated with parameter flexibility)
+aws-cloud-utilities cloudfront update-logging --log-bucket my-cloudfront-logs
+aws-cloud-utilities cloudfront update-logging --log-bucket my-logs --log-prefix custom-prefix --dry-run
+aws-cloud-utilities cloudfront update-logging --log-bucket my-logs --setup-alarms --sns-topic my-alerts
+aws-cloud-utilities cloudfront update-logging --remove-alarms --dry-run
+
+# New CloudFront management functionality not in original
+aws-cloud-utilities cloudfront list-distributions
+aws-cloud-utilities cloudfront list-distributions --include-disabled --show-logging-status --output-file distributions.csv
+aws-cloud-utilities cloudfront distribution-details d1234567890abc
+aws-cloud-utilities cloudfront distribution-details d1234567890abc --show-config --output-file dist_config.json
+```
+
+### Key CloudFront Enhancements
+
+#### **Flexible Parameter Handling** (Major Migration Improvement)
+- **Optional Log Bucket**: No longer hardcoded - users must provide --log-bucket or logging is skipped with warning
+- **Optional SNS Topic**: No longer hardcoded - users can provide --sns-topic or alarms created without notifications
+- **Smart Warnings**: Clear warnings when required parameters are missing with guidance on usage
+- **Graceful Degradation**: Operations continue with reduced functionality when optional parameters are missing
+
+#### **Enhanced Distribution Management** (Migrated with Major Improvements)
+- **Progress Indicators**: Visual feedback for multi-distribution processing
+- **Parallel Processing**: Configurable worker threads for faster processing
+- **Comprehensive Reporting**: Detailed summaries with CloudFormation stack detection
+- **Dry Run Support**: Preview changes before execution with detailed impact analysis
+
+#### **New Distribution Discovery and Analysis** (New Functionality)
+- **Distribution Listing**: Comprehensive distribution inventory with filtering options
+- **Detailed Analysis**: Individual distribution configuration analysis
+- **Logging Status Monitoring**: Track logging configuration across all distributions
+- **CloudFormation Integration**: Identify and report on CF-managed distributions
+
+### Parameter Migration Strategy
+
+#### **Original Hardcoded Values → Flexible Parameters**
+```python
+# Original (hardcoded)
+DEFAULT_LOG_BUCKET = "FIXME_DONT_HARDCODE_A_BUCKET"
+DEFAULT_SNS_TOPIC = "FIXME-DONT-HARDCODE-TOPIC"
+
+# New (flexible with warnings)
+--log-bucket (optional with warning if missing)
+--sns-topic (optional with warning if missing)
+```
+
+#### **Smart Warning System**
+- **Missing Log Bucket**: "⚠️ Warning: No --log-bucket specified. Logging configuration will be skipped."
+- **Missing SNS Topic**: "⚠️ Warning: No --sns-topic specified. Alarms will be created without notification actions."
+- **Usage Guidance**: Clear instructions on how to provide missing parameters
+
 ## Next Services to Migrate
 
 1. **CostOps** - Cost optimization tools

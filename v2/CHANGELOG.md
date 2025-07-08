@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.0.0] - 2024-07-08
 
 ### Added
+
 - Initial v2 release with unified CLI interface
 - Core infrastructure with configuration management
 - AWS authentication and session management
@@ -22,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive documentation
 
 ### Changed
+
 - Complete rewrite from individual scripts to unified package
 - Modern Python packaging with pyproject.toml
 - Click-based CLI instead of argparse
@@ -30,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Structured logging with configurable levels
 
 ### Migration from v1
+
 - All original script functionality preserved
 - New unified command structure: `aws-cloud-utilities <service> <operation>`
 - Configuration now centralized in .env files
@@ -37,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved performance with parallel processing
 
 ## [1.x] - Legacy Scripts
+
 - Individual Python scripts for various AWS operations
 - Basic argparse-based CLI interfaces
 - Direct boto3 usage without abstraction

@@ -15,6 +15,7 @@ from .commands import (
     awsconfig,
     bedrock,
     cloudformation,
+    cloudfront,
     costops,
     ecr,
     inventory,
@@ -176,6 +177,7 @@ main.add_command(account.account_group)
 main.add_command(awsconfig.awsconfig_group)
 main.add_command(bedrock.bedrock_group)
 main.add_command(cloudformation.cloudformation_group)
+main.add_command(cloudfront.cloudfront_group)
 main.add_command(costops.costops_group)
 main.add_command(ecr.ecr_group)
 main.add_command(inventory.inventory_group)

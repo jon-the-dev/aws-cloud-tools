@@ -24,6 +24,7 @@ def test_imports():
         from aws_cloud_utilities.commands.awsconfig import awsconfig_group
         from aws_cloud_utilities.commands.bedrock import bedrock_group
         from aws_cloud_utilities.commands.cloudformation import cloudformation_group
+        from aws_cloud_utilities.commands.cloudfront import cloudfront_group
         from aws_cloud_utilities.commands.ecr import ecr_group
         from aws_cloud_utilities.commands.iam import iam_group
         from aws_cloud_utilities.commands.inventory import inventory_group
@@ -109,6 +110,14 @@ def test_cli_help():
             print("✓ CloudFormation command help works")
         else:
             print(f"✗ CloudFormation command help failed: {result.output}")
+            return False
+        
+        # Test cloudfront help
+        result = runner.invoke(main, ["cloudfront", "--help"])
+        if result.exit_code == 0 and "CloudFront distribution management" in result.output:
+            print("✓ CloudFront command help works")
+        else:
+            print(f"✗ CloudFront command help failed: {result.output}")
             return False
         
         # Test awsconfig help
