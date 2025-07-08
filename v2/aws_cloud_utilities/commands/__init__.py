@@ -3,6 +3,7 @@
 from . import (
     account,
     bedrock,
+    cloudformation,
     costops,
     iam,
     inventory,
@@ -16,6 +17,7 @@ from . import (
 __all__ = [
     "account",
     "bedrock",
+    "cloudformation",
     "costops", 
     "iam",
     "inventory",

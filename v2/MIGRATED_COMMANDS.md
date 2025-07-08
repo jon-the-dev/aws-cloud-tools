@@ -203,18 +203,31 @@ aws-cloud-utilities inventory services  # List all supported services
 
 | Original Script | New Command | Description |
 |----------------|-------------|-------------|
-| `cloudformation/backup_stacks.py` | `aws-cloud-utilities inventory cloudformation` | CloudFormation stack backup utility |
+| `cloudformation/backup_stacks.py` | `aws-cloud-utilities cloudformation backup` | Dedicated CloudFormation stack backup |
 | `networking/get_aws_ip_ranges.py` | `aws-cloud-utilities networking ip-ranges` | Download and analyze AWS IP ranges |
 
 ### New Enhanced Commands
 
 ```bash
-# Enhanced CloudFormation backup (migrated with improvements)
-aws-cloud-utilities inventory cloudformation
-aws-cloud-utilities inventory cloudformation --regions us-east-1,us-west-2
-aws-cloud-utilities inventory cloudformation --output-dir ./cfn_backups
-aws-cloud-utilities inventory cloudformation --stack-status CREATE_COMPLETE,UPDATE_COMPLETE
-aws-cloud-utilities inventory cloudformation --parallel-regions 8 --parallel-stacks 4
+# Dedicated CloudFormation commands (NEW STRUCTURE!)
+aws-cloud-utilities cloudformation backup
+aws-cloud-utilities cloudformation backup --regions us-east-1,us-west-2
+aws-cloud-utilities cloudformation backup --output-dir ./cfn_backups
+aws-cloud-utilities cloudformation backup --stack-status CREATE_COMPLETE,UPDATE_COMPLETE
+aws-cloud-utilities cloudformation backup --parallel-regions 8 --parallel-stacks 4 --format yaml
+
+# New CloudFormation management commands
+aws-cloud-utilities cloudformation list-stacks
+aws-cloud-utilities cloudformation list-stacks --all-regions
+aws-cloud-utilities cloudformation list-stacks --stack-status CREATE_COMPLETE
+aws-cloud-utilities cloudformation stack-details MyStack --region us-east-1
+aws-cloud-utilities cloudformation stack-details MyStack --show-template --show-parameters
+
+# Comprehensive inventory with optional CloudFormation backup
+aws-cloud-utilities inventory download-all
+aws-cloud-utilities inventory download-all --include-cloudformation
+aws-cloud-utilities inventory download-all --include-workspaces-metrics
+aws-cloud-utilities inventory download-all --services ec2,s3,rds --regions us-east-1
 
 # Enhanced AWS IP ranges (migrated with major improvements)
 aws-cloud-utilities networking ip-ranges
@@ -223,11 +236,25 @@ aws-cloud-utilities networking ip-ranges --filter-region us-east-1
 aws-cloud-utilities networking ip-ranges --ipv6 --output-file ip_ranges.json
 aws-cloud-utilities networking ip-ranges --show-summary
 
-# New functionality not in original
+# New networking functionality not in original
 aws-cloud-utilities networking ip-summary
 aws-cloud-utilities networking ip-summary --service S3
 aws-cloud-utilities networking ip-summary --region eu-west-1
 ```
+
+### Key Architectural Improvements
+
+#### **Dedicated CloudFormation Commands**
+- **Standalone Module**: CloudFormation now has its own dedicated command group
+- **Enhanced Backup**: Multiple output formats (JSON, YAML) with comprehensive options
+- **Stack Management**: List stacks, get details, show templates and parameters
+- **Rich Interface**: Progress indicators, detailed summaries, and error handling
+
+#### **Reorganized Inventory Structure**
+- **Focused Scanning**: `inventory scan` for resource discovery only
+- **Comprehensive Download**: `inventory download-all` for everything including optional CloudFormation
+- **Modular Approach**: Choose what to include (tags, CloudFormation, WorkSpaces metrics)
+- **Better Organization**: Structured output with separate directories for different data types
 
 ## Next Services to Migrate
 

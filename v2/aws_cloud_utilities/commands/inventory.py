@@ -750,42 +750,58 @@ def _get_workspace_metrics(
         return {}
 
 
-@inventory_group.command(name="cloudformation")
-@click.option(
-    "--regions",
-    help="Comma-separated list of regions to backup (default: all regions)"
-)
+@inventory_group.command(name="download-all")
 @click.option(
     "--output-dir",
-    help="Directory to save CloudFormation backups (default: ./cfn_backup_<account_id>_<timestamp>)"
+    help="Directory to save all inventory files (default: ./full_inventory_<account_id>_<timestamp>)"
 )
 @click.option(
-    "--stack-status",
-    multiple=True,
-    default=["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"],
-    help="Stack statuses to include in backup (can be specified multiple times)"
+    "--services",
+    help="Comma-separated list of services to include (default: all supported services)"
+)
+@click.option(
+    "--regions",
+    help="Comma-separated list of regions to scan (default: all regions)"
+)
+@click.option(
+    "--format",
+    type=click.Choice(["json", "yaml"]),
+    default="json",
+    help="Output format for saved files"
+)
+@click.option(
+    "--include-tags",
+    is_flag=True,
+    help="Include resource tags where available (slower but more comprehensive)"
+)
+@click.option(
+    "--include-cloudformation",
+    is_flag=True,
+    help="Include CloudFormation stack backups"
+)
+@click.option(
+    "--include-workspaces-metrics",
+    is_flag=True,
+    help="Include WorkSpaces CloudWatch metrics"
 )
 @click.option(
     "--parallel-regions",
     type=int,
     help="Number of regions to process in parallel (default: from config)"
 )
-@click.option(
-    "--parallel-stacks",
-    type=int,
-    default=2,
-    help="Number of stacks to process in parallel per region"
-)
 @click.pass_context
-def cloudformation(
+def download_all(
     ctx: click.Context,
-    regions: Optional[str],
     output_dir: Optional[str],
-    stack_status: List[str],
-    parallel_regions: Optional[int],
-    parallel_stacks: int
+    services: Optional[str],
+    regions: Optional[str],
+    format: str,
+    include_tags: bool,
+    include_cloudformation: bool,
+    include_workspaces_metrics: bool,
+    parallel_regions: Optional[int]
 ) -> None:
-    """Backup CloudFormation stacks and templates across regions."""
+    """Download comprehensive inventory of all AWS resources including optional CloudFormation backups."""
     config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
     
@@ -795,56 +811,92 @@ def cloudformation(
         
         # Determine output directory
         if not output_dir:
-            output_dir = f"./cfn_backup_{account_id}_{timestamp}"
+            output_dir = f"./full_inventory_{account_id}_{timestamp}"
         
         output_path = Path(output_dir)
         ensure_directory(output_path)
         
-        console.print(f"[blue]Starting CloudFormation backup for account {account_id}[/blue]")
+        console.print(f"[blue]Starting comprehensive AWS inventory download for account {account_id}[/blue]")
         console.print(f"[dim]Output directory: {output_path.absolute()}[/dim]")
         
         # Determine regions to scan
         if regions:
             target_regions = [r.strip() for r in regions.split(",")]
         else:
-            target_regions = aws_auth.get_available_regions("cloudformation")
+            target_regions = aws_auth.get_available_regions("ec2")
         
-        console.print(f"[dim]Backing up CloudFormation stacks across {len(target_regions)} regions[/dim]")
+        # Determine services to scan
+        if services:
+            target_services = [s.strip() for s in services.split(",")]
+            # Validate services
+            supported_services = _get_supported_services()
+            invalid_services = [s for s in target_services if s not in supported_services]
+            if invalid_services:
+                console.print(f"[yellow]Warning: Unsupported services will be skipped: {invalid_services}[/yellow]")
+                target_services = [s for s in target_services if s in supported_services]
+        else:
+            target_services = list(_get_supported_services().keys())
+        
+        console.print(f"[dim]Downloading inventory for {len(target_services)} services across {len(target_regions)} regions[/dim]")
         
         # Set up parallel processing
         max_workers = parallel_regions or config.workers
         
-        # Initialize backup summary
-        backup_summary = {
+        # Initialize comprehensive download summary
+        download_summary = {
             "account_id": account_id,
-            "backup_timestamp": datetime.now().isoformat(),
-            "regions_processed": target_regions,
-            "stack_statuses": list(stack_status),
-            "total_stacks": 0,
-            "total_templates": 0,
-            "total_parameters": 0,
+            "download_timestamp": datetime.now().isoformat(),
+            "regions_scanned": target_regions,
+            "services_scanned": target_services,
+            "include_tags": include_tags,
+            "include_cloudformation": include_cloudformation,
+            "include_workspaces_metrics": include_workspaces_metrics,
+            "output_format": format,
+            "total_resources": 0,
+            "cloudformation_stacks": 0,
+            "workspaces_processed": 0,
+            "services_summary": {},
             "regions_summary": {},
             "errors": []
         }
         
-        # Execute CloudFormation backup
-        _execute_cloudformation_backup(
-            aws_auth, target_regions, output_path, stack_status,
-            max_workers, parallel_stacks, backup_summary
+        # Execute comprehensive resource scan
+        console.print("[yellow]Phase 1: Scanning AWS resources...[/yellow]")
+        all_resources = _execute_comprehensive_scan(
+            aws_auth, target_services, target_regions, output_path / "resources", 
+            format, include_tags, max_workers, download_summary
         )
         
-        # Save backup summary
-        summary_file = output_path / f"backup_summary_{account_id}_{timestamp}.json"
-        save_to_file(backup_summary, summary_file, "json")
+        # Execute CloudFormation backup if requested
+        if include_cloudformation:
+            console.print("[yellow]Phase 2: Backing up CloudFormation stacks...[/yellow]")
+            cfn_summary = _execute_cloudformation_download(
+                aws_auth, target_regions, output_path / "cloudformation",
+                max_workers, format, download_summary
+            )
+            download_summary["cloudformation_stacks"] = cfn_summary.get("total_stacks", 0)
         
-        # Display summary
-        _display_cloudformation_summary(config, backup_summary, output_path)
+        # Execute WorkSpaces inventory with metrics if requested
+        if include_workspaces_metrics:
+            console.print("[yellow]Phase 3: Collecting WorkSpaces with metrics...[/yellow]")
+            workspaces_summary = _execute_workspaces_download(
+                aws_auth, target_regions, output_path / "workspaces",
+                format, download_summary
+            )
+            download_summary["workspaces_processed"] = workspaces_summary.get("total_workspaces", 0)
         
-        console.print(f"\n[green]✅ CloudFormation backup completed successfully![/green]")
+        # Save comprehensive download summary
+        summary_file = output_path / f"full_inventory_summary_{account_id}_{timestamp}.json"
+        save_to_file(download_summary, summary_file, "json")
+        
+        # Display comprehensive summary
+        _display_comprehensive_download_summary(config, download_summary, output_path)
+        
+        console.print(f"\n[green]✅ Comprehensive AWS inventory download completed successfully![/green]")
         console.print(f"[dim]Files saved to: {output_path.absolute()}[/dim]")
         
     except Exception as e:
-        console.print(f"[red]Error during CloudFormation backup:[/red] {e}")
+        console.print(f"[red]Error during comprehensive inventory download:[/red] {e}")
         raise click.Abort()
 
 
@@ -1036,9 +1088,249 @@ def _display_cloudformation_summary(config: Config, backup_summary: Dict[str, An
             )
     
     # Show errors if any
-    if backup_summary["errors"]:
-        console.print(f"\n[yellow]Errors encountered ({len(backup_summary['errors'])}):[/yellow]")
-        for error in backup_summary["errors"][:10]:  # Show first 10 errors
+    if download_summary["errors"]:
+        console.print(f"\n[yellow]Errors encountered ({len(download_summary['errors'])}):[/yellow]")
+        for error in download_summary["errors"][:10]:  # Show first 10 errors
             console.print(f"  [dim]• {error}[/dim]")
-        if len(backup_summary["errors"]) > 10:
-            console.print(f"  [dim]... and {len(backup_summary['errors']) - 10} more errors[/dim]")
+        if len(download_summary["errors"]) > 10:
+            console.print(f"  [dim]... and {len(download_summary['errors']) - 10} more errors[/dim]")
+
+
+def _execute_cloudformation_download(
+    aws_auth: AWSAuth,
+    regions: List[str],
+    output_path: Path,
+    max_workers: int,
+    format: str,
+    download_summary: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Execute CloudFormation backup as part of comprehensive download."""
+    ensure_directory(output_path)
+    
+    # Use the CloudFormation backup logic but with simplified status filtering
+    stack_statuses = ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]
+    
+    cfn_summary = {
+        "total_stacks": 0,
+        "total_templates": 0,
+        "total_parameters": 0,
+        "regions_summary": {}
+    }
+    
+    def backup_region(region: str) -> Tuple[str, int, int, int]:
+        """Backup CloudFormation stacks in a region."""
+        stacks_count = 0
+        templates_count = 0
+        parameters_count = 0
+        
+        try:
+            cfn_client = aws_auth.get_client("cloudformation", region_name=region)
+            
+            # Get all stacks in the region
+            stacks = []
+            paginator = cfn_client.get_paginator("describe_stacks")
+            
+            for page in paginator.paginate():
+                for stack in page.get("Stacks", []):
+                    if stack.get("StackStatus") in stack_statuses:
+                        stacks.append(stack)
+            
+            if not stacks:
+                return region, 0, 0, 0
+            
+            stacks_count = len(stacks)
+            
+            # Create region directory
+            region_dir = output_path / region
+            ensure_directory(region_dir)
+            
+            # Backup each stack
+            for stack in stacks:
+                stack_name = stack.get("StackName")
+                
+                try:
+                    # Save template
+                    template_file = region_dir / f"{stack_name}.{format}"
+                    if not template_file.exists():
+                        template_response = cfn_client.get_template(StackName=stack_name)
+                        template_body = template_response.get("TemplateBody", "")
+                        
+                        if template_body:
+                            save_to_file(template_body, template_file, format)
+                            templates_count += 1
+                    
+                    # Save parameters if they exist
+                    parameters = stack.get("Parameters", [])
+                    if parameters:
+                        params_file = region_dir / f"{stack_name}-parameters.{format}"
+                        if not params_file.exists():
+                            params_dict = {
+                                param.get("ParameterKey"): param.get("ParameterValue")
+                                for param in parameters
+                            }
+                            save_to_file(params_dict, params_file, format)
+                            parameters_count += 1
+                            
+                except Exception as e:
+                    download_summary["errors"].append(f"CloudFormation {stack_name} in {region}: {str(e)}")
+            
+        except Exception as e:
+            download_summary["errors"].append(f"CloudFormation region {region}: {str(e)}")
+        
+        return region, stacks_count, templates_count, parameters_count
+    
+    # Execute CloudFormation backup in parallel
+    region_results = parallel_execute(
+        backup_region,
+        regions,
+        max_workers=max_workers,
+        show_progress=True,
+        description="Backing up CloudFormation stacks"
+    )
+    
+    # Process results
+    for region, stacks_count, templates_count, parameters_count in region_results:
+        cfn_summary["regions_summary"][region] = {
+            "stacks": stacks_count,
+            "templates": templates_count,
+            "parameters": parameters_count
+        }
+        
+        cfn_summary["total_stacks"] += stacks_count
+        cfn_summary["total_templates"] += templates_count
+        cfn_summary["total_parameters"] += parameters_count
+    
+    return cfn_summary
+
+
+def _execute_workspaces_download(
+    aws_auth: AWSAuth,
+    regions: List[str],
+    output_path: Path,
+    format: str,
+    download_summary: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Execute WorkSpaces inventory with metrics as part of comprehensive download."""
+    ensure_directory(output_path)
+    
+    workspaces_summary = {
+        "total_workspaces": 0,
+        "regions_summary": {}
+    }
+    
+    def process_workspaces_region(region: str) -> Tuple[str, int]:
+        """Process WorkSpaces in a region."""
+        workspaces_count = 0
+        
+        try:
+            workspaces_client = aws_auth.get_client("workspaces", region_name=region)
+            
+            # Get all WorkSpaces
+            workspaces_data = _get_all_workspaces(workspaces_client)
+            
+            if not workspaces_data:
+                return region, 0
+            
+            workspaces_count = len(workspaces_data)
+            
+            # Enrich with tags and metrics
+            enriched_workspaces = []
+            for ws in workspaces_data:
+                workspace_id = ws.get("WorkspaceId", "")
+                
+                # Get tags
+                try:
+                    tags = _get_workspace_tags(workspaces_client, workspace_id)
+                    ws["Tags"] = tags
+                except Exception:
+                    ws["Tags"] = {}
+                
+                # Get basic metrics (last 7 days)
+                try:
+                    metrics = _get_workspace_metrics(
+                        aws_auth, region, workspace_id, ["Available"], 7
+                    )
+                    ws["Metrics"] = metrics
+                except Exception:
+                    ws["Metrics"] = {}
+                
+                enriched_workspaces.append(ws)
+            
+            # Save WorkSpaces data for this region
+            region_file = output_path / f"workspaces_{region}.{format}"
+            save_to_file(enriched_workspaces, region_file, format)
+            
+        except Exception as e:
+            download_summary["errors"].append(f"WorkSpaces region {region}: {str(e)}")
+        
+        return region, workspaces_count
+    
+    # Execute WorkSpaces processing in parallel
+    region_results = parallel_execute(
+        process_workspaces_region,
+        regions,
+        max_workers=4,  # Limit WorkSpaces processing to avoid rate limits
+        show_progress=True,
+        description="Processing WorkSpaces with metrics"
+    )
+    
+    # Process results
+    for region, workspaces_count in region_results:
+        workspaces_summary["regions_summary"][region] = workspaces_count
+        workspaces_summary["total_workspaces"] += workspaces_count
+    
+    return workspaces_summary
+
+
+def _display_comprehensive_download_summary(
+    config: Config, 
+    download_summary: Dict[str, Any], 
+    output_path: Path
+) -> None:
+    """Display comprehensive download summary."""
+    
+    # Main summary
+    summary_display = {
+        "Account ID": download_summary["account_id"],
+        "Download Timestamp": download_summary["download_timestamp"],
+        "Total Resources": download_summary["total_resources"],
+        "CloudFormation Stacks": download_summary.get("cloudformation_stacks", 0),
+        "WorkSpaces Processed": download_summary.get("workspaces_processed", 0),
+        "Services Scanned": len(download_summary["services_scanned"]),
+        "Regions Scanned": len(download_summary["regions_scanned"]),
+        "Include Tags": "Yes" if download_summary["include_tags"] else "No",
+        "Include CloudFormation": "Yes" if download_summary["include_cloudformation"] else "No",
+        "Include WorkSpaces Metrics": "Yes" if download_summary["include_workspaces_metrics"] else "No",
+        "Output Format": download_summary["output_format"].upper(),
+        "Output Directory": str(output_path.absolute()),
+        "Errors": len(download_summary["errors"])
+    }
+    
+    print_output(
+        summary_display,
+        output_format=config.aws_output_format,
+        title="Comprehensive AWS Inventory Download Summary"
+    )
+    
+    # Services summary (top 10)
+    if download_summary["services_summary"]:
+        services_data = [
+            {"Service": service, "Resources": count}
+            for service, count in sorted(download_summary["services_summary"].items(), key=lambda x: x[1], reverse=True)
+            if count > 0
+        ][:10]  # Top 10 services
+        
+        if services_data:
+            print_output(
+                services_data,
+                output_format=config.aws_output_format,
+                title="Top Resources by Service"
+            )
+    
+    # Show errors if any
+    if download_summary["errors"]:
+        console.print(f"\n[yellow]Errors encountered ({len(download_summary['errors'])}):[/yellow]")
+        for error in download_summary["errors"][:10]:  # Show first 10 errors
+            console.print(f"  [dim]• {error}[/dim]")
+        if len(download_summary["errors"]) > 10:
+            console.print(f"  [dim]... and {len(download_summary['errors']) - 10} more errors[/dim]")

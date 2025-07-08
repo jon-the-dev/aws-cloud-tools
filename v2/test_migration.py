@@ -22,6 +22,7 @@ def test_imports():
         # Test command modules
         from aws_cloud_utilities.commands.account import account_group
         from aws_cloud_utilities.commands.bedrock import bedrock_group
+        from aws_cloud_utilities.commands.cloudformation import cloudformation_group
         from aws_cloud_utilities.commands.iam import iam_group
         from aws_cloud_utilities.commands.inventory import inventory_group
         from aws_cloud_utilities.commands.networking import networking_group
@@ -96,6 +97,14 @@ def test_cli_help():
             print("✓ Bedrock command help works")
         else:
             print(f"✗ Bedrock command help failed: {result.output}")
+            return False
+        
+        # Test cloudformation help
+        result = runner.invoke(main, ["cloudformation", "--help"])
+        if result.exit_code == 0 and "CloudFormation management" in result.output:
+            print("✓ CloudFormation command help works")
+        else:
+            print(f"✗ CloudFormation command help failed: {result.output}")
             return False
         
         # Test iam help
