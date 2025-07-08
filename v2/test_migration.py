@@ -26,6 +26,8 @@ def test_imports():
         from aws_cloud_utilities.commands.iam import iam_group
         from aws_cloud_utilities.commands.inventory import inventory_group
         from aws_cloud_utilities.commands.networking import networking_group
+        from aws_cloud_utilities.commands.security import security_group
+        from aws_cloud_utilities.commands.stepfunctions import stepfunctions_group
         from aws_cloud_utilities.commands.support import support_group
         print("✓ Command modules imported successfully")
         
@@ -129,6 +131,22 @@ def test_cli_help():
             print("✓ Networking command help works")
         else:
             print(f"✗ Networking command help failed: {result.output}")
+            return False
+        
+        # Test security help
+        result = runner.invoke(main, ["security", "--help"])
+        if result.exit_code == 0 and "security monitoring" in result.output:
+            print("✓ Security command help works")
+        else:
+            print(f"✗ Security command help failed: {result.output}")
+            return False
+        
+        # Test stepfunctions help
+        result = runner.invoke(main, ["stepfunctions", "--help"])
+        if result.exit_code == 0 and "Step Functions management" in result.output:
+            print("✓ Step Functions command help works")
+        else:
+            print(f"✗ Step Functions command help failed: {result.output}")
             return False
         
         # Test support help

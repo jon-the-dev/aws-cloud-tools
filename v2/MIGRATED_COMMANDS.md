@@ -256,9 +256,78 @@ aws-cloud-utilities networking ip-summary --region eu-west-1
 - **Modular Approach**: Choose what to include (tags, CloudFormation, WorkSpaces metrics)
 - **Better Organization**: Structured output with separate directories for different data types
 
+## Security & Step Functions Commands
+
+### Original Scripts → New Commands
+
+| Original Script | New Command | Description |
+|----------------|-------------|-------------|
+| `security/aws_get_sec_metrics.py` | `aws-cloud-utilities security metrics` | Security metrics from WAF, GuardDuty, Security Hub |
+| `security/acm_create_cert.py` | `aws-cloud-utilities security create-certificate` | ACM certificate creation with Route53 validation |
+| `step-functions/aws_step_manage.py` | `aws-cloud-utilities stepfunctions *` | Complete Step Functions management suite |
+
+### New Enhanced Commands
+
+```bash
+# Enhanced security metrics collection (migrated with major improvements)
+aws-cloud-utilities security metrics
+aws-cloud-utilities security metrics --all-regions --time-range 48
+aws-cloud-utilities security metrics --services waf,guardduty --region us-east-1
+aws-cloud-utilities security metrics --output-file security_report.json
+
+# Enhanced ACM certificate management (migrated with improvements)
+aws-cloud-utilities security create-certificate example.com
+aws-cloud-utilities security create-certificate example.com --alt-names www.example.com,api.example.com
+aws-cloud-utilities security create-certificate example.com --wait-for-validation --timeout 600
+aws-cloud-utilities security create-certificate example.com --hosted-zone-id Z123456789
+
+# New security functionality not in original
+aws-cloud-utilities security list-certificates
+aws-cloud-utilities security list-certificates --all-regions --status ISSUED
+
+# Enhanced Step Functions management (migrated with major improvements)
+aws-cloud-utilities stepfunctions list
+aws-cloud-utilities stepfunctions list --all-regions --output-file state_machines.csv
+aws-cloud-utilities stepfunctions describe arn:aws:states:us-east-1:123456789012:stateMachine:MyStateMachine
+aws-cloud-utilities stepfunctions describe arn:aws:states:us-east-1:123456789012:stateMachine:MyStateMachine --show-definition
+
+# Enhanced execution management (migrated with improvements)
+aws-cloud-utilities stepfunctions execute arn:aws:states:us-east-1:123456789012:stateMachine:MyStateMachine
+aws-cloud-utilities stepfunctions execute arn:aws:states:us-east-1:123456789012:stateMachine:MyStateMachine --input '{"key":"value"}' --wait
+aws-cloud-utilities stepfunctions list-executions arn:aws:states:us-east-1:123456789012:stateMachine:MyStateMachine --status FAILED
+aws-cloud-utilities stepfunctions logs arn:aws:states:us-east-1:123456789012:execution:MyExecution /aws/stepfunctions/MyStateMachine
+```
+
+### Key Security Enhancements
+
+#### **Multi-Service Security Metrics**
+- **Comprehensive Collection**: WAF, GuardDuty, and Security Hub metrics in one command
+- **Multi-Region Support**: Collect metrics across all regions simultaneously
+- **Flexible Filtering**: Choose specific services and time ranges
+- **Rich Output**: Multiple formats with detailed summaries and error handling
+
+#### **Enhanced Certificate Management**
+- **Automated Validation**: Route53 DNS validation with hosted zone auto-detection
+- **Wait for Completion**: Optional waiting for certificate validation
+- **Rich Interface**: Progress indicators and detailed status reporting
+- **Certificate Listing**: New functionality to list and filter certificates
+
+### Key Step Functions Enhancements
+
+#### **Complete Management Suite**
+- **Enhanced Listing**: Multi-region support with detailed information
+- **Rich Descriptions**: State machine details with optional definition display
+- **Execution Management**: Start, monitor, and list executions with comprehensive options
+- **Log Integration**: CloudWatch logs retrieval with structured output
+
+#### **Improved User Experience**
+- **Progress Indicators**: Visual feedback for long-running operations
+- **Multiple Formats**: JSON, YAML, CSV output with automatic timestamping
+- **Error Handling**: Comprehensive error recovery and detailed reporting
+- **Rich CLI Interface**: Extensive help system and intuitive commands
+
 ## Next Services to Migrate
 
 1. **CostOps** - Cost optimization tools
 2. **Logs** - CloudWatch logs management
-3. **Security** - Security auditing tools
-4. **S3** - S3 operations
+3. **S3** - S3 operations

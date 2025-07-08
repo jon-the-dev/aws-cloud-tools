@@ -18,6 +18,7 @@ from .commands import (
     inventory,
     logs,
     security,
+    stepfunctions,
     s3,
     iam,
     networking,
@@ -176,6 +177,7 @@ main.add_command(costops.costops_group)
 main.add_command(inventory.inventory_group)
 main.add_command(logs.logs_group)
 main.add_command(security.security_group)
+main.add_command(stepfunctions.stepfunctions_group)
 main.add_command(s3.s3_group)
 main.add_command(iam.iam_group)
 main.add_command(networking.networking_group)

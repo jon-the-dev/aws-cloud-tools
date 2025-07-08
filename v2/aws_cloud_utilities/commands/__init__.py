@@ -11,6 +11,7 @@ from . import (
     networking,
     s3,
     security,
+    stepfunctions,
     support
 )
 
@@ -25,5 +26,6 @@ __all__ = [
     "networking",
     "s3",
     "security",
+    "stepfunctions",
     "support",
 ]
