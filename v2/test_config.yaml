@@ -1,0 +1,125 @@
+# Comprehensive Test Suite Configuration
+# This file defines which tests to run and their parameters
+
+# Global test settings
+global:
+  default_region: "us-east-1"
+  timeout_seconds: 300
+  max_retries: 2
+  temp_dir_prefix: "aws_test_"
+
+# Test categories to run (set to false to skip)
+test_categories:
+  help_commands: true
+  account_operations: true
+  cloudfront_operations: true
+  logs_operations: true
+  s3_operations: true
+  costops_operations: true
+  iam_operations: true
+  inventory_operations: true
+  networking_operations: true
+  security_operations: true
+  support_operations: true
+
+# Specific test configurations
+tests:
+  # Account tests
+  account:
+    info:
+      enabled: true
+      output_formats: ["json", "yaml"]
+    
+  # CloudFront tests
+  cloudfront:
+    list_distributions:
+      enabled: true
+      include_details: true
+    list_origins:
+      enabled: true
+    analyze_performance:
+      enabled: true
+      
+  # CloudWatch Logs tests
+  logs:
+    list_groups:
+      enabled: true
+      include_size: true
+      all_regions: false
+    
+  # S3 tests
+  s3:
+    list_buckets:
+      enabled: true
+      include_size: true
+      all_regions: false
+    
+  # Cost Optimization tests
+  costops:
+    pricing:
+      list_services: true
+      # Don't download actual pricing data in tests
+      download_data: false
+    cost_analysis:
+      enabled: true
+      months: 1  # Short period for testing
+    ebs_optimization:
+      enabled: true
+      single_region: true
+    
+  # IAM tests
+  iam:
+    list_users:
+      enabled: true
+      include_details: false
+    list_roles:
+      enabled: true
+      include_details: false
+    list_policies:
+      enabled: true
+      aws_managed_only: true
+    
+  # Inventory tests
+  inventory:
+    resources:
+      enabled: true
+      single_region: true
+      service_limit: 5  # Limit services for faster testing
+    
+  # Networking tests
+  networking:
+    list_vpcs:
+      enabled: true
+      single_region: true
+    ip_ranges:
+      enabled: true
+      service_filter: "EC2"
+    
+  # Security tests
+  security:
+    list_security_groups:
+      enabled: true
+      single_region: true
+    
+  # Support tests
+  support:
+    check_level:
+      enabled: true
+
+# Output settings
+output:
+  formats: ["console", "json"]
+  save_artifacts: true
+  artifact_retention_days: 7
+  
+# Error handling
+error_handling:
+  continue_on_failure: true
+  max_failures_per_category: 3
+  retry_failed_tests: false
+
+# Performance settings
+performance:
+  parallel_execution: false  # Keep sequential for testing
+  max_concurrent_tests: 1
+  resource_cleanup: true

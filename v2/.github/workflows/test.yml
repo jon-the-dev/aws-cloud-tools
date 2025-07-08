@@ -1,0 +1,208 @@
+name: AWS Cloud Utilities v2 - Comprehensive Tests
+
+on:
+  push:
+    branches: [ main, v2-migration ]
+    paths:
+      - 'v2/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'v2/**'
+  schedule:
+    # Run tests daily at 6 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      region:
+        description: 'AWS Region for testing'
+        required: false
+        default: 'us-east-1'
+      test_type:
+        description: 'Type of tests to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - quick
+          - help-only
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+        region: ['us-east-1', 'us-west-2', 'eu-west-1']
+      fail-fast: false
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('v2/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      working-directory: v2
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -e .
+    
+    - name: Configure AWS credentials (if available)
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ matrix.region }}
+      continue-on-error: true
+    
+    - name: Run help-only tests (no AWS credentials required)
+      working-directory: v2
+      run: |
+        python test_comprehensive.py --region ${{ matrix.region }} --dry-run --output-file test_results_help_${{ matrix.python-version }}_${{ matrix.region }}.json
+      continue-on-error: true
+    
+    - name: Run comprehensive tests (with AWS credentials)
+      working-directory: v2
+      if: env.AWS_ACCESS_KEY_ID != ''
+      run: |
+        ./run_tests.sh --region ${{ matrix.region }} --ci --output-dir ./test_results
+      continue-on-error: true
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ matrix.python-version }}-${{ matrix.region }}
+        path: |
+          v2/test_results/
+          v2/test_results_*.json
+        retention-days: 30
+    
+    - name: Parse test results
+      if: always()
+      working-directory: v2
+      run: |
+        # Find the most recent test results file
+        RESULTS_FILE=$(find . -name "test_results_*.json" -type f | sort -r | head -n 1)
+        
+        if [[ -f "$RESULTS_FILE" ]]; then
+          echo "Found results file: $RESULTS_FILE"
+          
+          # Extract metrics
+          TOTAL_TESTS=$(python -c "import json; data=json.load(open('$RESULTS_FILE')); print(data.get('total_tests', 0))" 2>/dev/null || echo "0")
+          PASSED_TESTS=$(python -c "import json; data=json.load(open('$RESULTS_FILE')); print(data.get('passed_tests', 0))" 2>/dev/null || echo "0")
+          FAILED_TESTS=$(python -c "import json; data=json.load(open('$RESULTS_FILE')); print(data.get('failed_tests', 0))" 2>/dev/null || echo "0")
+          SUCCESS_RATE=$(python -c "import json; data=json.load(open('$RESULTS_FILE')); print(f\"{data.get('success_rate', 0):.1f}\")" 2>/dev/null || echo "0.0")
+          
+          # Set outputs for summary
+          echo "TOTAL_TESTS=$TOTAL_TESTS" >> $GITHUB_ENV
+          echo "PASSED_TESTS=$PASSED_TESTS" >> $GITHUB_ENV
+          echo "FAILED_TESTS=$FAILED_TESTS" >> $GITHUB_ENV
+          echo "SUCCESS_RATE=$SUCCESS_RATE" >> $GITHUB_ENV
+          
+          # Create job summary
+          echo "## Test Results - Python ${{ matrix.python-version }} - ${{ matrix.region }}" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Total Tests | $TOTAL_TESTS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Passed | $PASSED_TESTS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Failed | $FAILED_TESTS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Success Rate | $SUCCESS_RATE% |" >> $GITHUB_STEP_SUMMARY
+          
+          # Fail the job if tests failed
+          if [[ "$FAILED_TESTS" -gt "0" ]]; then
+            echo "❌ Tests failed"
+            exit 1
+          else
+            echo "✅ All tests passed"
+          fi
+        else
+          echo "⚠️ No test results file found"
+          exit 1
+        fi
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install security scanning tools
+      run: |
+        pip install bandit safety
+    
+    - name: Run Bandit security scan
+      working-directory: v2
+      run: |
+        bandit -r aws_cloud_utilities/ -f json -o bandit-report.json || true
+        bandit -r aws_cloud_utilities/ || true
+    
+    - name: Run Safety check
+      working-directory: v2
+      run: |
+        safety check --json --output safety-report.json || true
+        safety check || true
+    
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          v2/bandit-report.json
+          v2/safety-report.json
+        retention-days: 30
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install linting tools
+      run: |
+        pip install flake8 black isort mypy
+    
+    - name: Run Black formatter check
+      working-directory: v2
+      run: |
+        black --check --diff aws_cloud_utilities/ || true
+    
+    - name: Run isort import sorting check
+      working-directory: v2
+      run: |
+        isort --check-only --diff aws_cloud_utilities/ || true
+    
+    - name: Run flake8 linting
+      working-directory: v2
+      run: |
+        flake8 aws_cloud_utilities/ --max-line-length=120 --extend-ignore=E203,W503 || true
+    
+    - name: Run mypy type checking
+      working-directory: v2
+      run: |
+        mypy aws_cloud_utilities/ --ignore-missing-imports || true
