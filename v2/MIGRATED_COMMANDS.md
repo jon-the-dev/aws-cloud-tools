@@ -570,7 +570,115 @@ aws-cloud-utilities logs aggregate ./mixed_logs --output-dir ./processed --keep-
 - **Comprehensive Logging**: Detailed operation logging with configurable verbosity levels
 - **Resource Management**: Intelligent resource cleanup and temporary file management
 
+## S3 Bucket and Object Management Commands
+
+### Original Scripts → New Commands
+
+| Original Script | New Command | Description |
+|----------------|-------------|-------------|
+| `old/s3/bucket_manager.py` | `aws-cloud-utilities s3 list-buckets` | List S3 buckets with region and size information |
+| `old/s3/bucket_manager.py` | `aws-cloud-utilities s3 create-bucket` | Create S3 buckets with configuration options |
+| `old/s3/s3_bucket_downloader.py` | `aws-cloud-utilities s3 download` | Download objects from S3 buckets with parallel processing |
+| `old/s3/s3_bucket_nuke.py` | `aws-cloud-utilities s3 nuke-bucket` | Completely delete S3 buckets and all contents |
+| `old/s3/delete_versions.py` | `aws-cloud-utilities s3 delete-versions` | Delete object versions from S3 buckets |
+| `old/s3/s3_restore_objects.py` | `aws-cloud-utilities s3 restore-objects` | Restore objects from Glacier and archive storage |
+
+### New Enhanced Commands
+
+```bash
+# Enhanced S3 bucket management (migrated with major improvements)
+aws-cloud-utilities s3 list-buckets --all-regions --include-size --output-file buckets.csv
+aws-cloud-utilities s3 create-bucket my-new-bucket --region us-west-2 --versioning --encryption
+aws-cloud-utilities s3 download my-bucket --prefix logs/ --include-versions --max-objects 1000
+
+# Enhanced S3 object operations (migrated with major improvements)
+aws-cloud-utilities s3 nuke-bucket my-old-bucket --download-first --output-dir ./backup --dry-run
+aws-cloud-utilities s3 delete-versions my-bucket --prefix temp/ --delete-all-versions --dry-run
+aws-cloud-utilities s3 restore-objects my-archive-bucket --restore-tier Expedited --restore-days 7
+
+# Advanced S3 operations with comprehensive options
+aws-cloud-utilities s3 download my-bucket --delete-after-download --chunk-size 500 --max-retries 5
+aws-cloud-utilities s3 restore-objects my-bucket --check-status --include-versions --max-objects 100
+```
+
+### Key S3 Enhancements
+
+#### **Enhanced Bucket Management** (Migrated with Major Improvements)
+- **Multi-Region Discovery**: List buckets across all regions with parallel processing
+- **Rich Metadata**: Include bucket size information from CloudWatch metrics
+- **Advanced Creation**: Create buckets with versioning, encryption, and public access block configuration
+- **Comprehensive Filtering**: Filter buckets by region with flexible output formats
+
+#### **Advanced Object Operations** (Migrated with Major Improvements)
+- **Parallel Processing**: Multi-threaded downloads with configurable worker pools
+- **Version Support**: Handle versioned objects with complete version history
+- **Progress Tracking**: Real-time progress indicators for long-running operations
+- **Error Resilience**: Comprehensive retry logic with detailed error reporting
+
+#### **Comprehensive Bucket Destruction** (Migrated with Major Improvements)
+- **Safe Backup**: Optional download before deletion with organized output structure
+- **Complete Cleanup**: Delete all object versions, delete markers, and bucket itself
+- **Dry Run Support**: Preview destructive operations before execution
+- **Safety Confirmations**: Multiple confirmation prompts for destructive operations
+
+#### **Intelligent Version Management** (Migrated with Major Improvements)
+- **Selective Deletion**: Delete only versions with delete markers or all versions
+- **Batch Processing**: Efficient batch deletion with configurable chunk sizes
+- **Smart Filtering**: Target specific prefixes with comprehensive version analysis
+- **Status Reporting**: Detailed reporting of deletion operations and results
+
+#### **Advanced Archive Management** (Migrated with Major Improvements)
+- **Multi-Tier Restore**: Support for Standard, Bulk, and Expedited restore tiers
+- **Status Monitoring**: Check restore status of previously requested objects
+- **Flexible Duration**: Configurable restore duration with cost optimization
+- **Archive Detection**: Automatic detection of objects in Glacier and Deep Archive
+
+### Migration Improvements
+
+#### **Performance Enhancements**
+- **Parallel Processing**: Multi-threaded operations for all S3 operations with configurable worker pools
+- **Batch Operations**: Efficient batch processing for large-scale object operations
+- **Progress Indicators**: Real-time progress tracking with detailed status information
+- **Memory Optimization**: Streaming operations for handling large files and datasets
+
+#### **User Experience Improvements**
+- **Rich Console Output**: Color-coded status messages with detailed progress information
+- **Flexible Parameters**: Comprehensive parameter options with intelligent defaults
+- **Safety Features**: Multiple confirmation prompts and dry-run support for destructive operations
+- **Error Recovery**: Detailed error messages with actionable recovery suggestions
+
+#### **Operational Excellence**
+- **Comprehensive Logging**: Detailed operation logging with configurable verbosity levels
+- **State Management**: Resume capability for interrupted operations with state tracking
+- **Resource Management**: Intelligent cleanup and temporary file management
+- **Cost Optimization**: Smart restore tier selection and duration management
+
+#### **Advanced Features Not in Original Scripts**
+- **CloudWatch Integration**: Bucket size metrics from CloudWatch for accurate reporting
+- **Multi-Format Output**: Support for JSON, CSV, and YAML output formats
+- **Comprehensive Filtering**: Advanced filtering options for buckets and objects
+- **Version Analytics**: Detailed version analysis and reporting capabilities
+
+### S3 Operation Safety Features
+
+#### **Destructive Operation Protection**
+- **Multiple Confirmations**: Double confirmation for bucket deletion and version cleanup
+- **Dry Run Mode**: Preview all destructive operations before execution
+- **Backup Integration**: Automatic backup options before destructive operations
+- **Operation Logging**: Comprehensive logging of all destructive operations
+
+#### **Error Handling and Recovery**
+- **Retry Logic**: Configurable retry mechanisms for transient failures
+- **Partial Recovery**: Resume interrupted operations from last successful state
+- **Error Categorization**: Detailed error classification with specific recovery guidance
+- **Operation Rollback**: Safe rollback capabilities for failed operations
+
+#### **Cost Management**
+- **Restore Optimization**: Intelligent restore tier selection based on urgency and cost
+- **Transfer Optimization**: Efficient transfer patterns to minimize data transfer costs
+- **Storage Class Awareness**: Smart handling of different S3 storage classes
+- **Usage Reporting**: Detailed reporting of operations and associated costs
+
 ## Next Services to Migrate
 
 1. **CostOps** - Cost optimization tools
-2. **S3** - S3 operations
