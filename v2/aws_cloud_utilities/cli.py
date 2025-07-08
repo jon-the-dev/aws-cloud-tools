@@ -12,6 +12,7 @@ from .core.auth import AWSAuth
 from .core.exceptions import AWSCloudUtilitiesError, ConfigurationError, AWSError
 from .commands import (
     account,
+    bedrock,
     costops,
     inventory,
     logs,
@@ -168,6 +169,7 @@ def main(
 
 # Add command groups
 main.add_command(account.account_group)
+main.add_command(bedrock.bedrock_group)
 main.add_command(costops.costops_group)
 main.add_command(inventory.inventory_group)
 main.add_command(logs.logs_group)

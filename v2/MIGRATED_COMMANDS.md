@@ -103,6 +103,42 @@ aws-cloud-utilities account info
 aws-cloud-utilities support check-level
 ```
 
+## Bedrock Commands
+
+### Original Scripts → New Commands
+
+| Original Script | New Command | Description |
+|----------------|-------------|-------------|
+| `bedrock/bedrock_models.py` | `aws-cloud-utilities bedrock list-models` | List Bedrock foundation models |
+
+### New Enhanced Commands
+
+```bash
+# List all foundation models across regions (migrated with enhancements)
+aws-cloud-utilities bedrock list-models
+
+# List models from specific region
+aws-cloud-utilities bedrock list-models --region us-east-1
+
+# Filter by provider
+aws-cloud-utilities bedrock list-models --provider anthropic
+
+# Save results to file with account ID and timestamp
+aws-cloud-utilities bedrock list-models --output-file bedrock_models.csv
+
+# Get detailed information about a specific model
+aws-cloud-utilities bedrock model-details anthropic.claude-3-sonnet-20240229-v1:0
+
+# List custom models
+aws-cloud-utilities bedrock list-custom-models
+
+# List model customization jobs
+aws-cloud-utilities bedrock list-model-jobs --status Completed
+
+# List available Bedrock regions
+aws-cloud-utilities bedrock regions
+```
+
 ## Next Services to Migrate
 
 1. **CostOps** - Cost optimization tools

@@ -2,6 +2,7 @@
 
 from . import (
     account,
+    bedrock,
     costops,
     inventory,
     logs,
@@ -14,6 +15,7 @@ from . import (
 
 __all__ = [
     "account",
+    "bedrock",
     "costops", 
     "inventory",
     "logs",

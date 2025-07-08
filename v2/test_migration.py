@@ -21,6 +21,7 @@ def test_imports():
         
         # Test command modules
         from aws_cloud_utilities.commands.account import account_group
+        from aws_cloud_utilities.commands.bedrock import bedrock_group
         from aws_cloud_utilities.commands.support import support_group
         print("✓ Command modules imported successfully")
         
@@ -84,6 +85,14 @@ def test_cli_help():
             print("✓ Account command help works")
         else:
             print(f"✗ Account command help failed: {result.output}")
+            return False
+        
+        # Test bedrock help
+        result = runner.invoke(main, ["bedrock", "--help"])
+        if result.exit_code == 0 and "Bedrock management" in result.output:
+            print("✓ Bedrock command help works")
+        else:
+            print(f"✗ Bedrock command help failed: {result.output}")
             return False
         
         # Test support help

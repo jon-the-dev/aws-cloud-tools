@@ -109,15 +109,53 @@ class IAMRole(AWSResource):
         return "IAMRole"
 
 
-class CloudWatchLogGroup(AWSResource):
-    """CloudWatch log group model."""
+class BedrockModel(AWSResource):
+    """Bedrock foundation model."""
     
-    log_group_name: str = Field(..., description="Log group name")
-    retention_in_days: Optional[int] = Field(None, description="Retention period in days")
-    stored_bytes: Optional[int] = Field(None, description="Stored bytes")
-    metric_filter_count: int = Field(0, description="Number of metric filters")
+    model_id: str = Field(..., description="Model identifier")
+    model_name: str = Field(..., description="Model name")
+    provider_name: str = Field(..., description="Model provider")
+    model_arn: Optional[str] = Field(None, description="Model ARN")
+    input_modalities: List[str] = Field(default_factory=list, description="Input modalities")
+    output_modalities: List[str] = Field(default_factory=list, description="Output modalities")
+    response_streaming_supported: bool = Field(False, description="Response streaming support")
+    customizations_supported: List[str] = Field(default_factory=list, description="Customization types")
+    inference_types_supported: List[str] = Field(default_factory=list, description="Inference types")
     
     @property
     def resource_type(self) -> str:
         """Resource type."""
-        return "CloudWatchLogGroup"
+        return "BedrockModel"
+
+
+class BedrockCustomModel(AWSResource):
+    """Bedrock custom model."""
+    
+    model_name: str = Field(..., description="Custom model name")
+    model_arn: str = Field(..., description="Custom model ARN")
+    base_model_arn: str = Field(..., description="Base model ARN")
+    status: str = Field(..., description="Model status")
+    job_name: Optional[str] = Field(None, description="Training job name")
+    job_arn: Optional[str] = Field(None, description="Training job ARN")
+    
+    @property
+    def resource_type(self) -> str:
+        """Resource type."""
+        return "BedrockCustomModel"
+
+
+class BedrockModelCustomizationJob(AWSResource):
+    """Bedrock model customization job."""
+    
+    job_name: str = Field(..., description="Job name")
+    job_arn: str = Field(..., description="Job ARN")
+    base_model_arn: str = Field(..., description="Base model ARN")
+    status: str = Field(..., description="Job status")
+    custom_model_name: Optional[str] = Field(None, description="Custom model name")
+    custom_model_arn: Optional[str] = Field(None, description="Custom model ARN")
+    end_time: Optional[datetime] = Field(None, description="Job end time")
+    
+    @property
+    def resource_type(self) -> str:
+        """Resource type."""
+        return "BedrockModelCustomizationJob"
