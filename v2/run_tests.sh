@@ -3,7 +3,7 @@
 # AWS Cloud Utilities v2 - Test Runner Script
 # This script runs the comprehensive test suite with various configurations
 
-set -e  # Exit on any error
+set -e # Exit on any error
 
 # Colors for output
 RED='\033[0;31m'
@@ -30,7 +30,7 @@ print_status() {
 
 # Function to show usage
 show_usage() {
-    cat << EOF
+    cat <<EOF
 AWS Cloud Utilities v2 - Test Runner
 
 Usage: $0 [OPTIONS]
@@ -69,51 +69,51 @@ EOF
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -r|--region)
-            REGION="$2"
-            shift 2
-            ;;
-        -p|--profile)
-            PROFILE="$2"
-            shift 2
-            ;;
-        -v|--verbose)
-            VERBOSE=true
-            shift
-            ;;
-        -d|--dry-run)
-            DRY_RUN=true
-            shift
-            ;;
-        -o|--output-dir)
-            OUTPUT_DIR="$2"
-            shift 2
-            ;;
-        -c|--config)
-            CONFIG_FILE="$2"
-            shift 2
-            ;;
-        --parallel)
-            PARALLEL=true
-            shift
-            ;;
-        --quick)
-            QUICK=true
-            shift
-            ;;
-        --ci)
-            CI_MODE=true
-            shift
-            ;;
-        -h|--help)
-            show_usage
-            exit 0
-            ;;
-        *)
-            echo "Unknown option: $1"
-            show_usage
-            exit 1
-            ;;
+    -r | --region)
+        REGION="$2"
+        shift 2
+        ;;
+    -p | --profile)
+        PROFILE="$2"
+        shift 2
+        ;;
+    -v | --verbose)
+        VERBOSE=true
+        shift
+        ;;
+    -d | --dry-run)
+        DRY_RUN=true
+        shift
+        ;;
+    -o | --output-dir)
+        OUTPUT_DIR="$2"
+        shift 2
+        ;;
+    -c | --config)
+        CONFIG_FILE="$2"
+        shift 2
+        ;;
+    --parallel)
+        PARALLEL=true
+        shift
+        ;;
+    --quick)
+        QUICK=true
+        shift
+        ;;
+    --ci)
+        CI_MODE=true
+        shift
+        ;;
+    -h | --help)
+        show_usage
+        exit 0
+        ;;
+    *)
+        echo "Unknown option: $1"
+        show_usage
+        exit 1
+        ;;
     esac
 done
 
@@ -122,8 +122,8 @@ mkdir -p "$OUTPUT_DIR"
 
 # Print header
 if [[ "$CI_MODE" != "true" ]]; then
-    print_status $BLUE "🧪 AWS Cloud Utilities v2 - Test Runner"
-    print_status $BLUE "=================================================="
+    print_status "${BLUE} 🧪 AWS Cloud Utilities v2 - Test Runner"
+    print_status "$BLUE =================================================="
     echo
 fi
 
@@ -222,7 +222,7 @@ if [[ -f "$OUTPUT_FILE" ]]; then
     FAILED_TESTS=$(python3 -c "import json; data=json.load(open('$OUTPUT_FILE')); print(data.get('failed_tests', 0))")
     SUCCESS_RATE=$(python3 -c "import json; data=json.load(open('$OUTPUT_FILE')); print(f\"{data.get('success_rate', 0):.1f}\")")
     DURATION=$(python3 -c "import json; data=json.load(open('$OUTPUT_FILE')); print(f\"{data.get('duration', 0):.2f}\")")
-    
+
     if [[ "$CI_MODE" == "true" ]]; then
         # CI-friendly output
         echo "TOTAL_TESTS=$TOTAL_TESTS"
@@ -247,8 +247,8 @@ fi
 # Generate HTML report if jq is available
 if command -v jq >/dev/null 2>&1 && [[ -f "$OUTPUT_FILE" ]]; then
     HTML_REPORT="$OUTPUT_DIR/test_report_$TIMESTAMP.html"
-    
-    cat > "$HTML_REPORT" << EOF
+
+    cat >"$HTML_REPORT" <<EOF
 <!DOCTYPE html>
 <html>
 <head>
@@ -297,7 +297,7 @@ if command -v jq >/dev/null 2>&1 && [[ -f "$OUTPUT_FILE" ]]; then
 </body>
 </html>
 EOF
-    
+
     if [[ "$CI_MODE" != "true" ]]; then
         print_status $GREEN "📄 HTML report generated: $HTML_REPORT"
     fi

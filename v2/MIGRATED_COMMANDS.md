@@ -60,21 +60,25 @@ aws-cloud-utilities account validate
 ## Key Improvements in v2
 
 ### Enhanced Error Handling
+
 - Graceful degradation when permissions are limited
 - Clear error messages with actionable guidance
 - Proper handling of Basic vs Premium support plans
 
 ### Better Output Formatting
+
 - Rich console output with colors and tables
 - Multiple output formats: table, json, yaml, csv
 - Progress indicators for long-running operations
 
 ### Parallel Processing
+
 - Control Tower detection now scans all regions in parallel
 - Configurable worker threads (default: 4)
 - Progress bars for multi-region operations
 
 ### Configuration Management
+
 - Global options: `--profile`, `--region`, `--output`, `--verbose`
 - Environment variable support
 - Configuration file support (.env)
@@ -245,12 +249,14 @@ aws-cloud-utilities networking ip-summary --region eu-west-1
 ### Key Architectural Improvements
 
 #### **Dedicated CloudFormation Commands**
+
 - **Standalone Module**: CloudFormation now has its own dedicated command group
 - **Enhanced Backup**: Multiple output formats (JSON, YAML) with comprehensive options
 - **Stack Management**: List stacks, get details, show templates and parameters
 - **Rich Interface**: Progress indicators, detailed summaries, and error handling
 
 #### **Reorganized Inventory Structure**
+
 - **Focused Scanning**: `inventory scan` for resource discovery only
 - **Comprehensive Download**: `inventory download-all` for everything including optional CloudFormation
 - **Modular Approach**: Choose what to include (tags, CloudFormation, WorkSpaces metrics)
@@ -301,12 +307,14 @@ aws-cloud-utilities stepfunctions logs arn:aws:states:us-east-1:123456789012:exe
 ### Key Security Enhancements
 
 #### **Multi-Service Security Metrics**
+
 - **Comprehensive Collection**: WAF, GuardDuty, and Security Hub metrics in one command
 - **Multi-Region Support**: Collect metrics across all regions simultaneously
 - **Flexible Filtering**: Choose specific services and time ranges
 - **Rich Output**: Multiple formats with detailed summaries and error handling
 
 #### **Enhanced Certificate Management**
+
 - **Automated Validation**: Route53 DNS validation with hosted zone auto-detection
 - **Wait for Completion**: Optional waiting for certificate validation
 - **Rich Interface**: Progress indicators and detailed status reporting
@@ -315,12 +323,14 @@ aws-cloud-utilities stepfunctions logs arn:aws:states:us-east-1:123456789012:exe
 ### Key Step Functions Enhancements
 
 #### **Complete Management Suite**
+
 - **Enhanced Listing**: Multi-region support with detailed information
 - **Rich Descriptions**: State machine details with optional definition display
 - **Execution Management**: Start, monitor, and list executions with comprehensive options
 - **Log Integration**: CloudWatch logs retrieval with structured output
 
 #### **Improved User Experience**
+
 - **Progress Indicators**: Visual feedback for long-running operations
 - **Multiple Formats**: JSON, YAML, CSV output with automatic timestamping
 - **Error Handling**: Comprehensive error recovery and detailed reporting
@@ -362,6 +372,7 @@ aws-cloud-utilities ecr get-login --print-command --region us-east-1
 ### Key ECR Enhancements
 
 #### **Enhanced Image Copying**
+
 - **Progress Indicators**: Visual feedback for pull, tag, and push operations
 - **Smart Repository Handling**: Auto-create repositories with --create-repo flag
 - **Conflict Resolution**: Force overwrite existing images with --force flag
@@ -369,12 +380,14 @@ aws-cloud-utilities ecr get-login --print-command --region us-east-1
 - **Image Details**: Automatic display of pushed image metadata
 
 #### **Comprehensive Repository Management**
+
 - **Multi-Region Listing**: List repositories across all regions simultaneously
 - **Detailed Information**: Repository URIs, creation dates, encryption settings
 - **Image Inventory**: List images with tags, sizes, and scan results
 - **Repository Lifecycle**: Create and delete repositories with comprehensive options
 
 #### **Enhanced Authentication**
+
 - **Simplified Login**: Direct Docker authentication with ECR
 - **Command Generation**: Print login commands for manual execution
 - **Multi-Region Support**: Login to ECR in any AWS region
@@ -413,6 +426,7 @@ aws-cloud-utilities awsconfig compliance-status --compliance-type NON_COMPLIANT 
 ### Key AWS Config Enhancements
 
 #### **Enhanced Data Download** (Migrated with Major Improvements)
+
 - **Progress Indicators**: Visual feedback for S3 scanning and file processing
 - **Multiple Formats**: Support for both CSV and JSON output formats
 - **Enhanced Processing**: Improved JSON flattening with source file tracking
@@ -420,12 +434,14 @@ aws-cloud-utilities awsconfig compliance-status --compliance-type NON_COMPLIANT 
 - **Rich Error Handling**: Comprehensive error recovery and detailed reporting
 
 #### **Comprehensive Config Management Suite** (New Functionality)
+
 - **Rules Analysis**: Deep analysis of Config rules with compliance metrics and statistics
 - **Multi-Region Support**: Analyze rules and compliance across all AWS regions
 - **Compliance Monitoring**: Real-time compliance status with resource type filtering
 - **Rich Reporting**: Multiple output formats with detailed summaries and breakdowns
 
 #### **Advanced Analytics and Insights**
+
 - **Meaningful Statistics**: Compliance percentages, rule effectiveness metrics
 - **Resource Type Analysis**: Breakdown by AWS resource types with evaluation counts
 - **Regional Comparisons**: Compare compliance posture across different regions
@@ -458,18 +474,21 @@ aws-cloud-utilities cloudfront distribution-details d1234567890abc --show-config
 ### Key CloudFront Enhancements
 
 #### **Flexible Parameter Handling** (Major Migration Improvement)
+
 - **Optional Log Bucket**: No longer hardcoded - users must provide --log-bucket or logging is skipped with warning
 - **Optional SNS Topic**: No longer hardcoded - users can provide --sns-topic or alarms created without notifications
 - **Smart Warnings**: Clear warnings when required parameters are missing with guidance on usage
 - **Graceful Degradation**: Operations continue with reduced functionality when optional parameters are missing
 
 #### **Enhanced Distribution Management** (Migrated with Major Improvements)
+
 - **Progress Indicators**: Visual feedback for multi-distribution processing
 - **Parallel Processing**: Configurable worker threads for faster processing
 - **Comprehensive Reporting**: Detailed summaries with CloudFormation stack detection
 - **Dry Run Support**: Preview changes before execution with detailed impact analysis
 
 #### **New Distribution Discovery and Analysis** (New Functionality)
+
 - **Distribution Listing**: Comprehensive distribution inventory with filtering options
 - **Detailed Analysis**: Individual distribution configuration analysis
 - **Logging Status Monitoring**: Track logging configuration across all distributions
@@ -478,6 +497,7 @@ aws-cloud-utilities cloudfront distribution-details d1234567890abc --show-config
 ### Parameter Migration Strategy
 
 #### **Original Hardcoded Values → Flexible Parameters**
+
 ```python
 # Original (hardcoded)
 DEFAULT_LOG_BUCKET = "FIXME_DONT_HARDCODE_A_BUCKET"
@@ -489,6 +509,7 @@ DEFAULT_SNS_TOPIC = "FIXME-DONT-HARDCODE-TOPIC"
 ```
 
 #### **Smart Warning System**
+
 - **Missing Log Bucket**: "⚠️ Warning: No --log-bucket specified. Logging configuration will be skipped."
 - **Missing SNS Topic**: "⚠️ Warning: No --sns-topic specified. Alarms will be created without notification actions."
 - **Usage Guidance**: Clear instructions on how to provide missing parameters
@@ -527,24 +548,28 @@ aws-cloud-utilities logs aggregate ./mixed_logs --output-dir ./processed --keep-
 ### Key CloudWatch Logs Enhancements
 
 #### **Enhanced Log Group Management** (Migrated with Major Improvements)
+
 - **Multi-Region Support**: List and manage log groups across all AWS regions simultaneously
 - **Rich Metadata**: Include storage size, retention policies, and creation timestamps
 - **Parallel Processing**: Download from multiple log groups concurrently with progress indicators
 - **Smart Filtering**: Advanced filtering options with size calculations and retention analysis
 
 #### **Advanced Log Processing** (Migrated with Major Improvements)
+
 - **Intelligent Sorting**: Chronological log line sorting with timestamp detection
 - **Progress Tracking**: Visual progress indicators for long-running operations
 - **Error Resilience**: Comprehensive error handling with detailed recovery suggestions
 - **Flexible Output**: Multiple output formats with automatic timestamping
 
 #### **Comprehensive Log Aggregation** (Migrated with Major Improvements)
+
 - **Auto-Detection**: Intelligent log type detection for CloudTrail, CloudFront, ELB, ALB, Route53
 - **Configurable Sizing**: Flexible target file sizes with compression options
 - **Structure Preservation**: Optional directory structure preservation in output
 - **Batch Processing**: Efficient processing of large log file collections
 
 #### **New Advanced Features** (Not in Original Scripts)
+
 - **Retention Management**: Bulk retention policy management with conditional updates
 - **Size Analytics**: Storage usage analysis across log groups and regions
 - **Export Integration**: Seamless integration with CloudWatch Logs export functionality
@@ -553,18 +578,21 @@ aws-cloud-utilities logs aggregate ./mixed_logs --output-dir ./processed --keep-
 ### Migration Improvements
 
 #### **Performance Enhancements**
+
 - **Parallel Processing**: Multi-threaded operations for faster log group scanning and downloads
 - **Progress Indicators**: Real-time progress tracking for long-running operations
 - **Memory Optimization**: Efficient handling of large log files with streaming processing
 - **Batch Operations**: Optimized batch processing for multiple log groups and files
 
 #### **User Experience Improvements**
+
 - **Rich Console Output**: Color-coded status messages with detailed progress information
 - **Flexible Parameters**: Comprehensive parameter options with intelligent defaults
 - **Error Recovery**: Detailed error messages with actionable recovery suggestions
 - **Output Formats**: Multiple output formats (table, JSON, CSV) with automatic file naming
 
 #### **Operational Excellence**
+
 - **Dry Run Support**: Preview changes before execution across all operations
 - **Confirmation Prompts**: Safety prompts for destructive operations with bypass options
 - **Comprehensive Logging**: Detailed operation logging with configurable verbosity levels
@@ -604,30 +632,35 @@ aws-cloud-utilities s3 restore-objects my-bucket --check-status --include-versio
 ### Key S3 Enhancements
 
 #### **Enhanced Bucket Management** (Migrated with Major Improvements)
+
 - **Multi-Region Discovery**: List buckets across all regions with parallel processing
 - **Rich Metadata**: Include bucket size information from CloudWatch metrics
 - **Advanced Creation**: Create buckets with versioning, encryption, and public access block configuration
 - **Comprehensive Filtering**: Filter buckets by region with flexible output formats
 
 #### **Advanced Object Operations** (Migrated with Major Improvements)
+
 - **Parallel Processing**: Multi-threaded downloads with configurable worker pools
 - **Version Support**: Handle versioned objects with complete version history
 - **Progress Tracking**: Real-time progress indicators for long-running operations
 - **Error Resilience**: Comprehensive retry logic with detailed error reporting
 
 #### **Comprehensive Bucket Destruction** (Migrated with Major Improvements)
+
 - **Safe Backup**: Optional download before deletion with organized output structure
 - **Complete Cleanup**: Delete all object versions, delete markers, and bucket itself
 - **Dry Run Support**: Preview destructive operations before execution
 - **Safety Confirmations**: Multiple confirmation prompts for destructive operations
 
 #### **Intelligent Version Management** (Migrated with Major Improvements)
+
 - **Selective Deletion**: Delete only versions with delete markers or all versions
 - **Batch Processing**: Efficient batch deletion with configurable chunk sizes
 - **Smart Filtering**: Target specific prefixes with comprehensive version analysis
 - **Status Reporting**: Detailed reporting of deletion operations and results
 
 #### **Advanced Archive Management** (Migrated with Major Improvements)
+
 - **Multi-Tier Restore**: Support for Standard, Bulk, and Expedited restore tiers
 - **Status Monitoring**: Check restore status of previously requested objects
 - **Flexible Duration**: Configurable restore duration with cost optimization
@@ -636,24 +669,28 @@ aws-cloud-utilities s3 restore-objects my-bucket --check-status --include-versio
 ### Migration Improvements
 
 #### **Performance Enhancements**
+
 - **Parallel Processing**: Multi-threaded operations for all S3 operations with configurable worker pools
 - **Batch Operations**: Efficient batch processing for large-scale object operations
 - **Progress Indicators**: Real-time progress tracking with detailed status information
 - **Memory Optimization**: Streaming operations for handling large files and datasets
 
 #### **User Experience Improvements**
+
 - **Rich Console Output**: Color-coded status messages with detailed progress information
 - **Flexible Parameters**: Comprehensive parameter options with intelligent defaults
 - **Safety Features**: Multiple confirmation prompts and dry-run support for destructive operations
 - **Error Recovery**: Detailed error messages with actionable recovery suggestions
 
 #### **Operational Excellence**
+
 - **Comprehensive Logging**: Detailed operation logging with configurable verbosity levels
 - **State Management**: Resume capability for interrupted operations with state tracking
 - **Resource Management**: Intelligent cleanup and temporary file management
 - **Cost Optimization**: Smart restore tier selection and duration management
 
 #### **Advanced Features Not in Original Scripts**
+
 - **CloudWatch Integration**: Bucket size metrics from CloudWatch for accurate reporting
 - **Multi-Format Output**: Support for JSON, CSV, and YAML output formats
 - **Comprehensive Filtering**: Advanced filtering options for buckets and objects
@@ -662,18 +699,21 @@ aws-cloud-utilities s3 restore-objects my-bucket --check-status --include-versio
 ### S3 Operation Safety Features
 
 #### **Destructive Operation Protection**
+
 - **Multiple Confirmations**: Double confirmation for bucket deletion and version cleanup
 - **Dry Run Mode**: Preview all destructive operations before execution
 - **Backup Integration**: Automatic backup options before destructive operations
 - **Operation Logging**: Comprehensive logging of all destructive operations
 
 #### **Error Handling and Recovery**
+
 - **Retry Logic**: Configurable retry mechanisms for transient failures
 - **Partial Recovery**: Resume interrupted operations from last successful state
 - **Error Categorization**: Detailed error classification with specific recovery guidance
 - **Operation Rollback**: Safe rollback capabilities for failed operations
 
 #### **Cost Management**
+
 - **Restore Optimization**: Intelligent restore tier selection based on urgency and cost
 - **Transfer Optimization**: Efficient transfer patterns to minimize data transfer costs
 - **Storage Class Awareness**: Smart handling of different S3 storage classes
@@ -711,24 +751,28 @@ aws-cloud-utilities costops ebs-optimization --volume-type gp2 --include-cost-es
 ### Key Cost Optimization Enhancements
 
 #### **Enhanced Pricing Data Collection** (Migrated with Major Improvements)
+
 - **Comprehensive Service Coverage**: Access pricing for all AWS services with parallel processing
 - **Multiple Output Formats**: Raw JSON data or processed summaries with intelligent analysis
 - **Batch Processing**: Download pricing data for all services with progress tracking
 - **Smart Caching**: Efficient data retrieval with organized output structure
 
 #### **Advanced Cost Analysis** (Migrated with Major Improvements)
+
 - **Flexible Time Periods**: Analyze costs over custom time ranges with monthly granularity
 - **Multi-Dimensional Grouping**: Group costs by service, usage type, region, or account
 - **Service Filtering**: Focus analysis on specific AWS services with detailed breakdowns
 - **Rich Reporting**: Comprehensive cost breakdowns with percentage analysis and trends
 
 #### **Comprehensive Usage Metrics** (Migrated with Major Improvements)
+
 - **Dual Metric Support**: Analyze both cost and usage quantity metrics simultaneously
 - **Advanced Grouping**: Group metrics by usage type, region, instance type, or operation
 - **Historical Analysis**: Track usage patterns over multiple months with trend analysis
 - **Detailed Breakdowns**: Top usage types with quantity and cost correlations
 
 #### **Intelligent EBS Optimization** (Migrated with Major Improvements)
+
 - **Multi-Region Analysis**: Scan EBS volumes across all AWS regions with parallel processing
 - **Smart Recommendations**: Intelligent optimization suggestions based on volume types
 - **Cost Estimation**: Calculate potential savings from volume type migrations
@@ -737,24 +781,28 @@ aws-cloud-utilities costops ebs-optimization --volume-type gp2 --include-cost-es
 ### Migration Improvements
 
 #### **Performance Enhancements**
+
 - **Parallel Processing**: Multi-threaded operations for pricing data collection and EBS analysis
 - **Progress Indicators**: Real-time progress tracking for long-running cost analysis operations
 - **Batch Operations**: Efficient batch processing for large-scale pricing and cost data retrieval
 - **Memory Optimization**: Streaming operations for handling large datasets and pricing information
 
 #### **User Experience Improvements**
+
 - **Rich Console Output**: Color-coded status messages with detailed progress information
 - **Flexible Parameters**: Comprehensive parameter options with intelligent defaults
 - **Multiple Output Formats**: Support for JSON, CSV, and YAML output formats
 - **Error Recovery**: Detailed error messages with actionable recovery suggestions
 
 #### **Operational Excellence**
+
 - **Comprehensive Logging**: Detailed operation logging with configurable verbosity levels
 - **Data Organization**: Intelligent file naming and directory structure for output data
 - **Resource Management**: Efficient API usage with rate limiting and retry logic
 - **Cost Awareness**: Built-in cost optimization recommendations and savings calculations
 
 #### **Advanced Features Not in Original Scripts**
+
 - **Service Discovery**: Automatic discovery of available AWS services for pricing analysis
 - **Cross-Region Analysis**: Comprehensive multi-region cost and resource analysis
 - **Trend Analysis**: Historical cost and usage trend identification with pattern recognition
@@ -763,24 +811,28 @@ aws-cloud-utilities costops ebs-optimization --volume-type gp2 --include-cost-es
 ### Cost Optimization Analysis Features
 
 #### **Comprehensive Pricing Intelligence**
+
 - **Real-Time Data**: Access to current AWS pricing information across all services
 - **Historical Tracking**: Track pricing changes over time with version management
 - **Regional Comparison**: Compare pricing across different AWS regions
 - **Service Coverage**: Complete coverage of all AWS services with detailed pricing models
 
 #### **Advanced Cost Analytics**
+
 - **Multi-Dimensional Analysis**: Analyze costs across multiple dimensions simultaneously
 - **Trend Identification**: Identify cost trends and anomalies with statistical analysis
 - **Budget Impact**: Calculate budget impact and forecast future costs
 - **Cost Attribution**: Detailed cost attribution with service and resource breakdowns
 
 #### **Intelligent Resource Optimization**
+
 - **EBS Volume Analysis**: Comprehensive analysis of EBS volumes for optimization opportunities
 - **Instance Recommendations**: Smart recommendations for instance type optimizations
 - **Storage Class Analysis**: Analyze S3 storage classes for cost optimization
 - **Reserved Instance Planning**: Analyze usage patterns for Reserved Instance recommendations
 
 #### **Enterprise-Grade Reporting**
+
 - **Executive Dashboards**: High-level cost summaries for executive reporting
 - **Detailed Breakdowns**: Granular cost analysis for technical teams
 - **Compliance Reporting**: Cost allocation reports for compliance and chargeback
@@ -789,12 +841,14 @@ aws-cloud-utilities costops ebs-optimization --volume-type gp2 --include-cost-es
 ### Cost Optimization Workflow Integration
 
 #### **Automated Analysis**
+
 - **Scheduled Reports**: Automated cost analysis reports with configurable schedules
 - **Threshold Alerts**: Cost threshold monitoring with automated alerting
 - **Optimization Tracking**: Track optimization implementation and savings realization
 - **ROI Calculation**: Calculate return on investment for optimization initiatives
 
 #### **Decision Support**
+
 - **Cost-Benefit Analysis**: Detailed cost-benefit analysis for optimization decisions
 - **Risk Assessment**: Risk assessment for cost optimization recommendations
 - **Implementation Planning**: Step-by-step implementation plans for optimizations
