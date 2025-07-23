@@ -278,7 +278,7 @@ def cost_savings(ctx: click.Context, csv_file: str, export_only: bool, show_deta
             console=console,
         ) as progress:
             task = progress.add_task("Analyzing Trusted Advisor cost optimization checks...", total=None)
-            
+
             total_savings, total_opportunities, check_details = _get_cost_savings_data(aws_auth, show_details)
             progress.remove_task(task)
 
@@ -290,9 +290,7 @@ def cost_savings(ctx: click.Context, csv_file: str, export_only: bool, show_deta
         }
 
         print_output(
-            current_data,
-            output_format=config.aws_output_format,
-            title="AWS Trusted Advisor Cost Savings Analysis"
+            current_data, output_format=config.aws_output_format, title="AWS Trusted Advisor Cost Savings Analysis"
         )
 
         # Show detailed breakdown if requested
@@ -318,11 +316,11 @@ support_group.add_command(trusted_advisor_group)
 def _get_cost_savings_data(aws_auth: AWSAuth, include_details: bool = False) -> Tuple[float, int, List[Dict[str, Any]]]:
     """
     Retrieve cost optimization check results from Trusted Advisor.
-    
+
     Args:
         aws_auth: AWS authentication helper
         include_details: Whether to include detailed breakdown by check type
-        
+
     Returns:
         Tuple of (total_savings, total_opportunities, check_details)
     """
@@ -342,11 +340,9 @@ def _get_cost_savings_data(aws_auth: AWSAuth, include_details: bool = False) -> 
         if check.get("category") == "cost_optimizing":
             check_id = check.get("id")
             check_name = check.get("name", "Unknown Check")
-            
+
             try:
-                result_response = support_client.describe_trusted_advisor_check_result(
-                    checkId=check_id, language="en"
-                )
+                result_response = support_client.describe_trusted_advisor_check_result(checkId=check_id, language="en")
             except Exception as e:
                 logger.warning(f"Skipping check {check_name}: {e}")
                 continue
@@ -364,14 +360,12 @@ def _get_cost_savings_data(aws_auth: AWSAuth, include_details: bool = False) -> 
 
             check_savings = 0.0
             check_opportunities = len(flagged_resources)
-            
+
             if savings_index is not None:
                 for resource in flagged_resources:
                     try:
                         savings_str = resource[savings_index]
-                        savings_value = float(
-                            savings_str.replace("$", "").replace(",", "").strip()
-                        )
+                        savings_value = float(savings_str.replace("$", "").replace(",", "").strip())
                         check_savings += savings_value
                     except (ValueError, IndexError, TypeError):
                         continue
@@ -380,12 +374,14 @@ def _get_cost_savings_data(aws_auth: AWSAuth, include_details: bool = False) -> 
             total_opportunities += check_opportunities
 
             if include_details and (check_savings > 0 or check_opportunities > 0):
-                check_details.append({
-                    "Check Name": check_name,
-                    "Monthly Savings": f"${check_savings:,.2f}",
-                    "Opportunities": check_opportunities,
-                    "Status": result.get("status", "unknown")
-                })
+                check_details.append(
+                    {
+                        "Check Name": check_name,
+                        "Monthly Savings": f"${check_savings:,.2f}",
+                        "Opportunities": check_opportunities,
+                        "Status": result.get("status", "unknown"),
+                    }
+                )
 
     return total_savings, total_opportunities, check_details
 
@@ -395,17 +391,13 @@ def _display_cost_savings_details(check_details: List[Dict[str, Any]], output_fo
     if not check_details:
         return
 
-    print_output(
-        check_details,
-        output_format=output_format,
-        title="Cost Savings Breakdown by Check Type"
-    )
+    print_output(check_details, output_format=output_format, title="Cost Savings Breakdown by Check Type")
 
 
 def _update_cost_savings_csv(csv_filename: str, month_str: str, total_savings: float, total_opportunities: int) -> None:
     """
     Update the CSV file with cost savings data for the current month.
-    
+
     Args:
         csv_filename: Path to the CSV file
         month_str: Month string in YYYY-MM format
@@ -436,11 +428,13 @@ def _update_cost_savings_csv(csv_filename: str, month_str: str, total_savings: f
 
     # Add new record if not found
     if not updated:
-        rows.append({
-            "Month": month_str,
-            "TotalSavings": str(total_savings),
-            "TotalOpportunities": str(total_opportunities),
-        })
+        rows.append(
+            {
+                "Month": month_str,
+                "TotalSavings": str(total_savings),
+                "TotalOpportunities": str(total_opportunities),
+            }
+        )
 
     # Write sorted data back to CSV
     try:
