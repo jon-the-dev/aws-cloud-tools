@@ -14,18 +14,21 @@ from .commands import (
     account,
     awsconfig,
     bedrock,
+    billing,
     cloudformation,
     cloudfront,
     costops,
     ecr,
     inventory,
     logs,
+    rds,
     security,
     stepfunctions,
     s3,
     iam,
     networking,
-    support
+    support,
+    waf
 )
 
 # Install rich traceback handler
@@ -176,18 +179,21 @@ def main(
 main.add_command(account.account_group)
 main.add_command(awsconfig.awsconfig_group)
 main.add_command(bedrock.bedrock_group)
+main.add_command(billing.billing_group)
 main.add_command(cloudformation.cloudformation_group)
 main.add_command(cloudfront.cloudfront_group)
 main.add_command(costops.costops_group)
 main.add_command(ecr.ecr_group)
 main.add_command(inventory.inventory_group)
 main.add_command(logs.logs_group)
+main.add_command(rds.rds_group)
 main.add_command(security.security_group)
 main.add_command(stepfunctions.stepfunctions_group)
 main.add_command(s3.s3_group)
 main.add_command(iam.iam_group)
 main.add_command(networking.networking_group)
 main.add_command(support.support_group)
+main.add_command(waf.waf_group)
 
 
 @main.command()

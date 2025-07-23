@@ -28,6 +28,7 @@ These options work with all commands:
 | Service | Description | Key Commands |
 |---------|-------------|--------------|
 | [**account**](account.md) | Account information and management | `info`, `contact-info`, `regions`, `limits` |
+| [**billing**](billing.md) | Billing and cost analysis | `costs`, `usage`, `budgets`, `reports` |
 | [**inventory**](inventory.md) | Resource discovery and inventory | `resources`, `unused-resources`, `health-check` |
 | [**security**](security.md) | Security auditing and tools | `audit`, `blue-team-audit`, `public-resources` |
 | [**costops**](costops.md) | Cost optimization and pricing | `pricing`, `analyze`, `recommendations`, `gpu-spots` |
@@ -37,21 +38,10 @@ These options work with all commands:
 | Service | Description | Key Commands |
 |---------|-------------|--------------|
 | [**iam**](iam.md) | IAM management and auditing | `analyze`, `unused-permissions`, `policy-simulator` |
-| [**s3**](s3.md) | S3 bucket operations | `list-buckets`, `analyze-costs`, `security-audit` |
 | [**logs**](logs.md) | CloudWatch logs management | `groups`, `aggregate`, `search`, `export` |
-| [**networking**](networking.md) | Network utilities and analysis | `security-groups`, `vpc-analysis`, `connectivity` |
-
-### Advanced Services
-
-| Service | Description | Key Commands |
-|---------|-------------|--------------|
-| [**awsconfig**](awsconfig.md) | AWS Config service operations | `rules`, `compliance`, `remediation` |
-| [**bedrock**](bedrock.md) | Amazon Bedrock AI/ML operations | `models`, `inference`, `fine-tuning` |
-| [**cloudformation**](cloudformation.md) | CloudFormation stack management | `stacks`, `drift-detection`, `template-analysis` |
-| [**cloudfront**](cloudfront.md) | CloudFront distribution management | `distributions`, `cache-analysis`, `security` |
-| [**ecr**](ecr.md) | Elastic Container Registry operations | `repositories`, `images`, `security-scan` |
-| [**stepfunctions**](stepfunctions.md) | Step Functions workflow management | `state-machines`, `executions`, `analysis` |
+| [**rds**](rds.md) | RDS database management | `instances`, `troubleshoot`, `performance` |
 | [**support**](support.md) | AWS support tools | `check-level`, `cases`, `services` |
+| [**waf**](waf.md) | Web Application Firewall management | `rules`, `analysis`, `security` |
 
 ## Common Usage Patterns
 
@@ -171,7 +161,7 @@ aws-cloud-utilities logs search --log-group /aws/lambda/my-function --query "ERR
 - `security audit` - Basic security audit
 - `security blue-team-audit` - Comprehensive security assessment
 - `iam analyze` - IAM analysis
-- `awsconfig compliance` - Compliance status
+- `waf rules` - WAF rule analysis
 
 ### Cost Management
 
@@ -184,15 +174,15 @@ aws-cloud-utilities logs search --log-group /aws/lambda/my-function --query "ERR
 
 - `logs aggregate` - Log aggregation
 - `logs search` - Log searching
-- `cloudformation stacks` - Stack management
-- `s3 security-audit` - S3 security review
+- `rds instances` - RDS management
+- `security audit` - Security review
 
 ### Troubleshooting
 
-- `networking connectivity` - Network connectivity tests
 - `logs search` - Error log analysis
 - `support cases` - Support case management
 - `inventory health-check` - Resource health status
+- `rds troubleshoot` - Database troubleshooting
 
 ## Best Practices
 
