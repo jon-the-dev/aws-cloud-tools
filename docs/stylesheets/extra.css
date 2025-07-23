@@ -1,0 +1,70 @@
+/* Custom styles for AWS Cloud Utilities documentation */
+
+/* Improve code block styling */
+.highlight {
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+}
+
+/* Better table styling */
+.md-typeset table:not([class]) {
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Command examples styling */
+.md-typeset .highlight .language-bash {
+    background-color: var(--md-code-bg-color);
+}
+
+/* Navigation improvements */
+.md-nav__title {
+    font-weight: 600;
+}
+
+/* Admonition styling */
+.md-typeset .admonition {
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Footer improvements */
+.md-footer {
+    margin-top: 2rem;
+}
+
+/* Search improvements */
+.md-search__form {
+    border-radius: 2rem;
+}
+
+/* Button styling for links */
+.md-typeset a.md-button {
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.md-typeset a.md-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* Command reference tables */
+.md-typeset table th {
+    background-color: var(--md-primary-fg-color--light);
+    color: var(--md-primary-bg-color);
+    font-weight: 600;
+}
+
+/* Code copy button improvements */
+.md-clipboard {
+    border-radius: 0.25rem;
+}
+
+/* Responsive improvements */
+@media screen and (max-width: 76.1875em) {
+    .md-nav--primary .md-nav__title {
+        background-color: var(--md-primary-fg-color);
+    }
+}
