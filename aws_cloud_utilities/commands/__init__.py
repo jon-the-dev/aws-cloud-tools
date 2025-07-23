@@ -4,6 +4,7 @@ from . import (
     account,
     awsconfig,
     bedrock,
+    billing,
     cloudformation,
     cloudfront,
     costops,
@@ -12,16 +13,19 @@ from . import (
     inventory,
     logs,
     networking,
+    rds,
     s3,
     security,
     stepfunctions,
-    support
+    support,
+    waf
 )
 
 __all__ = [
     "account",
     "awsconfig",
     "bedrock",
+    "billing",
     "cloudformation",
     "cloudfront",
     "costops",
@@ -30,8 +34,10 @@ __all__ = [
     "inventory",
     "logs",
     "networking",
+    "rds",
     "s3",
     "security",
     "stepfunctions",
     "support",
+    "waf",
 ]
