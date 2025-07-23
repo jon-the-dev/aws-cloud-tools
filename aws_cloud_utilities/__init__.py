@@ -10,7 +10,7 @@ from .core.utils import get_aws_account_id, get_all_regions
 
 __all__ = [
     "Config",
-    "get_aws_account_id", 
+    "get_aws_account_id",
     "get_all_regions",
     "__version__",
 ]

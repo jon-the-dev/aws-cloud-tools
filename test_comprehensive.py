@@ -368,6 +368,37 @@ class ComprehensiveTestSuite:
         
         return tests
     
+    def test_waf_operations(self) -> Dict[str, bool]:
+        """Test WAF operations."""
+        
+        tests = {}
+        
+        # Test WAF help
+        result = self.run_cli_command(["waf", "--help"])
+        tests["waf_help"] = result["success"]
+        if not result["success"]:
+            self.failed_tests.append(f"waf help: {result['stderr']}")
+        
+        # Test WAF list help
+        result = self.run_cli_command(["waf", "list", "--help"])
+        tests["waf_list_help"] = result["success"]
+        if not result["success"]:
+            self.failed_tests.append(f"waf list help: {result['stderr']}")
+        
+        # Test WAF stats help
+        result = self.run_cli_command(["waf", "stats", "--help"])
+        tests["waf_stats_help"] = result["success"]
+        if not result["success"]:
+            self.failed_tests.append(f"waf stats help: {result['stderr']}")
+        
+        # Test WAF troubleshoot help
+        result = self.run_cli_command(["waf", "troubleshoot", "--help"])
+        tests["waf_troubleshoot_help"] = result["success"]
+        if not result["success"]:
+            self.failed_tests.append(f"waf troubleshoot help: {result['stderr']}")
+        
+        return tests
+    
     def test_help_commands(self) -> Dict[str, bool]:
         """Test help commands for all modules."""
         
@@ -428,6 +459,7 @@ class ComprehensiveTestSuite:
                 ("Networking Operations", self.test_networking_operations),
                 ("Security Operations", self.test_security_operations),
                 ("Support Operations", self.test_support_operations),
+                ("WAF Operations", self.test_waf_operations),
             ])
         
         # Run tests

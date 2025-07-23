@@ -18,7 +18,7 @@ from . import (
     security,
     stepfunctions,
     support,
-    waf
+    waf,
 )
 
 __all__ = [

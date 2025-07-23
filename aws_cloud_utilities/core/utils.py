@@ -23,10 +23,10 @@ console = Console()
 
 def get_aws_account_id() -> str:
     """Get the current AWS account ID.
-    
+
     Returns:
         AWS account ID
-        
+
     Raises:
         AWSError: If unable to get account ID
     """
@@ -40,10 +40,10 @@ def get_aws_account_id() -> str:
 
 def get_all_regions(service_name: str = "ec2") -> List[str]:
     """Get all available AWS regions for a service.
-    
+
     Args:
         service_name: AWS service name
-        
+
     Returns:
         List of region names
     """
@@ -59,25 +59,32 @@ def get_all_regions(service_name: str = "ec2") -> List[str]:
         logger.warning(f"Failed to get regions for {service_name}: {e}")
         # Return common regions as fallback
         return [
-            "us-east-1", "us-east-2", "us-west-1", "us-west-2",
-            "eu-west-1", "eu-west-2", "eu-central-1", "eu-north-1",
-            "ap-southeast-1", "ap-southeast-2", "ap-northeast-1", "ap-northeast-2",
-            "ap-south-1", "ca-central-1", "sa-east-1"
+            "us-east-1",
+            "us-east-2",
+            "us-west-1",
+            "us-west-2",
+            "eu-west-1",
+            "eu-west-2",
+            "eu-central-1",
+            "eu-north-1",
+            "ap-southeast-1",
+            "ap-southeast-2",
+            "ap-northeast-1",
+            "ap-northeast-2",
+            "ap-south-1",
+            "ca-central-1",
+            "sa-east-1",
         ]
 
 
-def format_output(
-    data: Any, 
-    output_format: str = "table",
-    headers: Optional[List[str]] = None
-) -> str:
+def format_output(data: Any, output_format: str = "table", headers: Optional[List[str]] = None) -> str:
     """Format data for output.
-    
+
     Args:
         data: Data to format
         output_format: Output format (table, json, yaml, csv)
         headers: Table headers (for table format)
-        
+
     Returns:
         Formatted string
     """
@@ -89,6 +96,7 @@ def format_output(
         if isinstance(data, list) and data and isinstance(data[0], dict):
             import csv
             import io
+
             output = io.StringIO()
             writer = csv.DictWriter(output, fieldnames=data[0].keys())
             writer.writeheader()
@@ -114,13 +122,10 @@ def format_output(
 
 
 def print_output(
-    data: Any,
-    output_format: str = "table", 
-    headers: Optional[List[str]] = None,
-    title: Optional[str] = None
+    data: Any, output_format: str = "table", headers: Optional[List[str]] = None, title: Optional[str] = None
 ) -> None:
     """Print formatted output to console.
-    
+
     Args:
         data: Data to print
         output_format: Output format
@@ -129,9 +134,9 @@ def print_output(
     """
     if title:
         console.print(f"\n[bold blue]{title}[/bold blue]")
-    
+
     formatted_output = format_output(data, output_format, headers)
-    
+
     if output_format == "table":
         console.print(formatted_output)
     else:
@@ -139,17 +144,15 @@ def print_output(
 
 
 def create_rich_table(
-    data: List[Dict[str, Any]], 
-    title: Optional[str] = None,
-    headers: Optional[List[str]] = None
+    data: List[Dict[str, Any]], title: Optional[str] = None, headers: Optional[List[str]] = None
 ) -> Table:
     """Create a rich table from data.
-    
+
     Args:
         data: List of dictionaries
         title: Table title
         headers: Column headers
-        
+
     Returns:
         Rich Table object
     """
@@ -158,54 +161,48 @@ def create_rich_table(
         table.add_column("Message")
         table.add_row("No data available")
         return table
-    
+
     table = Table(title=title, show_header=True, header_style="bold magenta")
-    
+
     # Add columns
     columns = headers or list(data[0].keys())
     for column in columns:
         table.add_column(column)
-    
+
     # Add rows
     for item in data:
         row = [str(item.get(col, "")) for col in columns]
         table.add_row(*row)
-    
+
     return table
 
 
 def parallel_execute(
-    func: callable,
-    items: List[Any],
-    max_workers: int = 4,
-    show_progress: bool = True,
-    description: str = "Processing"
+    func: callable, items: List[Any], max_workers: int = 4, show_progress: bool = True, description: str = "Processing"
 ) -> List[Any]:
     """Execute function in parallel for multiple items.
-    
+
     Args:
         func: Function to execute
         items: List of items to process
         max_workers: Maximum number of worker threads
         show_progress: Show progress bar
         description: Progress description
-        
+
     Returns:
         List of results
     """
     results = []
-    
+
     if show_progress:
         with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console
+            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
         ) as progress:
             task = progress.add_task(description, total=len(items))
-            
+
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 future_to_item = {executor.submit(func, item): item for item in items}
-                
+
                 for future in as_completed(future_to_item):
                     try:
                         result = future.result()
@@ -218,7 +215,7 @@ def parallel_execute(
     else:
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_item = {executor.submit(func, item): item for item in items}
-            
+
             for future in as_completed(future_to_item):
                 try:
                     result = future.result()
@@ -226,17 +223,13 @@ def parallel_execute(
                 except Exception as e:
                     logger.error(f"Error processing item: {e}")
                     results.append(None)
-    
+
     return results
 
 
-def save_to_file(
-    data: Any,
-    filepath: Union[str, Path],
-    file_format: str = "json"
-) -> None:
+def save_to_file(data: Any, filepath: Union[str, Path], file_format: str = "json") -> None:
     """Save data to file.
-    
+
     Args:
         data: Data to save
         filepath: File path
@@ -244,7 +237,7 @@ def save_to_file(
     """
     filepath = Path(filepath)
     filepath.parent.mkdir(parents=True, exist_ok=True)
-    
+
     with open(filepath, "w", encoding="utf-8") as f:
         if file_format == "json":
             json.dump(data, f, indent=2, default=str)
@@ -253,6 +246,7 @@ def save_to_file(
         elif file_format == "csv":
             if isinstance(data, list) and data and isinstance(data[0], dict):
                 import csv
+
                 writer = csv.DictWriter(f, fieldnames=data[0].keys())
                 writer.writeheader()
                 writer.writerows(data)
@@ -264,18 +258,18 @@ def save_to_file(
 
 def load_from_file(filepath: Union[str, Path]) -> Any:
     """Load data from file.
-    
+
     Args:
         filepath: File path
-        
+
     Returns:
         Loaded data
     """
     filepath = Path(filepath)
-    
+
     if not filepath.exists():
         raise FileNotFoundError(f"File not found: {filepath}")
-    
+
     with open(filepath, "r", encoding="utf-8") as f:
         if filepath.suffix == ".json":
             return json.load(f)
@@ -287,7 +281,7 @@ def load_from_file(filepath: Union[str, Path]) -> Any:
 
 def get_timestamp() -> str:
     """Get current timestamp string.
-    
+
     Returns:
         Timestamp in YYYY-MM-DD format
     """
@@ -296,7 +290,7 @@ def get_timestamp() -> str:
 
 def get_detailed_timestamp() -> str:
     """Get detailed timestamp string.
-    
+
     Returns:
         Timestamp in YYYY-MM-DD_HH-MM-SS format
     """
@@ -305,10 +299,10 @@ def get_detailed_timestamp() -> str:
 
 def ensure_directory(path: Union[str, Path]) -> Path:
     """Ensure directory exists.
-    
+
     Args:
         path: Directory path
-        
+
     Returns:
         Path object
     """
@@ -319,10 +313,10 @@ def ensure_directory(path: Union[str, Path]) -> Path:
 
 def get_file_size(filepath: Union[str, Path]) -> int:
     """Get file size in bytes.
-    
+
     Args:
         filepath: File path
-        
+
     Returns:
         File size in bytes
     """
@@ -331,10 +325,10 @@ def get_file_size(filepath: Union[str, Path]) -> int:
 
 def format_bytes(size: int) -> str:
     """Format bytes to human readable string.
-    
+
     Args:
         size: Size in bytes
-        
+
     Returns:
         Formatted size string
     """
@@ -347,25 +341,25 @@ def format_bytes(size: int) -> str:
 
 def chunk_list(lst: List[Any], chunk_size: int) -> List[List[Any]]:
     """Split list into chunks.
-    
+
     Args:
         lst: List to chunk
         chunk_size: Size of each chunk
-        
+
     Returns:
         List of chunks
     """
-    return [lst[i:i + chunk_size] for i in range(0, len(lst), chunk_size)]
+    return [lst[i : i + chunk_size] for i in range(0, len(lst), chunk_size)]
 
 
 def flatten_dict(d: Dict[str, Any], parent_key: str = "", sep: str = ".") -> Dict[str, Any]:
     """Flatten nested dictionary.
-    
+
     Args:
         d: Dictionary to flatten
         parent_key: Parent key prefix
         sep: Separator for nested keys
-        
+
     Returns:
         Flattened dictionary
     """

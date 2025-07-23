@@ -35,7 +35,8 @@ help:
 REGION ?= us-east-1
 PROFILE ?= 
 OUTPUT_DIR ?= ./test_results
-PYTHON ?= python3
+# Check if pipenv is available and use it, otherwise fall back to python3
+PYTHON ?= $(shell command -v pipenv >/dev/null 2>&1 && echo "pipenv run python" || echo "python3")
 
 # Installation
 install:

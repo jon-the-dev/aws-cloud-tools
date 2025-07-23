@@ -1,8 +1,8 @@
 """Data models for AWS Cloud Utilities."""
 
 from .aws_resources import (
-    AWSResource, 
-    EC2Instance, 
+    AWSResource,
+    EC2Instance,
     S3Bucket,
     BedrockModel,
     BedrockCustomModel,
@@ -11,12 +11,12 @@ from .aws_resources import (
     IAMPolicy,
     IAMUser,
     IAMGroup,
-    CloudWatchLogGroup
+    CloudWatchLogGroup,
 )
 
 __all__ = [
     "AWSResource",
-    "EC2Instance", 
+    "EC2Instance",
     "S3Bucket",
     "BedrockModel",
     "BedrockCustomModel",

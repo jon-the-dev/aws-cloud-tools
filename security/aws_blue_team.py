@@ -244,18 +244,6 @@ def main(args):
     return results
 
 
-def lambda_handler(event, context):
-    # For Lambda, you can define default arguments or extract them from the event
-    # Here we assume default values for region and time_range
-    class Args:
-        region = None
-        skip_waf = False
-        skip_guardduty = False
-        skip_securityhub = False
-        time_range = 24
-
-    return main(Args())
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
