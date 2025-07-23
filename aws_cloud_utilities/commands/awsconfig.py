@@ -1010,7 +1010,7 @@ def _get_resource_compliance_by_type(config_client, resource_type: str) -> Dict[
                     compliance_status[resource_id] = "NOT_TRACKED"
 
     except config_client.exceptions.NoSuchResourceTypeException:
-        pass
+        logger.debug(f"No resources of type {resource_type} found.")
     except Exception as e:
         logger.debug(f"Error checking {resource_type}: {e}")
 
