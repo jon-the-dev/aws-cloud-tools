@@ -28,7 +28,7 @@ from .commands import (
     iam,
     networking,
     support,
-    waf
+    waf,
 )
 
 # Install rich traceback handler
@@ -40,12 +40,12 @@ logger = logging.getLogger(__name__)
 
 class AWSCloudUtilitiesCLI:
     """Main CLI class for AWS Cloud Utilities."""
-    
+
     def __init__(self):
         """Initialize CLI."""
         self.config: Optional[Config] = None
         self.aws_auth: Optional[AWSAuth] = None
-    
+
     def setup(
         self,
         profile: Optional[str] = None,
@@ -53,10 +53,10 @@ class AWSCloudUtilitiesCLI:
         output_format: str = "table",
         verbose: bool = False,
         debug: bool = False,
-        config_file: Optional[str] = None
+        config_file: Optional[str] = None,
     ) -> None:
         """Set up CLI configuration and authentication.
-        
+
         Args:
             profile: AWS profile name
             region: AWS region
@@ -72,18 +72,15 @@ class AWSCloudUtilitiesCLI:
             aws_region=region,
             aws_output_format=output_format,
             verbose=verbose,
-            debug=debug
+            debug=debug,
         )
-        
+
         # Set up logging
         self.config.setup_logging()
-        
+
         # Initialize AWS authentication
-        self.aws_auth = AWSAuth(
-            profile_name=self.config.aws_profile,
-            region_name=self.config.aws_region
-        )
-        
+        self.aws_auth = AWSAuth(profile_name=self.config.aws_profile, region_name=self.config.aws_region)
+
         if verbose or debug:
             console.print(f"[dim]Configuration: {self.config}[/dim]")
             console.print(f"[dim]AWS Auth: {self.aws_auth}[/dim]")
@@ -94,52 +91,28 @@ cli_instance = AWSCloudUtilitiesCLI()
 
 
 @click.group()
-@click.option(
-    "--profile",
-    help="AWS profile to use",
-    envvar="AWS_PROFILE"
-)
-@click.option(
-    "--region", 
-    help="AWS region",
-    envvar="AWS_DEFAULT_REGION"
-)
-@click.option(
-    "--output",
-    type=click.Choice(["table", "json", "yaml", "csv"]),
-    default="table",
-    help="Output format"
-)
-@click.option(
-    "--verbose",
-    is_flag=True,
-    help="Enable verbose output"
-)
-@click.option(
-    "--debug",
-    is_flag=True, 
-    help="Enable debug mode"
-)
-@click.option(
-    "--config",
-    help="Configuration file path"
-)
+@click.option("--profile", help="AWS profile to use", envvar="AWS_PROFILE")
+@click.option("--region", help="AWS region", envvar="AWS_DEFAULT_REGION")
+@click.option("--output", type=click.Choice(["table", "json", "yaml", "csv"]), default="table", help="Output format")
+@click.option("--verbose", is_flag=True, help="Enable verbose output")
+@click.option("--debug", is_flag=True, help="Enable debug mode")
+@click.option("--config", help="Configuration file path")
 @click.version_option(version="2.0.0", prog_name="aws-cloud-utilities")
 @click.pass_context
 def main(
     ctx: click.Context,
     profile: Optional[str],
-    region: Optional[str], 
+    region: Optional[str],
     output: str,
     verbose: bool,
     debug: bool,
-    config: Optional[str]
+    config: Optional[str],
 ) -> None:
     """AWS Cloud Utilities - A unified toolkit for AWS operations.
-    
+
     This tool provides a comprehensive set of utilities for managing AWS resources,
     optimizing costs, auditing security, and performing various administrative tasks.
-    
+
     Examples:
         aws-cloud-utilities account info
         aws-cloud-utilities inventory resources --region us-east-1
@@ -148,19 +121,14 @@ def main(
     """
     try:
         cli_instance.setup(
-            profile=profile,
-            region=region,
-            output_format=output,
-            verbose=verbose,
-            debug=debug,
-            config_file=config
+            profile=profile, region=region, output_format=output, verbose=verbose, debug=debug, config_file=config
         )
-        
+
         # Store in context for subcommands
         ctx.ensure_object(dict)
         ctx.obj["config"] = cli_instance.config
         ctx.obj["aws_auth"] = cli_instance.aws_auth
-        
+
     except ConfigurationError as e:
         console.print(f"[red]Configuration Error:[/red] {e}")
         sys.exit(1)
@@ -202,11 +170,11 @@ def info(ctx: click.Context) -> None:
     """Show AWS Cloud Utilities information."""
     config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
-    
+
     try:
         # Get account information
         caller_identity = aws_auth.get_caller_identity()
-        
+
         info_data = {
             "Version": "2.0.0",
             "AWS Account ID": caller_identity.get("Account", "Unknown"),
@@ -217,14 +185,11 @@ def info(ctx: click.Context) -> None:
             "Workers": config.workers,
             "Log Level": config.log_level,
         }
-        
+
         from .core.utils import print_output
-        print_output(
-            info_data,
-            output_format=config.aws_output_format,
-            title="AWS Cloud Utilities Information"
-        )
-        
+
+        print_output(info_data, output_format=config.aws_output_format, title="AWS Cloud Utilities Information")
+
     except Exception as e:
         console.print(f"[red]Error getting information:[/red] {e}")
         sys.exit(1)
@@ -237,47 +202,35 @@ def configure(ctx: click.Context) -> None:
     console.print("[bold blue]AWS Cloud Utilities Configuration[/bold blue]")
     console.print("\nThis will create a configuration file in your home directory.")
     console.print("You can also set these values using environment variables.\n")
-    
+
     # Get current config
     config: Config = ctx.obj["config"]
-    
+
     # Prompt for settings
-    profile = click.prompt(
-        "AWS Profile", 
-        default=config.aws_profile or "default",
-        show_default=True
-    )
-    
-    region = click.prompt(
-        "Default AWS Region",
-        default=config.aws_region or "us-east-1", 
-        show_default=True
-    )
-    
+    profile = click.prompt("AWS Profile", default=config.aws_profile or "default", show_default=True)
+
+    region = click.prompt("Default AWS Region", default=config.aws_region or "us-east-1", show_default=True)
+
     output_format = click.prompt(
         "Output Format",
         type=click.Choice(["table", "json", "yaml", "csv"]),
         default=config.aws_output_format,
-        show_default=True
+        show_default=True,
     )
-    
-    workers = click.prompt(
-        "Number of Workers",
-        type=int,
-        default=config.workers,
-        show_default=True
-    )
-    
+
+    workers = click.prompt("Number of Workers", type=int, default=config.workers, show_default=True)
+
     # Create config file
     from pathlib import Path
+
     config_file = Path.home() / ".aws-cloud-utilities.env"
-    
+
     with open(config_file, "w") as f:
         f.write(f"AWS_PROFILE={profile}\n")
         f.write(f"AWS_DEFAULT_REGION={region}\n")
         f.write(f"AWS_OUTPUT_FORMAT={output_format}\n")
         f.write(f"WORKERS={workers}\n")
-    
+
     console.print(f"\n[green]Configuration saved to:[/green] {config_file}")
     console.print("\n[dim]You can edit this file directly or use environment variables to override settings.[/dim]")
 

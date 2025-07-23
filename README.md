@@ -46,6 +46,9 @@ aws-cloud-utilities inventory resources
 # Find cheapest GPU spot instances
 aws-cloud-utilities costops gpu-spots --instance-type p3.2xlarge
 
+# Troubleshoot MySQL RDS connection issues
+aws-cloud-utilities rds troubleshoot-mysql my-mysql-db
+
 # Aggregate CloudWatch logs
 aws-cloud-utilities logs aggregate --log-group /aws/lambda/my-function
 
@@ -67,6 +70,7 @@ aws-cloud-utilities [GLOBAL-OPTIONS] <service> <operation> [OPTIONS]
 - **costops**: Cost optimization and pricing tools
 - **inventory**: Resource discovery and inventory
 - **logs**: CloudWatch logs management
+- **rds**: RDS management and troubleshooting
 - **security**: Security auditing and tools
 - **s3**: S3 bucket operations
 - **iam**: IAM management and auditing

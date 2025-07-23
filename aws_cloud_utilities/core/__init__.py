@@ -7,10 +7,10 @@ from .exceptions import AWSCloudUtilitiesError, ConfigurationError, AWSError
 
 __all__ = [
     "Config",
-    "AWSAuth", 
+    "AWSAuth",
     "get_aws_account_id",
     "get_all_regions",
     "AWSCloudUtilitiesError",
-    "ConfigurationError", 
+    "ConfigurationError",
     "AWSError",
 ]

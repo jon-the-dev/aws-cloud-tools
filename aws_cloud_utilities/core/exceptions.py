@@ -3,10 +3,10 @@
 
 class AWSCloudUtilitiesError(Exception):
     """Base exception for AWS Cloud Utilities."""
-    
+
     def __init__(self, message: str, error_code: str = None):
         """Initialize exception.
-        
+
         Args:
             message: Error message
             error_code: Optional error code
@@ -14,7 +14,7 @@ class AWSCloudUtilitiesError(Exception):
         super().__init__(message)
         self.message = message
         self.error_code = error_code
-    
+
     def __str__(self) -> str:
         """String representation of the exception."""
         if self.error_code:
@@ -24,10 +24,10 @@ class AWSCloudUtilitiesError(Exception):
 
 class ConfigurationError(AWSCloudUtilitiesError):
     """Exception raised for configuration errors."""
-    
+
     def __init__(self, message: str):
         """Initialize configuration error.
-        
+
         Args:
             message: Error message
         """
@@ -36,10 +36,10 @@ class ConfigurationError(AWSCloudUtilitiesError):
 
 class AWSError(AWSCloudUtilitiesError):
     """Exception raised for AWS-related errors."""
-    
+
     def __init__(self, message: str, aws_error_code: str = None):
         """Initialize AWS error.
-        
+
         Args:
             message: Error message
             aws_error_code: AWS error code
@@ -50,10 +50,10 @@ class AWSError(AWSCloudUtilitiesError):
 
 class AuthenticationError(AWSError):
     """Exception raised for AWS authentication errors."""
-    
+
     def __init__(self, message: str):
         """Initialize authentication error.
-        
+
         Args:
             message: Error message
         """
@@ -62,10 +62,10 @@ class AuthenticationError(AWSError):
 
 class ValidationError(AWSCloudUtilitiesError):
     """Exception raised for validation errors."""
-    
+
     def __init__(self, message: str, field: str = None):
         """Initialize validation error.
-        
+
         Args:
             message: Error message
             field: Field that failed validation
@@ -76,10 +76,10 @@ class ValidationError(AWSCloudUtilitiesError):
 
 class ResourceNotFoundError(AWSError):
     """Exception raised when AWS resource is not found."""
-    
+
     def __init__(self, resource_type: str, resource_id: str):
         """Initialize resource not found error.
-        
+
         Args:
             resource_type: Type of resource
             resource_id: Resource identifier
@@ -92,10 +92,10 @@ class ResourceNotFoundError(AWSError):
 
 class PermissionError(AWSError):
     """Exception raised for AWS permission errors."""
-    
+
     def __init__(self, action: str, resource: str = None):
         """Initialize permission error.
-        
+
         Args:
             action: Action that was denied
             resource: Resource that was accessed
@@ -111,10 +111,10 @@ class PermissionError(AWSError):
 
 class RateLimitError(AWSError):
     """Exception raised when AWS API rate limit is exceeded."""
-    
+
     def __init__(self, service: str, retry_after: int = None):
         """Initialize rate limit error.
-        
+
         Args:
             service: AWS service that was rate limited
             retry_after: Seconds to wait before retrying
@@ -129,10 +129,10 @@ class RateLimitError(AWSError):
 
 class TimeoutError(AWSCloudUtilitiesError):
     """Exception raised for timeout errors."""
-    
+
     def __init__(self, operation: str, timeout: int):
         """Initialize timeout error.
-        
+
         Args:
             operation: Operation that timed out
             timeout: Timeout value in seconds
@@ -145,10 +145,10 @@ class TimeoutError(AWSCloudUtilitiesError):
 
 class DataError(AWSCloudUtilitiesError):
     """Exception raised for data processing errors."""
-    
+
     def __init__(self, message: str, data_type: str = None):
         """Initialize data error.
-        
+
         Args:
             message: Error message
             data_type: Type of data that caused the error

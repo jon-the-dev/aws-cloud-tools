@@ -140,8 +140,12 @@ if ! python3 -c "import aws_cloud_utilities" 2>/dev/null; then
     pip install -e .
 fi
 
-# Build test command
-TEST_CMD="python3 test_comprehensive.py"
+# Check if pipenv is available and use it, otherwise fall back to python3
+if command -v pipenv &> /dev/null; then
+    TEST_CMD="pipenv run python test_comprehensive.py"
+else
+    TEST_CMD="python3 test_comprehensive.py"
+fi
 
 # Add region
 TEST_CMD="$TEST_CMD --region $REGION"
