@@ -8,6 +8,7 @@ boto3 = "*"
 streamlit = "*"
 pandas = "*"
 python-dotenv = "*"
+mkdocstrings = {extras = ["python"], version = "*"}
 
 [dev-packages]
 
