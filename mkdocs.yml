@@ -104,13 +104,21 @@ nav:
   - Commands:
     - Overview: commands/index.md
     - Account Management: commands/account.md
+    - AWS Config: commands/awsconfig.md
+    - Bedrock AI/ML: commands/bedrock.md
     - Billing & Cost: commands/billing.md
+    - CloudFormation: commands/cloudformation.md
+    - CloudFront CDN: commands/cloudfront.md
     - Cost Optimization: commands/costops.md
+    - Container Registry (ECR): commands/ecr.md
     - IAM Management: commands/iam.md
     - Inventory & Discovery: commands/inventory.md
     - Log Management: commands/logs.md
+    - Networking: commands/networking.md
     - RDS Management: commands/rds.md
+    - S3 Storage: commands/s3.md
     - Security Tools: commands/security.md
+    - Step Functions: commands/stepfunctions.md
     - Support Tools: commands/support.md
     - WAF Management: commands/waf.md
   - Examples:
