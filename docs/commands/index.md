@@ -37,9 +37,17 @@ These options work with all commands:
 
 | Service | Description | Key Commands |
 |---------|-------------|--------------|
+| [**awsconfig**](awsconfig.md) | AWS Config service operations | `download`, `show-rules`, `compliance-status` |
+| [**bedrock**](bedrock.md) | Amazon Bedrock AI/ML operations | `list-models`, `model-details`, `list-custom-models` |
+| [**cloudformation**](cloudformation.md) | CloudFormation stack management | `backup`, `list-stacks`, `stack-details` |
+| [**cloudfront**](cloudfront.md) | CloudFront distribution management | `list-distributions`, `distribution-details`, `update-logging` |
+| [**ecr**](ecr.md) | Elastic Container Registry operations | `list-repositories`, `list-images`, `copy-image` |
 | [**iam**](iam.md) | IAM management and auditing | `analyze`, `unused-permissions`, `policy-simulator` |
 | [**logs**](logs.md) | CloudWatch logs management | `groups`, `aggregate`, `search`, `export` |
+| [**networking**](networking.md) | Network utilities and analysis | `ip-ranges`, `ip-summary` |
 | [**rds**](rds.md) | RDS database management | `instances`, `troubleshoot`, `performance` |
+| [**s3**](s3.md) | S3 bucket operations | `list-buckets`, `bucket-details`, `download`, `nuke-bucket` |
+| [**stepfunctions**](stepfunctions.md) | Step Functions workflow management | `list`, `describe`, `execute`, `list-executions` |
 | [**support**](support.md) | AWS support tools | `check-level`, `cases`, `services` |
 | [**waf**](waf.md) | Web Application Firewall management | `rules`, `analysis`, `security` |
 

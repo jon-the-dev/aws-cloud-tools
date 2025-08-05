@@ -58,6 +58,7 @@ aws-cloud-utilities [GLOBAL-OPTIONS] <service> <operation> [OPTIONS]
 | **account** | Account information and management |
 | **awsconfig** | AWS Config service operations |
 | **bedrock** | Amazon Bedrock AI/ML operations |
+| **billing** | Billing and cost analysis |
 | **cloudformation** | CloudFormation stack management |
 | **cloudfront** | CloudFront distribution management |
 | **costops** | Cost optimization and pricing tools |
@@ -66,10 +67,12 @@ aws-cloud-utilities [GLOBAL-OPTIONS] <service> <operation> [OPTIONS]
 | **inventory** | Resource discovery and inventory |
 | **logs** | CloudWatch logs management |
 | **networking** | Network utilities and analysis |
+| **rds** | RDS database management and troubleshooting |
 | **s3** | S3 bucket operations |
 | **security** | Security auditing and tools |
 | **stepfunctions** | Step Functions workflow management |
 | **support** | AWS support tools |
+| **waf** | Web Application Firewall management |
 
 ### Global Options
 
