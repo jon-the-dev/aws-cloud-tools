@@ -3,6 +3,8 @@
 import logging
 import json
 import os
+import csv
+import statistics
 import requests
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
@@ -302,6 +304,151 @@ def usage_metrics(
 
     except Exception as e:
         console.print(f"[red]Error getting usage metrics:[/red] {e}")
+        raise click.Abort()
+
+
+@costops_group.command(name="spot-pricing")
+@click.option("--region", help="Specific AWS region to collect spot pricing for")
+@click.option("--all-regions", is_flag=True, help="Collect spot pricing data from all regions")
+@click.option("--time-range", type=int, default=24, help="Time range in hours for spot pricing data (default: 24)")
+@click.option("--instance-types", help="Comma-separated list of instance types to include (e.g., m5.large,c5.xlarge)")
+@click.option("--product-description", default="Linux/UNIX", help="Product description filter (default: Linux/UNIX)")
+@click.option("--output-dir", help="Output directory for spot pricing data (default: ./spot_pricing_<timestamp>)")
+@click.option("--output-file", help="Output file for consolidated spot pricing analysis (supports .json, .yaml, .csv)")
+@click.pass_context
+def spot_pricing(
+    ctx: click.Context,
+    region: Optional[str],
+    all_regions: bool,
+    time_range: int,
+    instance_types: Optional[str],
+    product_description: str,
+    output_dir: Optional[str],
+    output_file: Optional[str],
+) -> None:
+    """Collect and analyze EC2 spot pricing data across regions."""
+    config: Config = ctx.obj["config"]
+    aws_auth: AWSAuth = ctx.obj["aws_auth"]
+
+    try:
+        # Determine regions to collect from
+        if all_regions:
+            target_regions = aws_auth.get_available_regions("ec2")
+        else:
+            target_regions = [region or config.aws_region or "us-east-1"]
+
+        # Parse instance types filter
+        instance_types_filter = None
+        if instance_types:
+            instance_types_filter = [it.strip() for it in instance_types.split(",")]
+
+        # Generate output directory if not provided
+        if not output_dir:
+            timestamp = get_timestamp()
+            output_dir = f"spot_pricing_{timestamp}"
+
+        output_path = Path(output_dir)
+        ensure_directory(output_path)
+
+        console.print(f"[blue]Collecting spot pricing data from {len(target_regions)} regions[/blue]")
+        console.print(f"[dim]Time range: Last {time_range} hours[/dim]")
+        console.print(f"[dim]Product description: {product_description}[/dim]")
+        console.print(f"[dim]Output directory: {output_path}[/dim]")
+        if instance_types_filter:
+            console.print(f"[dim]Instance types filter: {', '.join(instance_types_filter)}[/dim]")
+
+        # Collect spot pricing data
+        spot_results = _collect_spot_pricing(
+            aws_auth, target_regions, time_range, instance_types_filter, product_description, output_path, config.workers
+        )
+
+        # Display results summary
+        _display_spot_pricing_results(config, spot_results)
+
+        # Generate analysis if requested
+        if output_file:
+            console.print(f"[blue]Generating spot pricing analysis...[/blue]")
+            analysis_results = _analyze_spot_pricing_data(output_path)
+            
+            # Save analysis to file
+            analysis_output_path = Path(output_file)
+            file_format = analysis_output_path.suffix.lstrip(".") or "json"
+
+            # Add timestamp to filename
+            timestamp = get_timestamp()
+            stem = analysis_output_path.stem
+            new_filename = f"{stem}_{timestamp}{analysis_output_path.suffix}"
+            analysis_output_path = analysis_output_path.parent / new_filename
+
+            save_to_file(analysis_results, analysis_output_path, file_format)
+            console.print(f"[green]Spot pricing analysis saved to:[/green] {analysis_output_path}")
+
+        console.print(f"\n[green]✅ Spot pricing data collection completed![/green]")
+        console.print(f"[dim]Data saved to: {output_path}[/dim]")
+
+    except Exception as e:
+        console.print(f"[red]Error collecting spot pricing data:[/red] {e}")
+        raise click.Abort()
+
+
+@costops_group.command(name="spot-analysis")
+@click.argument("data_directory", type=click.Path(exists=True, file_okay=False, dir_okay=True))
+@click.option("--top-n", type=int, default=10, help="Number of top cheapest instances to show (default: 10)")
+@click.option("--estimate-period", type=int, default=30, help="Period in days for cost estimation (default: 30)")
+@click.option("--instance-type-filter", help="Filter results by instance type pattern (e.g., 'm5', 'c5.large')")
+@click.option("--region-filter", help="Filter results by region")
+@click.option("--output-file", help="Output file for analysis results (supports .json, .yaml, .csv)")
+@click.pass_context
+def spot_analysis(
+    ctx: click.Context,
+    data_directory: str,
+    top_n: int,
+    estimate_period: int,
+    instance_type_filter: Optional[str],
+    region_filter: Optional[str],
+    output_file: Optional[str],
+) -> None:
+    """Analyze previously collected spot pricing data to find cheapest options."""
+    config: Config = ctx.obj["config"]
+
+    try:
+        data_path = Path(data_directory)
+        
+        console.print(f"[blue]Analyzing spot pricing data from: {data_path}[/blue]")
+        console.print(f"[dim]Showing top {top_n} cheapest instances[/dim]")
+        console.print(f"[dim]Cost estimation period: {estimate_period} days[/dim]")
+        
+        if instance_type_filter:
+            console.print(f"[dim]Instance type filter: {instance_type_filter}[/dim]")
+        if region_filter:
+            console.print(f"[dim]Region filter: {region_filter}[/dim]")
+
+        # Analyze the spot pricing data
+        analysis_results = _analyze_spot_pricing_data(
+            data_path, top_n, estimate_period, instance_type_filter, region_filter
+        )
+
+        # Display analysis results
+        _display_spot_analysis_results(config, analysis_results, top_n, estimate_period)
+
+        # Save to file if requested
+        if output_file:
+            output_path = Path(output_file)
+            file_format = output_path.suffix.lstrip(".") or "json"
+
+            # Add timestamp to filename
+            timestamp = get_timestamp()
+            stem = output_path.stem
+            new_filename = f"{stem}_{timestamp}{output_path.suffix}"
+            output_path = output_path.parent / new_filename
+
+            save_to_file(analysis_results, output_path, file_format)
+            console.print(f"[green]Spot pricing analysis saved to:[/green] {output_path}")
+
+        console.print(f"\n[green]✅ Spot pricing analysis completed![/green]")
+
+    except Exception as e:
+        console.print(f"[red]Error analyzing spot pricing data:[/red] {e}")
         raise click.Abort()
 
 
@@ -1023,3 +1170,300 @@ def _human_readable_size(num_bytes: int) -> str:
             return f"{num_bytes:.2f} {unit}"
         num_bytes /= 1024
     return f"{num_bytes:.2f} PB"
+
+
+def _collect_spot_pricing(
+    aws_auth: AWSAuth,
+    regions: List[str],
+    time_range: int,
+    instance_types_filter: Optional[List[str]],
+    product_description: str,
+    output_path: Path,
+    max_workers: int,
+) -> Dict[str, Any]:
+    """Collect spot pricing data from multiple regions."""
+    
+    result = {
+        "regions_processed": 0,
+        "total_records": 0,
+        "files_created": 0,
+        "time_range_hours": time_range,
+        "product_description": product_description,
+        "instance_types_filter": instance_types_filter,
+        "regions": {},
+        "errors": [],
+    }
+
+    def collect_region_pricing(region: str) -> Tuple[str, Dict[str, Any]]:
+        """Collect spot pricing for a single region."""
+        region_result = {"region": region, "records": 0, "file_path": None, "errors": []}
+
+        try:
+            ec2_client = aws_auth.get_client("ec2", region_name=region)
+
+            # Calculate time range
+            end_time = datetime.utcnow()
+            start_time = end_time - timedelta(hours=time_range)
+
+            # Build request parameters
+            request_params = {
+                "StartTime": start_time,
+                "EndTime": end_time,
+                "ProductDescriptions": [product_description],
+            }
+
+            # Add instance types filter if specified
+            if instance_types_filter:
+                request_params["InstanceTypes"] = instance_types_filter
+
+            # Create output file for this region
+            output_filename = output_path / f"spot_prices_{region}.csv"
+            
+            with open(output_filename, mode="w", newline="", encoding="utf-8") as f:
+                csv_writer = csv.writer(f)
+                csv_writer.writerow(["Region", "InstanceType", "AvailabilityZone", "SpotPrice", "Timestamp"])
+
+                # Paginate through results
+                paginator = ec2_client.get_paginator("describe_spot_price_history")
+                
+                for page in paginator.paginate(**request_params):
+                    for item in page.get("SpotPriceHistory", []):
+                        csv_writer.writerow([
+                            region,
+                            item["InstanceType"],
+                            item["AvailabilityZone"],
+                            item["SpotPrice"],
+                            item["Timestamp"].isoformat(),
+                        ])
+                        region_result["records"] += 1
+
+            region_result["file_path"] = str(output_filename)
+
+        except Exception as e:
+            error_msg = f"Error collecting spot pricing for region {region}: {str(e)}"
+            region_result["errors"].append(error_msg)
+            logger.debug(error_msg)
+
+        return region, region_result
+
+    # Process regions in parallel
+    region_results = parallel_execute(
+        collect_region_pricing,
+        regions,
+        max_workers=max_workers,
+        show_progress=True,
+        description="Collecting spot pricing data",
+    )
+
+    # Compile results
+    for region, region_data in region_results:
+        result["regions"][region] = region_data
+        result["total_records"] += region_data["records"]
+        result["errors"].extend(region_data["errors"])
+        
+        if region_data["file_path"]:
+            result["files_created"] += 1
+        
+        if not region_data["errors"]:
+            result["regions_processed"] += 1
+
+    return result
+
+
+def _analyze_spot_pricing_data(
+    data_path: Path,
+    top_n: int = 10,
+    estimate_period: int = 30,
+    instance_type_filter: Optional[str] = None,
+    region_filter: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Analyze spot pricing data to find cheapest options."""
+    
+    result = {
+        "data_path": str(data_path),
+        "files_processed": 0,
+        "total_records": 0,
+        "filters": {
+            "instance_type": instance_type_filter,
+            "region": region_filter,
+        },
+        "top_n": top_n,
+        "estimate_period_days": estimate_period,
+        "cheapest_instances": [],
+        "price_statistics": {},
+        "errors": [],
+    }
+
+    try:
+        # Find all CSV files in the data directory
+        csv_files = list(data_path.glob("spot_prices_*.csv"))
+        
+        if not csv_files:
+            result["errors"].append("No spot pricing CSV files found in the specified directory")
+            return result
+
+        # Structure: {(region, instance_type, az): [list of spot prices]}
+        price_map = {}
+
+        for csv_file in csv_files:
+            try:
+                result["files_processed"] += 1
+                
+                with open(csv_file, mode="r", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    
+                    for row in reader:
+                        region = row["Region"]
+                        instance_type = row["InstanceType"]
+                        az = row["AvailabilityZone"]
+                        spot_price = float(row["SpotPrice"])
+                        
+                        # Apply filters
+                        if region_filter and region_filter not in region:
+                            continue
+                        if instance_type_filter and instance_type_filter not in instance_type:
+                            continue
+                        
+                        key = (region, instance_type, az)
+                        if key not in price_map:
+                            price_map[key] = []
+                        price_map[key].append(spot_price)
+                        result["total_records"] += 1
+
+            except Exception as e:
+                error_msg = f"Error processing file {csv_file}: {str(e)}"
+                result["errors"].append(error_msg)
+                logger.debug(error_msg)
+
+        # Compute statistics for each key
+        avg_prices = {}
+        for key, prices in price_map.items():
+            if prices:  # Ensure we have data
+                stats = {
+                    "average": statistics.mean(prices),
+                    "median": statistics.median(prices),
+                    "min": min(prices),
+                    "max": max(prices),
+                    "std_dev": statistics.stdev(prices) if len(prices) > 1 else 0.0,
+                    "sample_count": len(prices),
+                }
+                avg_prices[key] = stats["average"]
+                result["price_statistics"][f"{key[0]}_{key[1]}_{key[2]}"] = stats
+
+        # Sort by average spot price (ascending) and get top N cheapest
+        sorted_prices = sorted(avg_prices.items(), key=lambda x: x[1])
+
+        # Calculate cost estimates
+        hours_in_period = estimate_period * 24
+        
+        for (region, instance_type, az), avg_price in sorted_prices[:top_n]:
+            estimated_cost = avg_price * hours_in_period
+            stats = result["price_statistics"].get(f"{region}_{instance_type}_{az}", {})
+            
+            result["cheapest_instances"].append({
+                "rank": len(result["cheapest_instances"]) + 1,
+                "region": region,
+                "instance_type": instance_type,
+                "availability_zone": az,
+                "average_price_per_hour": avg_price,
+                "estimated_cost_period": estimated_cost,
+                "min_price": stats.get("min", 0.0),
+                "max_price": stats.get("max", 0.0),
+                "median_price": stats.get("median", 0.0),
+                "price_std_dev": stats.get("std_dev", 0.0),
+                "sample_count": stats.get("sample_count", 0),
+            })
+
+    except Exception as e:
+        result["errors"].append(f"Error analyzing spot pricing data: {str(e)}")
+
+    return result
+
+
+def _display_spot_pricing_results(config: Config, results: Dict[str, Any]) -> None:
+    """Display spot pricing data collection results."""
+    
+    # Summary
+    summary_display = {
+        "Regions Processed": f"{results['regions_processed']}/{len(results['regions'])}",
+        "Total Records Collected": f"{results['total_records']:,}",
+        "Files Created": results["files_created"],
+        "Time Range": f"{results['time_range_hours']} hours",
+        "Product Description": results["product_description"],
+        "Instance Types Filter": ", ".join(results["instance_types_filter"]) if results["instance_types_filter"] else "All types",
+        "Errors": len(results["errors"]),
+    }
+
+    print_output(summary_display, output_format=config.aws_output_format, title="Spot Pricing Data Collection Summary")
+
+    # Per-region breakdown
+    if results["regions"]:
+        region_data = []
+        for region, region_info in results["regions"].items():
+            region_data.append({
+                "Region": region,
+                "Records Collected": f"{region_info['records']:,}",
+                "Status": "✓ Success" if not region_info["errors"] else "✗ Error",
+                "File Created": "Yes" if region_info["file_path"] else "No",
+            })
+
+        # Sort by records collected (descending)
+        region_data.sort(key=lambda x: int(x["Records Collected"].replace(",", "")), reverse=True)
+
+        print_output(region_data, output_format=config.aws_output_format, title="Per-Region Collection Results")
+
+    # Show errors if any
+    if results["errors"]:
+        console.print("\n[red]Errors encountered:[/red]")
+        for error in results["errors"][:5]:
+            console.print(f"  • {error}")
+        if len(results["errors"]) > 5:
+            console.print(f"  ... and {len(results['errors']) - 5} more errors")
+
+
+def _display_spot_analysis_results(config: Config, results: Dict[str, Any], top_n: int, estimate_period: int) -> None:
+    """Display spot pricing analysis results."""
+    
+    # Summary
+    summary_display = {
+        "Data Directory": results["data_path"],
+        "Files Processed": results["files_processed"],
+        "Total Records Analyzed": f"{results['total_records']:,}",
+        "Instance Type Filter": results["filters"]["instance_type"] or "None",
+        "Region Filter": results["filters"]["region"] or "None",
+        "Cost Estimation Period": f"{estimate_period} days ({estimate_period * 24} hours)",
+        "Top Instances Shown": top_n,
+        "Errors": len(results["errors"]),
+    }
+
+    print_output(summary_display, output_format=config.aws_output_format, title="Spot Pricing Analysis Summary")
+
+    # Top cheapest instances
+    if results["cheapest_instances"]:
+        cheapest_data = []
+        for instance in results["cheapest_instances"]:
+            cheapest_data.append({
+                "Rank": instance["rank"],
+                "Region": instance["region"],
+                "Instance Type": instance["instance_type"],
+                "Availability Zone": instance["availability_zone"],
+                "Avg Price/Hour": f"${instance['average_price_per_hour']:.6f}",
+                f"{estimate_period}d Estimate": f"${instance['estimated_cost_period']:.2f}",
+                "Min Price": f"${instance['min_price']:.6f}",
+                "Max Price": f"${instance['max_price']:.6f}",
+                "Samples": instance["sample_count"],
+            })
+
+        print_output(
+            cheapest_data,
+            output_format=config.aws_output_format,
+            title=f"Top {top_n} Cheapest Spot Instance Options",
+        )
+
+    # Show errors if any
+    if results["errors"]:
+        console.print("\n[red]Errors encountered:[/red]")
+        for error in results["errors"][:5]:
+            console.print(f"  • {error}")
+        if len(results["errors"]) > 5:
+            console.print(f"  ... and {len(results['errors']) - 5} more errors")
