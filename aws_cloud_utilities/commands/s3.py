@@ -292,6 +292,74 @@ def nuke_bucket(
         raise click.Abort()
 
 
+@s3_group.command(name="bucket-details")
+@click.argument("bucket_name")
+@click.option("--region", help="AWS region where the bucket is located (default: auto-detect)")
+@click.option("--include-policies", is_flag=True, help="Include bucket policies and ACLs")
+@click.option("--include-lifecycle", is_flag=True, help="Include lifecycle configuration")
+@click.option("--include-cors", is_flag=True, help="Include CORS configuration")
+@click.option("--include-website", is_flag=True, help="Include website configuration")
+@click.option("--include-logging", is_flag=True, help="Include logging configuration")
+@click.option("--include-all", is_flag=True, help="Include all available bucket details")
+@click.option("--output-file", help="Output file for bucket details (supports .json, .yaml)")
+@click.pass_context
+def bucket_details(
+    ctx: click.Context,
+    bucket_name: str,
+    region: Optional[str],
+    include_policies: bool,
+    include_lifecycle: bool,
+    include_cors: bool,
+    include_website: bool,
+    include_logging: bool,
+    include_all: bool,
+    output_file: Optional[str],
+) -> None:
+    """Get comprehensive details about an S3 bucket including configuration and settings."""
+    config: Config = ctx.obj["config"]
+    aws_auth: AWSAuth = ctx.obj["aws_auth"]
+    
+    try:
+        console.print(f"[blue]Getting details for S3 bucket: {bucket_name}[/blue]")
+        
+        # Get comprehensive bucket details
+        bucket_info = _get_bucket_details(
+            aws_auth,
+            bucket_name,
+            region,
+            include_all or include_policies,
+            include_all or include_lifecycle,
+            include_all or include_cors,
+            include_all or include_website,
+            include_all or include_logging,
+        )
+        
+        # Display results
+        print_output(
+            bucket_info,
+            output_format=config.aws_output_format,
+            title=f"S3 Bucket Details: {bucket_name}"
+        )
+        
+        # Save to file if requested
+        if output_file:
+            output_path = Path(output_file)
+            file_format = output_path.suffix.lstrip(".") or "json"
+            
+            # Add timestamp to filename
+            timestamp = get_timestamp()
+            stem = output_path.stem
+            new_filename = f"{stem}_{timestamp}{output_path.suffix}"
+            output_path = output_path.parent / new_filename
+            
+            save_to_file(bucket_info, output_path, file_format)
+            console.print(f"[green]Bucket details saved to:[/green] {output_path}")
+    
+    except Exception as e:
+        console.print(f"[red]Error getting bucket details:[/red] {e}")
+        raise click.Abort()
+
+
 @s3_group.command(name="delete-versions")
 @click.argument("bucket_name")
 @click.option("--prefix", help="Prefix filter for S3 objects")
@@ -1160,3 +1228,239 @@ def _initiate_restore_requests(
     """Initiate restore requests for objects."""
     # Simplified implementation
     return {"restore_requests_made": 0}
+
+
+def _get_bucket_details(
+    aws_auth: AWSAuth,
+    bucket_name: str,
+    region: Optional[str],
+    include_policies: bool,
+    include_lifecycle: bool,
+    include_cors: bool,
+    include_website: bool,
+    include_logging: bool,
+) -> Dict[str, Any]:
+    """Get comprehensive details about an S3 bucket."""
+    
+    # If region not provided, auto-detect it
+    if not region:
+        s3_client = aws_auth.get_client("s3")
+        try:
+            location_response = s3_client.get_bucket_location(Bucket=bucket_name)
+            region = location_response.get("LocationConstraint")
+            if region is None:
+                region = "us-east-1"
+        except Exception as e:
+            logger.error(f"Error getting bucket location: {e}")
+            region = "us-east-1"  # Default fallback
+    
+    # Get S3 client for the specific region
+    s3_client = aws_auth.get_client("s3", region_name=region)
+    
+    # Basic bucket information
+    bucket_details = {
+        "Bucket Name": bucket_name,
+        "Region": region,
+        "ARN": f"arn:aws:s3:::{bucket_name}",
+    }
+    
+    try:
+        # Get bucket creation date
+        buckets_response = s3_client.list_buckets()
+        for bucket in buckets_response.get("Buckets", []):
+            if bucket["Name"] == bucket_name:
+                bucket_details["Creation Date"] = bucket["CreationDate"].strftime("%Y-%m-%d %H:%M:%S UTC")
+                break
+    except Exception as e:
+        logger.debug(f"Error getting bucket creation date: {e}")
+        bucket_details["Creation Date"] = "Unknown"
+    
+    # Get versioning status
+    try:
+        versioning_response = s3_client.get_bucket_versioning(Bucket=bucket_name)
+        bucket_details["Versioning"] = versioning_response.get("Status", "Disabled")
+        if versioning_response.get("MFADelete"):
+            bucket_details["MFA Delete"] = versioning_response["MFADelete"]
+    except Exception as e:
+        logger.debug(f"Error getting versioning status: {e}")
+        bucket_details["Versioning"] = "Error"
+    
+    # Get encryption configuration
+    try:
+        encryption_response = s3_client.get_bucket_encryption(Bucket=bucket_name)
+        rules = encryption_response.get("ServerSideEncryptionConfiguration", {}).get("Rules", [])
+        if rules:
+            encryption_info = []
+            for rule in rules:
+                sse_config = rule.get("ApplyServerSideEncryptionByDefault", {})
+                encryption_info.append({
+                    "Algorithm": sse_config.get("SSEAlgorithm", "Unknown"),
+                    "KMS Key ID": sse_config.get("KMSMasterKeyID", "N/A"),
+                })
+            bucket_details["Encryption"] = encryption_info
+        else:
+            bucket_details["Encryption"] = "Disabled"
+    except s3_client.exceptions.ServerSideEncryptionConfigurationNotFoundError:
+        bucket_details["Encryption"] = "Disabled"
+    except Exception as e:
+        logger.debug(f"Error getting encryption configuration: {e}")
+        bucket_details["Encryption"] = "Error"
+    
+    # Get public access block configuration
+    try:
+        public_access_response = s3_client.get_public_access_block(Bucket=bucket_name)
+        pab_config = public_access_response.get("PublicAccessBlockConfiguration", {})
+        bucket_details["Public Access Block"] = {
+            "Block Public ACLs": pab_config.get("BlockPublicAcls", False),
+            "Ignore Public ACLs": pab_config.get("IgnorePublicAcls", False),
+            "Block Public Policy": pab_config.get("BlockPublicPolicy", False),
+            "Restrict Public Buckets": pab_config.get("RestrictPublicBuckets", False),
+        }
+    except s3_client.exceptions.NoSuchPublicAccessBlockConfiguration:
+        bucket_details["Public Access Block"] = "Not Configured"
+    except Exception as e:
+        logger.debug(f"Error getting public access block: {e}")
+        bucket_details["Public Access Block"] = "Error"
+    
+    # Get bucket size and object count from CloudWatch
+    try:
+        size_info = _get_bucket_size(aws_auth, bucket_name)
+        bucket_details["Size"] = size_info["size_display"]
+        bucket_details["Object Count"] = size_info["object_count"]
+    except Exception as e:
+        logger.debug(f"Error getting bucket size: {e}")
+        bucket_details["Size"] = "N/A"
+        bucket_details["Object Count"] = "N/A"
+    
+    # Get tags
+    try:
+        tags_response = s3_client.get_bucket_tagging(Bucket=bucket_name)
+        tags = tags_response.get("TagSet", [])
+        if tags:
+            bucket_details["Tags"] = {tag["Key"]: tag["Value"] for tag in tags}
+        else:
+            bucket_details["Tags"] = "None"
+    except s3_client.exceptions.NoSuchTagSet:
+        bucket_details["Tags"] = "None"
+    except Exception as e:
+        logger.debug(f"Error getting tags: {e}")
+        bucket_details["Tags"] = "Error"
+    
+    # Include bucket policy if requested
+    if include_policies:
+        try:
+            policy_response = s3_client.get_bucket_policy(Bucket=bucket_name)
+            bucket_details["Bucket Policy"] = json.loads(policy_response["Policy"])
+        except s3_client.exceptions.NoSuchBucketPolicy:
+            bucket_details["Bucket Policy"] = "None"
+        except Exception as e:
+            logger.debug(f"Error getting bucket policy: {e}")
+            bucket_details["Bucket Policy"] = "Error"
+        
+        # Get bucket ACL
+        try:
+            acl_response = s3_client.get_bucket_acl(Bucket=bucket_name)
+            grants = acl_response.get("Grants", [])
+            if grants:
+                acl_info = []
+                for grant in grants:
+                    grantee = grant.get("Grantee", {})
+                    acl_info.append({
+                        "Grantee Type": grantee.get("Type", "Unknown"),
+                        "Grantee": grantee.get("DisplayName", grantee.get("URI", grantee.get("ID", "Unknown"))),
+                        "Permission": grant.get("Permission", "Unknown"),
+                    })
+                bucket_details["ACL"] = acl_info
+            bucket_details["Owner"] = acl_response.get("Owner", {}).get("DisplayName", "Unknown")
+        except Exception as e:
+            logger.debug(f"Error getting bucket ACL: {e}")
+            bucket_details["ACL"] = "Error"
+    
+    # Include lifecycle configuration if requested
+    if include_lifecycle:
+        try:
+            lifecycle_response = s3_client.get_bucket_lifecycle_configuration(Bucket=bucket_name)
+            rules = lifecycle_response.get("Rules", [])
+            if rules:
+                lifecycle_info = []
+                for rule in rules:
+                    rule_info = {
+                        "ID": rule.get("ID", "Unknown"),
+                        "Status": rule.get("Status", "Unknown"),
+                        "Prefix": rule.get("Prefix", rule.get("Filter", {}).get("Prefix", "All objects")),
+                    }
+                    
+                    # Add transitions
+                    if "Transitions" in rule:
+                        rule_info["Transitions"] = [
+                            {
+                                "Days": t.get("Days", t.get("Date", "Unknown")),
+                                "Storage Class": t.get("StorageClass", "Unknown"),
+                            }
+                            for t in rule["Transitions"]
+                        ]
+                    
+                    # Add expiration
+                    if "Expiration" in rule:
+                        rule_info["Expiration"] = rule["Expiration"].get("Days", rule["Expiration"].get("Date", "Unknown"))
+                    
+                    lifecycle_info.append(rule_info)
+                bucket_details["Lifecycle Rules"] = lifecycle_info
+            else:
+                bucket_details["Lifecycle Rules"] = "None"
+        except s3_client.exceptions.NoSuchLifecycleConfiguration:
+            bucket_details["Lifecycle Rules"] = "None"
+        except Exception as e:
+            logger.debug(f"Error getting lifecycle configuration: {e}")
+            bucket_details["Lifecycle Rules"] = "Error"
+    
+    # Include CORS configuration if requested
+    if include_cors:
+        try:
+            cors_response = s3_client.get_bucket_cors(Bucket=bucket_name)
+            cors_rules = cors_response.get("CORSRules", [])
+            if cors_rules:
+                bucket_details["CORS Rules"] = cors_rules
+            else:
+                bucket_details["CORS Rules"] = "None"
+        except s3_client.exceptions.NoSuchCORSConfiguration:
+            bucket_details["CORS Rules"] = "None"
+        except Exception as e:
+            logger.debug(f"Error getting CORS configuration: {e}")
+            bucket_details["CORS Rules"] = "Error"
+    
+    # Include website configuration if requested
+    if include_website:
+        try:
+            website_response = s3_client.get_bucket_website(Bucket=bucket_name)
+            website_config = {
+                "Index Document": website_response.get("IndexDocument", {}).get("Suffix", "None"),
+                "Error Document": website_response.get("ErrorDocument", {}).get("Key", "None"),
+            }
+            if website_response.get("RedirectAllRequestsTo"):
+                website_config["Redirect All Requests To"] = website_response["RedirectAllRequestsTo"]
+            bucket_details["Website Configuration"] = website_config
+            bucket_details["Website URL"] = f"http://{bucket_name}.s3-website-{region}.amazonaws.com"
+        except s3_client.exceptions.NoSuchWebsiteConfiguration:
+            bucket_details["Website Configuration"] = "Disabled"
+        except Exception as e:
+            logger.debug(f"Error getting website configuration: {e}")
+            bucket_details["Website Configuration"] = "Error"
+    
+    # Include logging configuration if requested
+    if include_logging:
+        try:
+            logging_response = s3_client.get_bucket_logging(Bucket=bucket_name)
+            logging_config = logging_response.get("LoggingEnabled")
+            if logging_config:
+                bucket_details["Logging"] = {
+                    "Target Bucket": logging_config.get("TargetBucket", "Unknown"),
+                    "Target Prefix": logging_config.get("TargetPrefix", "None"),
+                }
+            else:
+                bucket_details["Logging"] = "Disabled"
+        except Exception as e:
+            logger.debug(f"Error getting logging configuration: {e}")
+            bucket_details["Logging"] = "Error"
+    
+    return bucket_details
