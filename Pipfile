@@ -9,6 +9,8 @@ streamlit = "*"
 pandas = "*"
 python-dotenv = "*"
 mkdocstrings = {extras = ["python"], version = "*"}
+twine = "*"
+build = "*"
 
 [dev-packages]
 

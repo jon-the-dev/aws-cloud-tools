@@ -79,7 +79,9 @@ class AWSCloudUtilitiesCLI:
         self.config.setup_logging()
 
         # Initialize AWS authentication
-        self.aws_auth = AWSAuth(profile_name=self.config.aws_profile, region_name=self.config.aws_region)
+        self.aws_auth = AWSAuth(
+            profile_name=self.config.aws_profile, region_name=self.config.aws_region
+        )
 
         if verbose or debug:
             console.print(f"[dim]Configuration: {self.config}[/dim]")
@@ -93,11 +95,16 @@ cli_instance = AWSCloudUtilitiesCLI()
 @click.group()
 @click.option("--profile", help="AWS profile to use", envvar="AWS_PROFILE")
 @click.option("--region", help="AWS region", envvar="AWS_DEFAULT_REGION")
-@click.option("--output", type=click.Choice(["table", "json", "yaml", "csv"]), default="table", help="Output format")
+@click.option(
+    "--output",
+    type=click.Choice(["table", "json", "yaml", "csv"]),
+    default="table",
+    help="Output format",
+)
 @click.option("--verbose", is_flag=True, help="Enable verbose output")
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option("--config", help="Configuration file path")
-@click.version_option(version="2.0.0", prog_name="aws-cloud-utilities")
+@click.version_option(version="2.1.1", prog_name="aws-cloud-utilities")
 @click.pass_context
 def main(
     ctx: click.Context,
@@ -121,7 +128,12 @@ def main(
     """
     try:
         cli_instance.setup(
-            profile=profile, region=region, output_format=output, verbose=verbose, debug=debug, config_file=config
+            profile=profile,
+            region=region,
+            output_format=output,
+            verbose=verbose,
+            debug=debug,
+            config_file=config,
         )
 
         # Store in context for subcommands
@@ -188,7 +200,11 @@ def info(ctx: click.Context) -> None:
 
         from .core.utils import print_output
 
-        print_output(info_data, output_format=config.aws_output_format, title="AWS Cloud Utilities Information")
+        print_output(
+            info_data,
+            output_format=config.aws_output_format,
+            title="AWS Cloud Utilities Information",
+        )
 
     except Exception as e:
         console.print(f"[red]Error getting information:[/red] {e}")
@@ -207,9 +223,15 @@ def configure(ctx: click.Context) -> None:
     config: Config = ctx.obj["config"]
 
     # Prompt for settings
-    profile = click.prompt("AWS Profile", default=config.aws_profile or "default", show_default=True)
+    profile = click.prompt(
+        "AWS Profile", default=config.aws_profile or "default", show_default=True
+    )
 
-    region = click.prompt("Default AWS Region", default=config.aws_region or "us-east-1", show_default=True)
+    region = click.prompt(
+        "Default AWS Region",
+        default=config.aws_region or "us-east-1",
+        show_default=True,
+    )
 
     output_format = click.prompt(
         "Output Format",
@@ -218,7 +240,9 @@ def configure(ctx: click.Context) -> None:
         show_default=True,
     )
 
-    workers = click.prompt("Number of Workers", type=int, default=config.workers, show_default=True)
+    workers = click.prompt(
+        "Number of Workers", type=int, default=config.workers, show_default=True
+    )
 
     # Create config file
     from pathlib import Path
@@ -232,7 +256,9 @@ def configure(ctx: click.Context) -> None:
         f.write(f"WORKERS={workers}\n")
 
     console.print(f"\n[green]Configuration saved to:[/green] {config_file}")
-    console.print("\n[dim]You can edit this file directly or use environment variables to override settings.[/dim]")
+    console.print(
+        "\n[dim]You can edit this file directly or use environment variables to override settings.[/dim]"
+    )
 
 
 def handle_exception(exc_type, exc_value, exc_traceback):
