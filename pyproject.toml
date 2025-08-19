@@ -4,16 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aws-cloud-utilities"
-version = "2.0.0"
+version = "2.1.0"
 description = "A unified command-line toolkit for AWS operations with enhanced functionality"
 readme = "README.md"
-license = {text = "MIT"}
-authors = [
-    {name = "Jon", email = "jon@zer0day.net"}
-]
-maintainers = [
-    {name = "Jon", email = "jon@zer0day.net"}
-]
+license = { text = "MIT" }
+authors = [{ name = "Jon", email = "jon@zer0day.net" }]
+maintainers = [{ name = "Jon", email = "jon@zer0day.net" }]
 keywords = ["aws", "cloud", "cli", "utilities", "devops"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -32,6 +28,7 @@ dependencies = [
     "click>=8.0.0",
     "python-dotenv>=1.0.0",
     "pydantic>=2.0.0",
+    "PyYAML>=6.0.0",
     "rich>=13.0.0",
     "tabulate>=0.9.0",
     "requests>=2.31.0",
@@ -113,11 +110,7 @@ python_functions = ["test_*"]
 
 [tool.coverage.run]
 source = ["aws_cloud_utilities"]
-omit = [
-    "*/tests/*",
-    "*/test_*",
-    "*/__pycache__/*",
-]
+omit = ["*/tests/*", "*/test_*", "*/__pycache__/*"]
 
 [tool.coverage.report]
 exclude_lines = [
