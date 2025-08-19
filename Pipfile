@@ -11,6 +11,7 @@ python-dotenv = "*"
 mkdocstrings = {extras = ["python"], version = "*"}
 twine = "*"
 build = "*"
+black = "*"
 
 [dev-packages]
 

@@ -25,11 +25,21 @@ def networking_group():
 
 
 @networking_group.command(name="ip-ranges")
-@click.option("--output-file", help="Output file for AWS IP ranges (supports .json, .yaml, .csv)")
-@click.option("--filter-service", help="Filter IP ranges by AWS service (e.g., EC2, S3, CLOUDFRONT)")
-@click.option("--filter-region", help="Filter IP ranges by AWS region (e.g., us-east-1, eu-west-1)")
+@click.option(
+    "--output-file", help="Output file for AWS IP ranges (supports .json, .yaml, .csv)"
+)
+@click.option(
+    "--filter-service",
+    help="Filter IP ranges by AWS service (e.g., EC2, S3, CLOUDFRONT)",
+)
+@click.option(
+    "--filter-region",
+    help="Filter IP ranges by AWS region (e.g., us-east-1, eu-west-1)",
+)
 @click.option("--ipv6", is_flag=True, help="Include IPv6 ranges in addition to IPv4")
-@click.option("--show-summary", is_flag=True, help="Show summary statistics of IP ranges")
+@click.option(
+    "--show-summary", is_flag=True, help="Show summary statistics of IP ranges"
+)
 @click.pass_context
 def ip_ranges(
     ctx: click.Context,
@@ -52,20 +62,28 @@ def ip_ranges(
             console.print("[red]Failed to download AWS IP ranges[/red]")
             raise click.Abort()
 
-        console.print(f"[green]✓[/green] Downloaded IP ranges (sync token: {ip_data.get('syncToken', 'unknown')})")
+        console.print(
+            f"[green]✓[/green] Downloaded IP ranges (sync token: {ip_data.get('syncToken', 'unknown')})"
+        )
 
         # Filter data if requested
         filtered_data = _filter_ip_ranges(ip_data, filter_service, filter_region, ipv6)
 
         # Display summary if requested
         if show_summary:
-            _display_ip_ranges_summary(config, filtered_data, filter_service, filter_region)
+            _display_ip_ranges_summary(
+                config, filtered_data, filter_service, filter_region
+            )
 
         # Format for display
         display_data = _format_ip_ranges_for_display(filtered_data, ipv6)
 
         if display_data:
-            print_output(display_data, output_format=config.aws_output_format, title="AWS IP Ranges")
+            print_output(
+                display_data,
+                output_format=config.aws_output_format,
+                title="AWS IP Ranges",
+            )
         else:
             console.print("[yellow]No IP ranges match the specified filters[/yellow]")
 
@@ -93,7 +111,9 @@ def ip_ranges(
 @click.option("--service", help="Show summary for specific service only")
 @click.option("--region", help="Show summary for specific region only")
 @click.pass_context
-def ip_summary(ctx: click.Context, service: Optional[str], region: Optional[str]) -> None:
+def ip_summary(
+    ctx: click.Context, service: Optional[str], region: Optional[str]
+) -> None:
     """Show summary statistics of AWS IP ranges."""
     config: Config = ctx.obj["config"]
 
@@ -111,15 +131,25 @@ def ip_summary(ctx: click.Context, service: Optional[str], region: Optional[str]
         summary_data = _generate_ip_ranges_summary(ip_data, service, region)
 
         # Display summary
-        print_output(summary_data["overview"], output_format=config.aws_output_format, title="AWS IP Ranges Overview")
+        print_output(
+            summary_data["overview"],
+            output_format=config.aws_output_format,
+            title="AWS IP Ranges Overview",
+        )
 
         if summary_data["by_service"]:
             print_output(
-                summary_data["by_service"], output_format=config.aws_output_format, title="IP Ranges by Service"
+                summary_data["by_service"],
+                output_format=config.aws_output_format,
+                title="IP Ranges by Service",
             )
 
         if summary_data["by_region"]:
-            print_output(summary_data["by_region"], output_format=config.aws_output_format, title="IP Ranges by Region")
+            print_output(
+                summary_data["by_region"],
+                output_format=config.aws_output_format,
+                title="IP Ranges by Region",
+            )
 
     except Exception as e:
         console.print(f"[red]Error analyzing AWS IP ranges:[/red] {e}")
@@ -129,7 +159,9 @@ def ip_summary(ctx: click.Context, service: Optional[str], region: Optional[str]
 def _download_aws_ip_ranges() -> Optional[Dict[str, Any]]:
     """Download AWS IP ranges from the official endpoint."""
     try:
-        response = requests.get("https://ip-ranges.amazonaws.com/ip-ranges.json", timeout=30)
+        response = requests.get(
+            "https://ip-ranges.amazonaws.com/ip-ranges.json", timeout=30
+        )
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
@@ -141,7 +173,10 @@ def _download_aws_ip_ranges() -> Optional[Dict[str, Any]]:
 
 
 def _filter_ip_ranges(
-    ip_data: Dict[str, Any], filter_service: Optional[str], filter_region: Optional[str], include_ipv6: bool
+    ip_data: Dict[str, Any],
+    filter_service: Optional[str],
+    filter_region: Optional[str],
+    include_ipv6: bool,
 ) -> Dict[str, Any]:
     """Filter IP ranges based on service, region, and IP version."""
     filtered_data = {
@@ -155,7 +190,10 @@ def _filter_ip_ranges(
     for prefix in ip_data.get("prefixes", []):
         include = True
 
-        if filter_service and prefix.get("service", "").upper() != filter_service.upper():
+        if (
+            filter_service
+            and prefix.get("service", "").upper() != filter_service.upper()
+        ):
             include = False
 
         if filter_region and prefix.get("region") != filter_region:
@@ -169,7 +207,10 @@ def _filter_ip_ranges(
         for prefix in ip_data.get("ipv6_prefixes", []):
             include = True
 
-            if filter_service and prefix.get("service", "").upper() != filter_service.upper():
+            if (
+                filter_service
+                and prefix.get("service", "").upper() != filter_service.upper()
+            ):
                 include = False
 
             if filter_region and prefix.get("region") != filter_region:
@@ -181,7 +222,9 @@ def _filter_ip_ranges(
     return filtered_data
 
 
-def _format_ip_ranges_for_display(ip_data: Dict[str, Any], include_ipv6: bool) -> List[Dict[str, str]]:
+def _format_ip_ranges_for_display(
+    ip_data: Dict[str, Any], include_ipv6: bool
+) -> List[Dict[str, str]]:
     """Format IP ranges data for display."""
     display_data = []
 
@@ -214,7 +257,10 @@ def _format_ip_ranges_for_display(ip_data: Dict[str, Any], include_ipv6: bool) -
 
 
 def _display_ip_ranges_summary(
-    config: Config, ip_data: Dict[str, Any], filter_service: Optional[str], filter_region: Optional[str]
+    config: Config,
+    ip_data: Dict[str, Any],
+    filter_service: Optional[str],
+    filter_region: Optional[str],
 ) -> None:
     """Display summary of IP ranges."""
     ipv4_count = len(ip_data.get("prefixes", []))
@@ -230,7 +276,9 @@ def _display_ip_ranges_summary(
         "Region Filter": filter_region or "None",
     }
 
-    print_output(summary, output_format=config.aws_output_format, title="AWS IP Ranges Summary")
+    print_output(
+        summary, output_format=config.aws_output_format, title="AWS IP Ranges Summary"
+    )
 
 
 def _generate_ip_ranges_summary(
@@ -274,12 +322,16 @@ def _generate_ip_ranges_summary(
 
     by_service = [
         {"Service": service, "IP Ranges": count}
-        for service, count in sorted(service_counts.items(), key=lambda x: x[1], reverse=True)
+        for service, count in sorted(
+            service_counts.items(), key=lambda x: x[1], reverse=True
+        )
     ]
 
     by_region = [
         {"Region": region, "IP Ranges": count}
-        for region, count in sorted(region_counts.items(), key=lambda x: x[1], reverse=True)
+        for region, count in sorted(
+            region_counts.items(), key=lambda x: x[1], reverse=True
+        )
     ]
 
     return {"overview": overview, "by_service": by_service, "by_region": by_region}

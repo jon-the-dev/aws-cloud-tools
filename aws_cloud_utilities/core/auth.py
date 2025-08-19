@@ -38,7 +38,9 @@ class AWSAuth:
 
         # Boto3 configuration
         self._boto_config = BotoConfig(
-            connect_timeout=timeout, read_timeout=timeout, retries={"max_attempts": max_retries}
+            connect_timeout=timeout,
+            read_timeout=timeout,
+            retries={"max_attempts": max_retries},
         )
 
     @property
@@ -47,7 +49,9 @@ class AWSAuth:
         if self._session is None:
             try:
                 if self.profile_name:
-                    self._session = boto3.Session(profile_name=self.profile_name, region_name=self.region_name)
+                    self._session = boto3.Session(
+                        profile_name=self.profile_name, region_name=self.region_name
+                    )
                 else:
                     self._session = boto3.Session(region_name=self.region_name)
 
@@ -55,7 +59,9 @@ class AWSAuth:
                 self._test_credentials()
 
             except ProfileNotFound as e:
-                raise ConfigurationError(f"AWS profile '{self.profile_name}' not found: {e}")
+                raise ConfigurationError(
+                    f"AWS profile '{self.profile_name}' not found: {e}"
+                )
             except NoCredentialsError as e:
                 raise ConfigurationError(f"AWS credentials not found: {e}")
             except Exception as e:
@@ -85,7 +91,9 @@ class AWSAuth:
         """
         try:
             return self.session.client(
-                service_name, region_name=region_name or self.region_name, config=self._boto_config
+                service_name,
+                region_name=region_name or self.region_name,
+                config=self._boto_config,
             )
         except Exception as e:
             raise AWSError(f"Failed to create {service_name} client: {e}")
@@ -102,7 +110,9 @@ class AWSAuth:
         """
         try:
             return self.session.resource(
-                service_name, region_name=region_name or self.region_name, config=self._boto_config
+                service_name,
+                region_name=region_name or self.region_name,
+                config=self._boto_config,
             )
         except Exception as e:
             raise AWSError(f"Failed to create {service_name} resource: {e}")

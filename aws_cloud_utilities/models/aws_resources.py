@@ -30,7 +30,9 @@ class EC2Instance(AWSResource):
     private_ip: Optional[str] = Field(None, description="Private IP address")
     vpc_id: Optional[str] = Field(None, description="VPC ID")
     subnet_id: Optional[str] = Field(None, description="Subnet ID")
-    security_groups: List[str] = Field(default_factory=list, description="Security group IDs")
+    security_groups: List[str] = Field(
+        default_factory=list, description="Security group IDs"
+    )
     key_name: Optional[str] = Field(None, description="Key pair name")
     launch_time: Optional[datetime] = Field(None, description="Launch time")
 
@@ -97,10 +99,16 @@ class IAMRole(AWSResource):
 
     role_name: str = Field(..., description="Role name")
     path: str = Field("/", description="Role path")
-    assume_role_policy: Dict[str, Any] = Field(..., description="Assume role policy document")
+    assume_role_policy: Dict[str, Any] = Field(
+        ..., description="Assume role policy document"
+    )
     max_session_duration: int = Field(3600, description="Maximum session duration")
-    attached_policies: List[str] = Field(default_factory=list, description="Attached policy ARNs")
-    inline_policies: List[str] = Field(default_factory=list, description="Inline policy names")
+    attached_policies: List[str] = Field(
+        default_factory=list, description="Attached policy ARNs"
+    )
+    inline_policies: List[str] = Field(
+        default_factory=list, description="Inline policy names"
+    )
 
     @property
     def resource_type(self) -> str:
@@ -115,11 +123,21 @@ class BedrockModel(AWSResource):
     model_name: str = Field(..., description="Model name")
     provider_name: str = Field(..., description="Model provider")
     model_arn: Optional[str] = Field(None, description="Model ARN")
-    input_modalities: List[str] = Field(default_factory=list, description="Input modalities")
-    output_modalities: List[str] = Field(default_factory=list, description="Output modalities")
-    response_streaming_supported: bool = Field(False, description="Response streaming support")
-    customizations_supported: List[str] = Field(default_factory=list, description="Customization types")
-    inference_types_supported: List[str] = Field(default_factory=list, description="Inference types")
+    input_modalities: List[str] = Field(
+        default_factory=list, description="Input modalities"
+    )
+    output_modalities: List[str] = Field(
+        default_factory=list, description="Output modalities"
+    )
+    response_streaming_supported: bool = Field(
+        False, description="Response streaming support"
+    )
+    customizations_supported: List[str] = Field(
+        default_factory=list, description="Customization types"
+    )
+    inference_types_supported: List[str] = Field(
+        default_factory=list, description="Inference types"
+    )
 
     @property
     def resource_type(self) -> str:
@@ -148,12 +166,20 @@ class IAMRole(AWSResource):
 
     role_name: str = Field(..., description="Role name")
     path: str = Field("/", description="Role path")
-    assume_role_policy: Dict[str, Any] = Field(..., description="Assume role policy document")
+    assume_role_policy: Dict[str, Any] = Field(
+        ..., description="Assume role policy document"
+    )
     max_session_duration: int = Field(3600, description="Maximum session duration")
-    attached_policies: List[str] = Field(default_factory=list, description="Attached policy ARNs")
-    inline_policies: List[str] = Field(default_factory=list, description="Inline policy names")
+    attached_policies: List[str] = Field(
+        default_factory=list, description="Attached policy ARNs"
+    )
+    inline_policies: List[str] = Field(
+        default_factory=list, description="Inline policy names"
+    )
     description: Optional[str] = Field(None, description="Role description")
-    permissions_boundary: Optional[str] = Field(None, description="Permissions boundary ARN")
+    permissions_boundary: Optional[str] = Field(
+        None, description="Permissions boundary ARN"
+    )
 
     @property
     def resource_type(self) -> str:
@@ -170,10 +196,14 @@ class IAMPolicy(AWSResource):
     policy_document: Dict[str, Any] = Field(..., description="Policy document")
     default_version_id: str = Field(..., description="Default version ID")
     attachment_count: int = Field(0, description="Number of entities attached to")
-    permissions_boundary_usage_count: int = Field(0, description="Permissions boundary usage count")
+    permissions_boundary_usage_count: int = Field(
+        0, description="Permissions boundary usage count"
+    )
     is_attachable: bool = Field(True, description="Whether policy is attachable")
     description: Optional[str] = Field(None, description="Policy description")
-    is_aws_managed: bool = Field(False, description="Whether this is an AWS managed policy")
+    is_aws_managed: bool = Field(
+        False, description="Whether this is an AWS managed policy"
+    )
 
     @property
     def resource_type(self) -> str:
@@ -188,11 +218,19 @@ class IAMUser(AWSResource):
     path: str = Field("/", description="User path")
     user_id: str = Field(..., description="User ID")
     arn: str = Field(..., description="User ARN")
-    password_last_used: Optional[datetime] = Field(None, description="Password last used")
-    attached_policies: List[str] = Field(default_factory=list, description="Attached policy ARNs")
-    inline_policies: List[str] = Field(default_factory=list, description="Inline policy names")
+    password_last_used: Optional[datetime] = Field(
+        None, description="Password last used"
+    )
+    attached_policies: List[str] = Field(
+        default_factory=list, description="Attached policy ARNs"
+    )
+    inline_policies: List[str] = Field(
+        default_factory=list, description="Inline policy names"
+    )
     groups: List[str] = Field(default_factory=list, description="Group memberships")
-    permissions_boundary: Optional[str] = Field(None, description="Permissions boundary ARN")
+    permissions_boundary: Optional[str] = Field(
+        None, description="Permissions boundary ARN"
+    )
 
     @property
     def resource_type(self) -> str:
@@ -204,7 +242,9 @@ class CloudWatchLogGroup(AWSResource):
     """CloudWatch log group model."""
 
     log_group_name: str = Field(..., description="Log group name")
-    retention_in_days: Optional[int] = Field(None, description="Retention period in days")
+    retention_in_days: Optional[int] = Field(
+        None, description="Retention period in days"
+    )
     stored_bytes: Optional[int] = Field(None, description="Stored bytes")
     metric_filter_count: int = Field(0, description="Number of metric filters")
 

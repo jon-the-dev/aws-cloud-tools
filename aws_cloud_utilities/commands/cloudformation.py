@@ -7,7 +7,13 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 import click
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TaskProgressColumn,
+)
 
 from ..core.config import Config
 from ..core.auth import AWSAuth
@@ -32,9 +38,12 @@ def cloudformation_group():
 
 
 @cloudformation_group.command(name="backup")
-@click.option("--regions", help="Comma-separated list of regions to backup (default: all regions)")
 @click.option(
-    "--output-dir", help="Directory to save CloudFormation backups (default: ./cfn_backup_<account_id>_<timestamp>)"
+    "--regions", help="Comma-separated list of regions to backup (default: all regions)"
+)
+@click.option(
+    "--output-dir",
+    help="Directory to save CloudFormation backups (default: ./cfn_backup_<account_id>_<timestamp>)",
 )
 @click.option(
     "--stack-status",
@@ -42,10 +51,22 @@ def cloudformation_group():
     default=["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"],
     help="Stack statuses to include in backup (can be specified multiple times)",
 )
-@click.option("--parallel-regions", type=int, help="Number of regions to process in parallel (default: from config)")
-@click.option("--parallel-stacks", type=int, default=2, help="Number of stacks to process in parallel per region")
 @click.option(
-    "--format", type=click.Choice(["json", "yaml"]), default="json", help="Output format for templates and parameters"
+    "--parallel-regions",
+    type=int,
+    help="Number of regions to process in parallel (default: from config)",
+)
+@click.option(
+    "--parallel-stacks",
+    type=int,
+    default=2,
+    help="Number of stacks to process in parallel per region",
+)
+@click.option(
+    "--format",
+    type=click.Choice(["json", "yaml"]),
+    default="json",
+    help="Output format for templates and parameters",
 )
 @click.pass_context
 def backup(
@@ -72,7 +93,9 @@ def backup(
         output_path = Path(output_dir)
         ensure_directory(output_path)
 
-        console.print(f"[blue]Starting CloudFormation backup for account {account_id}[/blue]")
+        console.print(
+            f"[blue]Starting CloudFormation backup for account {account_id}[/blue]"
+        )
         console.print(f"[dim]Output directory: {output_path.absolute()}[/dim]")
 
         # Determine regions to scan
@@ -81,7 +104,9 @@ def backup(
         else:
             target_regions = aws_auth.get_available_regions("cloudformation")
 
-        console.print(f"[dim]Backing up CloudFormation stacks across {len(target_regions)} regions[/dim]")
+        console.print(
+            f"[dim]Backing up CloudFormation stacks across {len(target_regions)} regions[/dim]"
+        )
 
         # Set up parallel processing
         max_workers = parallel_regions or config.workers
@@ -102,7 +127,14 @@ def backup(
 
         # Execute CloudFormation backup
         _execute_cloudformation_backup(
-            aws_auth, target_regions, output_path, stack_status, max_workers, parallel_stacks, backup_summary, format
+            aws_auth,
+            target_regions,
+            output_path,
+            stack_status,
+            max_workers,
+            parallel_stacks,
+            backup_summary,
+            format,
         )
 
         # Save backup summary
@@ -112,7 +144,9 @@ def backup(
         # Display summary
         _display_cloudformation_summary(config, backup_summary, output_path)
 
-        console.print(f"\n[green]✅ CloudFormation backup completed successfully![/green]")
+        console.print(
+            f"\n[green]✅ CloudFormation backup completed successfully![/green]"
+        )
         console.print(f"[dim]Files saved to: {output_path.absolute()}[/dim]")
 
     except Exception as e:
@@ -121,11 +155,22 @@ def backup(
 
 
 @cloudformation_group.command(name="list-stacks")
-@click.option("--region", help="AWS region to list stacks from (default: current region)")
-@click.option("--stack-status", multiple=True, help="Filter by stack status (can be specified multiple times)")
+@click.option(
+    "--region", help="AWS region to list stacks from (default: current region)"
+)
+@click.option(
+    "--stack-status",
+    multiple=True,
+    help="Filter by stack status (can be specified multiple times)",
+)
 @click.option("--all-regions", is_flag=True, help="List stacks from all regions")
 @click.pass_context
-def list_stacks(ctx: click.Context, region: Optional[str], stack_status: List[str], all_regions: bool) -> None:
+def list_stacks(
+    ctx: click.Context,
+    region: Optional[str],
+    stack_status: List[str],
+    all_regions: bool,
+) -> None:
     """List CloudFormation stacks with details."""
     config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
@@ -139,7 +184,9 @@ def list_stacks(ctx: click.Context, region: Optional[str], stack_status: List[st
         all_stacks = []
 
         for target_region in target_regions:
-            cfn_client = aws_auth.get_client("cloudformation", region_name=target_region)
+            cfn_client = aws_auth.get_client(
+                "cloudformation", region_name=target_region
+            )
 
             try:
                 paginator = cfn_client.get_paginator("describe_stacks")
@@ -147,7 +194,10 @@ def list_stacks(ctx: click.Context, region: Optional[str], stack_status: List[st
                 for page in paginator.paginate():
                     for stack in page.get("Stacks", []):
                         # Filter by status if specified
-                        if stack_status and stack.get("StackStatus") not in stack_status:
+                        if (
+                            stack_status
+                            and stack.get("StackStatus") not in stack_status
+                        ):
                             continue
 
                         all_stacks.append(
@@ -156,12 +206,16 @@ def list_stacks(ctx: click.Context, region: Optional[str], stack_status: List[st
                                 "Region": target_region,
                                 "Status": stack.get("StackStatus", ""),
                                 "Created": (
-                                    stack.get("CreationTime", "").strftime("%Y-%m-%d %H:%M")
+                                    stack.get("CreationTime", "").strftime(
+                                        "%Y-%m-%d %H:%M"
+                                    )
                                     if stack.get("CreationTime")
                                     else ""
                                 ),
                                 "Updated": (
-                                    stack.get("LastUpdatedTime", "").strftime("%Y-%m-%d %H:%M")
+                                    stack.get("LastUpdatedTime", "").strftime(
+                                        "%Y-%m-%d %H:%M"
+                                    )
                                     if stack.get("LastUpdatedTime")
                                     else ""
                                 ),
@@ -194,7 +248,9 @@ def list_stacks(ctx: click.Context, region: Optional[str], stack_status: List[st
 
 @cloudformation_group.command(name="stack-details")
 @click.argument("stack_name")
-@click.option("--region", help="AWS region where the stack is located (default: current region)")
+@click.option(
+    "--region", help="AWS region where the stack is located (default: current region)"
+)
 @click.option("--show-template", is_flag=True, help="Show the stack template")
 @click.option("--show-parameters", is_flag=True, help="Show stack parameters")
 @click.option("--show-outputs", is_flag=True, help="Show stack outputs")
@@ -221,14 +277,18 @@ def stack_details(
             stacks = response.get("Stacks", [])
 
             if not stacks:
-                console.print(f"[red]Stack '{stack_name}' not found in region {target_region}[/red]")
+                console.print(
+                    f"[red]Stack '{stack_name}' not found in region {target_region}[/red]"
+                )
                 raise click.Abort()
 
             stack = stacks[0]
 
         except cfn_client.exceptions.ClientError as e:
             if "does not exist" in str(e):
-                console.print(f"[red]Stack '{stack_name}' not found in region {target_region}[/red]")
+                console.print(
+                    f"[red]Stack '{stack_name}' not found in region {target_region}[/red]"
+                )
             else:
                 console.print(f"[red]Error retrieving stack details:[/red] {e}")
             raise click.Abort()
@@ -238,28 +298,45 @@ def stack_details(
             "Stack Name": stack.get("StackName", ""),
             "Region": target_region,
             "Status": stack.get("StackStatus", ""),
-            "Created": stack.get("CreationTime", "").strftime("%Y-%m-%d %H:%M:%S") if stack.get("CreationTime") else "",
+            "Created": (
+                stack.get("CreationTime", "").strftime("%Y-%m-%d %H:%M:%S")
+                if stack.get("CreationTime")
+                else ""
+            ),
             "Updated": (
-                stack.get("LastUpdatedTime", "").strftime("%Y-%m-%d %H:%M:%S") if stack.get("LastUpdatedTime") else ""
+                stack.get("LastUpdatedTime", "").strftime("%Y-%m-%d %H:%M:%S")
+                if stack.get("LastUpdatedTime")
+                else ""
             ),
             "Description": stack.get("Description", "Not set"),
             "Parameters Count": len(stack.get("Parameters", [])),
             "Outputs Count": len(stack.get("Outputs", [])),
             "Capabilities": ", ".join(stack.get("Capabilities", [])),
-            "Rollback Configuration": "Enabled" if stack.get("RollbackConfiguration") else "Disabled",
+            "Rollback Configuration": (
+                "Enabled" if stack.get("RollbackConfiguration") else "Disabled"
+            ),
         }
 
         print_output(
-            stack_info, output_format=config.aws_output_format, title=f"CloudFormation Stack Details: {stack_name}"
+            stack_info,
+            output_format=config.aws_output_format,
+            title=f"CloudFormation Stack Details: {stack_name}",
         )
 
         # Show parameters if requested
         if show_parameters and stack.get("Parameters"):
             params_data = [
-                {"Parameter Key": param.get("ParameterKey", ""), "Parameter Value": param.get("ParameterValue", "")}
+                {
+                    "Parameter Key": param.get("ParameterKey", ""),
+                    "Parameter Value": param.get("ParameterValue", ""),
+                }
                 for param in stack.get("Parameters", [])
             ]
-            print_output(params_data, output_format=config.aws_output_format, title="Stack Parameters")
+            print_output(
+                params_data,
+                output_format=config.aws_output_format,
+                title="Stack Parameters",
+            )
 
         # Show outputs if requested
         if show_outputs and stack.get("Outputs"):
@@ -271,7 +348,11 @@ def stack_details(
                 }
                 for output in stack.get("Outputs", [])
             ]
-            print_output(outputs_data, output_format=config.aws_output_format, title="Stack Outputs")
+            print_output(
+                outputs_data,
+                output_format=config.aws_output_format,
+                title="Stack Outputs",
+            )
 
         # Show template if requested
         if show_template:
@@ -348,13 +429,19 @@ def _execute_cloudformation_backup(
 
                     # Check if backup already exists
                     parameters = stack.get("Parameters", [])
-                    if template_file.exists() and (not parameters or params_file.exists()):
-                        logger.debug(f"Stack {stack_name} in region {region} already backed up")
+                    if template_file.exists() and (
+                        not parameters or params_file.exists()
+                    ):
+                        logger.debug(
+                            f"Stack {stack_name} in region {region} already backed up"
+                        )
                         return True, bool(parameters)
 
                     # Get stack template
                     try:
-                        template_response = cfn_client.get_template(StackName=stack_name)
+                        template_response = cfn_client.get_template(
+                            StackName=stack_name
+                        )
                         template_body = template_response.get("TemplateBody", "")
 
                         if template_body:
@@ -370,7 +457,8 @@ def _execute_cloudformation_backup(
                     if parameters:
                         try:
                             params_dict = {
-                                param.get("ParameterKey"): param.get("ParameterValue") for param in parameters
+                                param.get("ParameterKey"): param.get("ParameterValue")
+                                for param in parameters
                             }
 
                             save_to_file(params_dict, params_file, format)
@@ -378,7 +466,9 @@ def _execute_cloudformation_backup(
                             logger.debug(f"Parameters saved for stack {stack_name}")
 
                         except Exception as e:
-                            region_errors.append(f"Parameters for {stack_name}: {str(e)}")
+                            region_errors.append(
+                                f"Parameters for {stack_name}: {str(e)}"
+                            )
 
                     return template_saved, parameters_saved
 
@@ -388,7 +478,10 @@ def _execute_cloudformation_backup(
 
             # Execute stack backups in parallel
             stack_results = parallel_execute(
-                backup_single_stack, stacks, max_workers=parallel_stacks, show_progress=False
+                backup_single_stack,
+                stacks,
+                max_workers=parallel_stacks,
+                show_progress=False,
             )
 
             # Count results
@@ -404,7 +497,9 @@ def _execute_cloudformation_backup(
         return region, stacks_count, templates_count, parameters_count, region_errors
 
     # Execute region backups in parallel
-    console.print(f"[dim]Processing {len(regions)} regions with {max_workers} workers[/dim]")
+    console.print(
+        f"[dim]Processing {len(regions)} regions with {max_workers} workers[/dim]"
+    )
 
     region_results = parallel_execute(
         backup_region,
@@ -415,7 +510,13 @@ def _execute_cloudformation_backup(
     )
 
     # Process results
-    for region, stacks_count, templates_count, parameters_count, region_errors in region_results:
+    for (
+        region,
+        stacks_count,
+        templates_count,
+        parameters_count,
+        region_errors,
+    ) in region_results:
         backup_summary["regions_summary"][region] = {
             "stacks": stacks_count,
             "templates": templates_count,
@@ -428,7 +529,9 @@ def _execute_cloudformation_backup(
         backup_summary["errors"].extend(region_errors)
 
 
-def _display_cloudformation_summary(config: Config, backup_summary: Dict[str, Any], output_path: Path) -> None:
+def _display_cloudformation_summary(
+    config: Config, backup_summary: Dict[str, Any], output_path: Path
+) -> None:
     """Display CloudFormation backup summary."""
 
     # Main summary
@@ -445,7 +548,11 @@ def _display_cloudformation_summary(config: Config, backup_summary: Dict[str, An
         "Errors": len(backup_summary["errors"]),
     }
 
-    print_output(summary_display, output_format=config.aws_output_format, title="CloudFormation Backup Summary")
+    print_output(
+        summary_display,
+        output_format=config.aws_output_format,
+        title="CloudFormation Backup Summary",
+    )
 
     # Regions summary
     if backup_summary["regions_summary"]:
@@ -462,12 +569,20 @@ def _display_cloudformation_summary(config: Config, backup_summary: Dict[str, An
                 )
 
         if regions_data:
-            print_output(regions_data, output_format=config.aws_output_format, title="Backup by Region")
+            print_output(
+                regions_data,
+                output_format=config.aws_output_format,
+                title="Backup by Region",
+            )
 
     # Show errors if any
     if backup_summary["errors"]:
-        console.print(f"\n[yellow]Errors encountered ({len(backup_summary['errors'])}):[/yellow]")
+        console.print(
+            f"\n[yellow]Errors encountered ({len(backup_summary['errors'])}):[/yellow]"
+        )
         for error in backup_summary["errors"][:10]:  # Show first 10 errors
             console.print(f"  [dim]• {error}[/dim]")
         if len(backup_summary["errors"]) > 10:
-            console.print(f"  [dim]... and {len(backup_summary['errors']) - 10} more errors[/dim]")
+            console.print(
+                f"  [dim]... and {len(backup_summary['errors']) - 10} more errors[/dim]"
+            )

@@ -64,7 +64,9 @@ class CURManager:
 
         except Exception as e:
             if "AccessDenied" in str(e):
-                raise AWSError("Access denied. Ensure you have 'cur:DescribeReportDefinitions' permission")
+                raise AWSError(
+                    "Access denied. Ensure you have 'cur:DescribeReportDefinitions' permission"
+                )
             raise AWSError(f"Failed to list CUR reports: {e}")
 
     def get_cur_details(self, report_name: str) -> Optional[Dict[str, Any]]:
@@ -117,20 +119,31 @@ class CURManager:
 
                 # Check for required CUR permissions
                 cur_service_principal = "billingreports.amazonaws.com"
-                required_actions = ["s3:GetBucketAcl", "s3:GetBucketPolicy", "s3:PutObject"]
+                required_actions = [
+                    "s3:GetBucketAcl",
+                    "s3:GetBucketPolicy",
+                    "s3:PutObject",
+                ]
 
                 for statement in policy.get("Statement", []):
                     principal = statement.get("Principal", {})
-                    if isinstance(principal, dict) and principal.get("Service") == cur_service_principal:
+                    if (
+                        isinstance(principal, dict)
+                        and principal.get("Service") == cur_service_principal
+                    ):
                         actions = statement.get("Action", [])
                         if isinstance(actions, str):
                             actions = [actions]
 
                         if all(action in actions for action in required_actions):
-                            self.logger.info(f"Bucket {bucket_name} has proper CUR permissions")
+                            self.logger.info(
+                                f"Bucket {bucket_name} has proper CUR permissions"
+                            )
                             return True
 
-                self.logger.warning(f"Bucket {bucket_name} may not have proper CUR permissions")
+                self.logger.warning(
+                    f"Bucket {bucket_name} may not have proper CUR permissions"
+                )
                 return False
 
             except Exception as e:
@@ -190,10 +203,14 @@ class CURManager:
         try:
             # Validate bucket permissions first
             if not self.validate_s3_bucket_policy(s3_bucket, s3_prefix):
-                self.logger.warning("S3 bucket may not have proper permissions. Creating bucket policy...")
+                self.logger.warning(
+                    "S3 bucket may not have proper permissions. Creating bucket policy..."
+                )
                 self._create_bucket_policy(s3_bucket, s3_prefix)
 
-            response = self.cur_client.put_report_definition(ReportDefinition=report_definition)
+            response = self.cur_client.put_report_definition(
+                ReportDefinition=report_definition
+            )
             self.logger.info(f"Successfully created CUR report: {report_name}")
             return True
 
@@ -243,7 +260,9 @@ class CURManager:
         }
 
         try:
-            self.s3_client.put_bucket_policy(Bucket=bucket_name, Policy=json.dumps(bucket_policy))
+            self.s3_client.put_bucket_policy(
+                Bucket=bucket_name, Policy=json.dumps(bucket_policy)
+            )
             self.logger.info(f"Successfully created bucket policy for {bucket_name}")
 
         except Exception as e:
@@ -279,7 +298,10 @@ def billing_group():
 
 
 @billing_group.command(name="cur-list")
-@click.option("--output-file", help="Output file for CUR reports list (supports .json, .yaml, .csv)")
+@click.option(
+    "--output-file",
+    help="Output file for CUR reports list (supports .json, .yaml, .csv)",
+)
 @click.pass_context
 def cur_list(ctx: click.Context, output_file: Optional[str]) -> None:
     """List all existing Cost and Usage Reports."""
@@ -293,7 +315,9 @@ def cur_list(ctx: click.Context, output_file: Optional[str]) -> None:
         reports = cur_manager.list_cur_reports()
 
         if not reports:
-            console.print("\n[yellow]No Cost and Usage Reports found in this account[/yellow]")
+            console.print(
+                "\n[yellow]No Cost and Usage Reports found in this account[/yellow]"
+            )
             console.print("[dim]Use 'billing cur-create' to set up CUR 2.0[/dim]")
             return
 
@@ -309,7 +333,9 @@ def cur_list(ctx: click.Context, output_file: Optional[str]) -> None:
                     "Format": report["Format"],
                     "Compression": report["Compression"],
                     "Versioning": report.get("ReportVersioning", "N/A"),
-                    "Schema Elements": ", ".join(report.get("AdditionalSchemaElements", [])),
+                    "Schema Elements": ", ".join(
+                        report.get("AdditionalSchemaElements", [])
+                    ),
                     "Artifacts": ", ".join(report.get("AdditionalArtifacts", [])),
                 }
             )
@@ -341,9 +367,13 @@ def cur_list(ctx: click.Context, output_file: Optional[str]) -> None:
 
 @billing_group.command(name="cur-details")
 @click.argument("report_name")
-@click.option("--output-file", help="Output file for CUR report details (supports .json, .yaml)")
+@click.option(
+    "--output-file", help="Output file for CUR report details (supports .json, .yaml)"
+)
 @click.pass_context
-def cur_details(ctx: click.Context, report_name: str, output_file: Optional[str]) -> None:
+def cur_details(
+    ctx: click.Context, report_name: str, output_file: Optional[str]
+) -> None:
     """Show detailed configuration for a specific CUR report."""
     config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
@@ -358,7 +388,11 @@ def cur_details(ctx: click.Context, report_name: str, output_file: Optional[str]
             console.print(f"[red]CUR report '{report_name}' not found[/red]")
             raise click.Abort()
 
-        print_output(report, output_format=config.aws_output_format, title=f"CUR Report Details: {report_name}")
+        print_output(
+            report,
+            output_format=config.aws_output_format,
+            title=f"CUR Report Details: {report_name}",
+        )
 
         # Save to file if requested
         if output_file:
@@ -382,7 +416,11 @@ def cur_details(ctx: click.Context, report_name: str, output_file: Optional[str]
 @billing_group.command(name="cur-create")
 @click.option("--report-name", required=True, help="Name for the new CUR report")
 @click.option("--bucket", required=True, help="S3 bucket name for CUR delivery")
-@click.option("--prefix", default="cur-reports", help="S3 prefix for CUR files (default: cur-reports)")
+@click.option(
+    "--prefix",
+    default="cur-reports",
+    help="S3 prefix for CUR files (default: cur-reports)",
+)
 @click.option(
     "--format",
     type=click.Choice(["textORcsv", "Parquet"]),
@@ -396,7 +434,10 @@ def cur_details(ctx: click.Context, report_name: str, output_file: Optional[str]
     help="Compression type (default: GZIP)",
 )
 @click.option(
-    "--schema-elements", multiple=True, default=["RESOURCES"], help="Additional schema elements (default: RESOURCES)"
+    "--schema-elements",
+    multiple=True,
+    default=["RESOURCES"],
+    help="Additional schema elements (default: RESOURCES)",
 )
 @click.pass_context
 def cur_create(
@@ -428,7 +469,9 @@ def cur_create(
         )
 
         if success:
-            console.print(f"\n[green]✅ Successfully created CUR report: {report_name}[/green]")
+            console.print(
+                f"\n[green]✅ Successfully created CUR report: {report_name}[/green]"
+            )
             console.print(f"[dim]📍 Delivery Location: s3://{bucket}/{prefix}[/dim]")
             console.print("[dim]⏳ Reports will be generated within 24 hours[/dim]")
         else:
@@ -451,7 +494,9 @@ def cur_delete(ctx: click.Context, report_name: str, confirm: bool) -> None:
 
     try:
         if not confirm:
-            if not click.confirm(f"Are you sure you want to delete CUR report '{report_name}'?"):
+            if not click.confirm(
+                f"Are you sure you want to delete CUR report '{report_name}'?"
+            ):
                 console.print("[yellow]Operation cancelled[/yellow]")
                 return
 
@@ -461,7 +506,9 @@ def cur_delete(ctx: click.Context, report_name: str, confirm: bool) -> None:
         success = cur_manager.delete_cur_report(report_name)
 
         if success:
-            console.print(f"\n[green]✅ Successfully deleted CUR report: {report_name}[/green]")
+            console.print(
+                f"\n[green]✅ Successfully deleted CUR report: {report_name}[/green]"
+            )
         else:
             console.print(f"\n[red]❌ Failed to delete CUR report: {report_name}[/red]")
             raise click.Abort()
@@ -489,10 +536,16 @@ def cur_validate_bucket(ctx: click.Context, bucket_name: str, prefix: str) -> No
         is_valid = cur_manager.validate_s3_bucket_policy(bucket_name, prefix)
 
         if is_valid:
-            console.print(f"\n[green]✅ Bucket {bucket_name} has proper CUR permissions[/green]")
+            console.print(
+                f"\n[green]✅ Bucket {bucket_name} has proper CUR permissions[/green]"
+            )
         else:
-            console.print(f"\n[yellow]⚠️  Bucket {bucket_name} may not have proper CUR permissions[/yellow]")
-            console.print("[dim]Use 'billing cur-create' to automatically configure bucket policy[/dim]")
+            console.print(
+                f"\n[yellow]⚠️  Bucket {bucket_name} may not have proper CUR permissions[/yellow]"
+            )
+            console.print(
+                "[dim]Use 'billing cur-create' to automatically configure bucket policy[/dim]"
+            )
 
     except Exception as e:
         console.print(f"[red]Error validating bucket permissions:[/red] {e}")

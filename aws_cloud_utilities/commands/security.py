@@ -8,7 +8,13 @@ from typing import Dict, Any, List, Optional, Tuple
 from collections import defaultdict
 import click
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TaskProgressColumn,
+)
 
 from ..core.config import Config
 from ..core.auth import AWSAuth
@@ -33,10 +39,23 @@ def security_group():
 
 
 @security_group.command(name="metrics")
-@click.option("--region", help="AWS region to collect metrics from (default: current region)")
-@click.option("--time-range", type=int, default=24, help="Time range in hours for metrics collection (default: 24)")
-@click.option("--services", help="Comma-separated list of services to include (waf,guardduty,securityhub)")
-@click.option("--output-file", help="Output file for security metrics (supports .json, .yaml, .csv)")
+@click.option(
+    "--region", help="AWS region to collect metrics from (default: current region)"
+)
+@click.option(
+    "--time-range",
+    type=int,
+    default=24,
+    help="Time range in hours for metrics collection (default: 24)",
+)
+@click.option(
+    "--services",
+    help="Comma-separated list of services to include (waf,guardduty,securityhub)",
+)
+@click.option(
+    "--output-file",
+    help="Output file for security metrics (supports .json, .yaml, .csv)",
+)
 @click.option("--all-regions", is_flag=True, help="Collect metrics from all regions")
 @click.pass_context
 def metrics(
@@ -80,7 +99,9 @@ def metrics(
         }
 
         # Collect metrics from all regions
-        all_metrics = _collect_security_metrics(aws_auth, target_regions, target_services, time_range, metrics_summary)
+        all_metrics = _collect_security_metrics(
+            aws_auth, target_regions, target_services, time_range, metrics_summary
+        )
 
         # Display results
         _display_security_metrics(config, all_metrics, metrics_summary)
@@ -107,10 +128,26 @@ def metrics(
 @security_group.command(name="create-certificate")
 @click.argument("domain")
 @click.option("--alt-names", help="Comma-separated list of alternative domain names")
-@click.option("--hosted-zone-id", help="Route53 hosted zone ID for validation (auto-detected if not provided)")
-@click.option("--region", default="us-east-1", help="AWS region for certificate (default: us-east-1 for CloudFront)")
-@click.option("--wait-for-validation", is_flag=True, help="Wait for certificate validation to complete")
-@click.option("--timeout", type=int, default=300, help="Timeout in seconds for validation wait (default: 300)")
+@click.option(
+    "--hosted-zone-id",
+    help="Route53 hosted zone ID for validation (auto-detected if not provided)",
+)
+@click.option(
+    "--region",
+    default="us-east-1",
+    help="AWS region for certificate (default: us-east-1 for CloudFront)",
+)
+@click.option(
+    "--wait-for-validation",
+    is_flag=True,
+    help="Wait for certificate validation to complete",
+)
+@click.option(
+    "--timeout",
+    type=int,
+    default=300,
+    help="Timeout in seconds for validation wait (default: 300)",
+)
 @click.pass_context
 def create_certificate(
     ctx: click.Context,
@@ -133,7 +170,9 @@ def create_certificate(
 
         console.print(f"[blue]Creating ACM certificate for domain: {domain}[/blue]")
         if alternative_names:
-            console.print(f"[dim]Alternative names: {', '.join(alternative_names)}[/dim]")
+            console.print(
+                f"[dim]Alternative names: {', '.join(alternative_names)}[/dim]"
+            )
 
         # Get ACM and Route53 clients
         acm_client = aws_auth.get_client("acm", region_name=region)
@@ -143,7 +182,9 @@ def create_certificate(
         if not hosted_zone_id:
             hosted_zone_id = _find_hosted_zone(route53_client, domain)
             if not hosted_zone_id:
-                console.print(f"[red]Could not find hosted zone for domain: {domain}[/red]")
+                console.print(
+                    f"[red]Could not find hosted zone for domain: {domain}[/red]"
+                )
                 raise click.Abort()
             console.print(f"[green]Found hosted zone:[/green] {hosted_zone_id}")
 
@@ -174,13 +215,21 @@ def create_certificate(
         cert_details = {
             "Certificate ARN": certificate_arn,
             "Domain": domain,
-            "Alternative Names": ", ".join(alternative_names) if alternative_names else "None",
+            "Alternative Names": (
+                ", ".join(alternative_names) if alternative_names else "None"
+            ),
             "Region": region,
             "Hosted Zone ID": hosted_zone_id,
-            "Validation Status": "In Progress" if not wait_for_validation else "Completed",
+            "Validation Status": (
+                "In Progress" if not wait_for_validation else "Completed"
+            ),
         }
 
-        print_output(cert_details, output_format=config.aws_output_format, title="ACM Certificate Details")
+        print_output(
+            cert_details,
+            output_format=config.aws_output_format,
+            title="ACM Certificate Details",
+        )
 
     except Exception as e:
         console.print(f"[red]Error creating certificate:[/red] {e}")
@@ -188,17 +237,29 @@ def create_certificate(
 
 
 @security_group.command(name="list-certificates")
-@click.option("--region", help="AWS region to list certificates from (default: current region)")
+@click.option(
+    "--region", help="AWS region to list certificates from (default: current region)"
+)
 @click.option(
     "--status",
     type=click.Choice(
-        ["PENDING_VALIDATION", "ISSUED", "INACTIVE", "EXPIRED", "VALIDATION_TIMED_OUT", "REVOKED", "FAILED"]
+        [
+            "PENDING_VALIDATION",
+            "ISSUED",
+            "INACTIVE",
+            "EXPIRED",
+            "VALIDATION_TIMED_OUT",
+            "REVOKED",
+            "FAILED",
+        ]
     ),
     help="Filter certificates by status",
 )
 @click.option("--all-regions", is_flag=True, help="List certificates from all regions")
 @click.pass_context
-def list_certificates(ctx: click.Context, region: Optional[str], status: Optional[str], all_regions: bool) -> None:
+def list_certificates(
+    ctx: click.Context, region: Optional[str], status: Optional[str], all_regions: bool
+) -> None:
     """List ACM certificates with details."""
     config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
@@ -227,9 +288,9 @@ def list_certificates(ctx: click.Context, region: Optional[str], status: Optiona
 
                         # Get detailed certificate information
                         try:
-                            cert_details = acm_client.describe_certificate(CertificateArn=cert["CertificateArn"])[
-                                "Certificate"
-                            ]
+                            cert_details = acm_client.describe_certificate(
+                                CertificateArn=cert["CertificateArn"]
+                            )["Certificate"]
 
                             all_certificates.append(
                                 {
@@ -237,27 +298,39 @@ def list_certificates(ctx: click.Context, region: Optional[str], status: Optiona
                                     "Status": cert_details.get("Status", ""),
                                     "Region": target_region,
                                     "Type": cert_details.get("Type", ""),
-                                    "Key Algorithm": cert_details.get("KeyAlgorithm", ""),
+                                    "Key Algorithm": cert_details.get(
+                                        "KeyAlgorithm", ""
+                                    ),
                                     "Created": (
-                                        cert_details.get("CreatedAt", "").strftime("%Y-%m-%d")
+                                        cert_details.get("CreatedAt", "").strftime(
+                                            "%Y-%m-%d"
+                                        )
                                         if cert_details.get("CreatedAt")
                                         else ""
                                     ),
                                     "Expires": (
-                                        cert_details.get("NotAfter", "").strftime("%Y-%m-%d")
+                                        cert_details.get("NotAfter", "").strftime(
+                                            "%Y-%m-%d"
+                                        )
                                         if cert_details.get("NotAfter")
                                         else ""
                                     ),
-                                    "Alternative Names": len(cert_details.get("SubjectAlternativeNames", [])),
+                                    "Alternative Names": len(
+                                        cert_details.get("SubjectAlternativeNames", [])
+                                    ),
                                     "Certificate ARN": cert["CertificateArn"],
                                 }
                             )
 
                         except Exception as e:
-                            logger.debug(f"Could not get details for certificate {cert['CertificateArn']}: {e}")
+                            logger.debug(
+                                f"Could not get details for certificate {cert['CertificateArn']}: {e}"
+                            )
 
             except Exception as e:
-                logger.warning(f"Error listing certificates in region {target_region}: {e}")
+                logger.warning(
+                    f"Error listing certificates in region {target_region}: {e}"
+                )
 
         if all_certificates:
             print_output(
@@ -274,7 +347,11 @@ def list_certificates(ctx: click.Context, region: Optional[str], status: Optiona
 
 
 def _collect_security_metrics(
-    aws_auth: AWSAuth, regions: List[str], services: List[str], time_range: int, metrics_summary: Dict[str, Any]
+    aws_auth: AWSAuth,
+    regions: List[str],
+    services: List[str],
+    time_range: int,
+    metrics_summary: Dict[str, Any],
 ) -> Dict[str, Any]:
     """Collect security metrics from specified services and regions."""
 
@@ -300,7 +377,9 @@ def _collect_security_metrics(
 
         if "securityhub" in services:
             try:
-                securityhub_metrics = _get_securityhub_metrics(aws_auth, region, time_range)
+                securityhub_metrics = _get_securityhub_metrics(
+                    aws_auth, region, time_range
+                )
                 region_metrics["SecurityHub"] = securityhub_metrics
             except Exception as e:
                 metrics_summary["errors"].append(f"SecurityHub in {region}: {str(e)}")
@@ -342,7 +421,9 @@ def _get_waf_metrics(aws_auth: AWSAuth, region: str, time_range: int) -> Dict[st
 
         # Handle pagination
         while "NextMarker" in response:
-            response = waf_client.list_web_acls(Scope="REGIONAL", NextMarker=response["NextMarker"])
+            response = waf_client.list_web_acls(
+                Scope="REGIONAL", NextMarker=response["NextMarker"]
+            )
             web_acls.extend(response.get("WebACLs", []))
     except Exception as e:
         return {"error": f"Error retrieving WAF ACLs: {e}"}
@@ -358,11 +439,23 @@ def _get_waf_metrics(aws_auth: AWSAuth, region: str, time_range: int) -> Dict[st
         dimensions = [{"Name": "WebACL", "Value": acl_name}]
 
         allowed = _get_cloudwatch_metric_sum(
-            cloudwatch_client, "AWS/WAFV2", "AllowedRequests", dimensions, start_time, end_time, period
+            cloudwatch_client,
+            "AWS/WAFV2",
+            "AllowedRequests",
+            dimensions,
+            start_time,
+            end_time,
+            period,
         )
 
         blocked = _get_cloudwatch_metric_sum(
-            cloudwatch_client, "AWS/WAFV2", "BlockedRequests", dimensions, start_time, end_time, period
+            cloudwatch_client,
+            "AWS/WAFV2",
+            "BlockedRequests",
+            dimensions,
+            start_time,
+            end_time,
+            period,
         )
 
         # Get detailed ACL info to retrieve rule names
@@ -379,7 +472,13 @@ def _get_waf_metrics(aws_auth: AWSAuth, region: str, time_range: int) -> Dict[st
                 ]
 
                 rule_blocked = _get_cloudwatch_metric_sum(
-                    cloudwatch_client, "AWS/WAFV2", "BlockedRequests", rule_dimensions, start_time, end_time, period
+                    cloudwatch_client,
+                    "AWS/WAFV2",
+                    "BlockedRequests",
+                    rule_dimensions,
+                    start_time,
+                    end_time,
+                    period,
                 )
                 rule_metrics[rule_name] = rule_blocked
 
@@ -394,7 +493,9 @@ def _get_waf_metrics(aws_auth: AWSAuth, region: str, time_range: int) -> Dict[st
     return waf_metrics
 
 
-def _get_guardduty_metrics(aws_auth: AWSAuth, region: str, time_range: int) -> Dict[str, Any]:
+def _get_guardduty_metrics(
+    aws_auth: AWSAuth, region: str, time_range: int
+) -> Dict[str, Any]:
     """Get GuardDuty metrics for a region."""
     guardduty_client = aws_auth.get_client("guardduty", region_name=region)
 
@@ -428,13 +529,17 @@ def _get_guardduty_metrics(aws_auth: AWSAuth, region: str, time_range: int) -> D
             for i in range(0, len(finding_ids), batch_size):
                 batch = finding_ids[i : i + batch_size]
 
-                findings_response = guardduty_client.get_findings(DetectorId=detector_id, FindingIds=batch)
+                findings_response = guardduty_client.get_findings(
+                    DetectorId=detector_id, FindingIds=batch
+                )
 
                 for finding in findings_response.get("Findings", []):
                     updated_at_str = finding.get("UpdatedAt")
                     if updated_at_str:
                         try:
-                            updated_at = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
+                            updated_at = datetime.fromisoformat(
+                                updated_at_str.replace("Z", "+00:00")
+                            )
                             if start_time <= updated_at <= end_time:
                                 finding_type = finding.get("Type", "Unknown")
                                 gd_metrics[finding_type] += 1
@@ -449,7 +554,9 @@ def _get_guardduty_metrics(aws_auth: AWSAuth, region: str, time_range: int) -> D
     return dict(gd_metrics)
 
 
-def _get_securityhub_metrics(aws_auth: AWSAuth, region: str, time_range: int) -> Dict[str, Any]:
+def _get_securityhub_metrics(
+    aws_auth: AWSAuth, region: str, time_range: int
+) -> Dict[str, Any]:
     """Get Security Hub metrics for a region."""
     securityhub_client = aws_auth.get_client("securityhub", region_name=region)
 
@@ -466,7 +573,9 @@ def _get_securityhub_metrics(aws_auth: AWSAuth, region: str, time_range: int) ->
                 created_at_str = finding.get("CreatedAt")
                 if created_at_str:
                     try:
-                        created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+                        created_at = datetime.fromisoformat(
+                            created_at_str.replace("Z", "+00:00")
+                        )
                         if start_time <= created_at <= end_time:
                             types = finding.get("Types", [])
                             if types:
@@ -508,7 +617,9 @@ def _get_cloudwatch_metric_sum(
         return 0.0
 
 
-def _display_security_metrics(config: Config, all_metrics: Dict[str, Any], metrics_summary: Dict[str, Any]) -> None:
+def _display_security_metrics(
+    config: Config, all_metrics: Dict[str, Any], metrics_summary: Dict[str, Any]
+) -> None:
     """Display security metrics summary."""
 
     # Overall summary
@@ -523,7 +634,11 @@ def _display_security_metrics(config: Config, all_metrics: Dict[str, Any], metri
         "Total Errors": total_errors,
     }
 
-    print_output(summary_display, output_format=config.aws_output_format, title="Security Metrics Collection Summary")
+    print_output(
+        summary_display,
+        output_format=config.aws_output_format,
+        title="Security Metrics Collection Summary",
+    )
 
     # Display metrics by region
     for region, region_metrics in all_metrics.items():
@@ -543,32 +658,44 @@ def _display_security_metrics(config: Config, all_metrics: Dict[str, Any], metri
                 if service == "WAF":
                     for acl_name, acl_metrics in service_metrics.items():
                         console.print(f"  WebACL: {acl_name}")
-                        console.print(f"    Allowed: {acl_metrics.get('AllowedRequests', 0)}")
-                        console.print(f"    Blocked: {acl_metrics.get('BlockedRequests', 0)}")
+                        console.print(
+                            f"    Allowed: {acl_metrics.get('AllowedRequests', 0)}"
+                        )
+                        console.print(
+                            f"    Blocked: {acl_metrics.get('BlockedRequests', 0)}"
+                        )
 
                         rules = acl_metrics.get("Rules", {})
                         if rules:
                             console.print(f"    Rules:")
                             for rule_name, blocked_count in rules.items():
                                 if blocked_count > 0:
-                                    console.print(f"      {rule_name}: {blocked_count} blocked")
+                                    console.print(
+                                        f"      {rule_name}: {blocked_count} blocked"
+                                    )
 
                 elif service in ["GuardDuty", "SecurityHub"]:
                     for finding_type, count in service_metrics.items():
                         if count > 0:
                             console.print(f"  {finding_type}: {count}")
 
-            elif isinstance(service_metrics, dict) and ("error" in service_metrics or "message" in service_metrics):
+            elif isinstance(service_metrics, dict) and (
+                "error" in service_metrics or "message" in service_metrics
+            ):
                 status = service_metrics.get("error") or service_metrics.get("message")
                 console.print(f"[yellow]{service}:[/yellow] {status}")
 
     # Show errors if any
     if metrics_summary["errors"]:
-        console.print(f"\n[yellow]Errors encountered ({len(metrics_summary['errors'])}):[/yellow]")
+        console.print(
+            f"\n[yellow]Errors encountered ({len(metrics_summary['errors'])}):[/yellow]"
+        )
         for error in metrics_summary["errors"][:10]:
             console.print(f"  [dim]• {error}[/dim]")
         if len(metrics_summary["errors"]) > 10:
-            console.print(f"  [dim]... and {len(metrics_summary['errors']) - 10} more errors[/dim]")
+            console.print(
+                f"  [dim]... and {len(metrics_summary['errors']) - 10} more errors[/dim]"
+            )
 
 
 def _find_hosted_zone(route53_client, domain: str) -> Optional[str]:
@@ -588,7 +715,9 @@ def _find_hosted_zone(route53_client, domain: str) -> Optional[str]:
         return None
 
 
-def _request_certificate(acm_client, domain: str, alternative_names: List[str]) -> Dict[str, Any]:
+def _request_certificate(
+    acm_client, domain: str, alternative_names: List[str]
+) -> Dict[str, Any]:
     """Request an ACM certificate."""
     request_params = {"DomainName": domain, "ValidationMethod": "DNS"}
 
@@ -606,7 +735,9 @@ def _get_validation_records(acm_client, certificate_arn: str) -> List[Dict[str, 
     while attempt < max_attempts:
         try:
             response = acm_client.describe_certificate(CertificateArn=certificate_arn)
-            validation_options = response["Certificate"].get("DomainValidationOptions", [])
+            validation_options = response["Certificate"].get(
+                "DomainValidationOptions", []
+            )
 
             # Check if all validation records are available
             validation_records = []
@@ -618,7 +749,9 @@ def _get_validation_records(acm_client, certificate_arn: str) -> List[Dict[str, 
                 return validation_records
 
         except Exception as e:
-            logger.debug(f"Attempt {attempt + 1}: Error getting validation records: {e}")
+            logger.debug(
+                f"Attempt {attempt + 1}: Error getting validation records: {e}"
+            )
 
         attempt += 1
         if attempt < max_attempts:
@@ -629,7 +762,9 @@ def _get_validation_records(acm_client, certificate_arn: str) -> List[Dict[str, 
     raise Exception("Timeout waiting for validation records")
 
 
-def _create_validation_records(route53_client, hosted_zone_id: str, validation_records: List[Dict[str, Any]]) -> None:
+def _create_validation_records(
+    route53_client, hosted_zone_id: str, validation_records: List[Dict[str, Any]]
+) -> None:
     """Create DNS validation records in Route53."""
     changes = []
 
@@ -647,7 +782,9 @@ def _create_validation_records(route53_client, hosted_zone_id: str, validation_r
         )
 
     if changes:
-        route53_client.change_resource_record_sets(HostedZoneId=hosted_zone_id, ChangeBatch={"Changes": changes})
+        route53_client.change_resource_record_sets(
+            HostedZoneId=hosted_zone_id, ChangeBatch={"Changes": changes}
+        )
 
 
 def _wait_for_validation(acm_client, certificate_arn: str, timeout: int) -> bool:

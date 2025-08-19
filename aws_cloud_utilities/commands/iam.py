@@ -11,7 +11,13 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from ..core.config import Config
 from ..core.auth import AWSAuth
-from ..core.utils import print_output, save_to_file, get_timestamp, get_detailed_timestamp, ensure_directory
+from ..core.utils import (
+    print_output,
+    save_to_file,
+    get_timestamp,
+    get_detailed_timestamp,
+    ensure_directory,
+)
 from ..core.exceptions import AWSError
 
 logger = logging.getLogger(__name__)
@@ -25,13 +31,23 @@ def iam_group():
 
 
 @iam_group.command(name="audit")
-@click.option("--output-dir", help="Directory to save audit files (default: ./iam_audit_<account_id>_<timestamp>)")
 @click.option(
-    "--include-aws-managed", is_flag=True, help="Include AWS managed policies in audit (warning: large output)"
+    "--output-dir",
+    help="Directory to save audit files (default: ./iam_audit_<account_id>_<timestamp>)",
+)
+@click.option(
+    "--include-aws-managed",
+    is_flag=True,
+    help="Include AWS managed policies in audit (warning: large output)",
 )
 @click.option("--roles-only", is_flag=True, help="Audit only IAM roles")
 @click.option("--policies-only", is_flag=True, help="Audit only IAM policies")
-@click.option("--format", type=click.Choice(["json", "yaml"]), default="json", help="Output format for saved files")
+@click.option(
+    "--format",
+    type=click.Choice(["json", "yaml"]),
+    default="json",
+    help="Output format for saved files",
+)
 @click.pass_context
 def audit(
     ctx: click.Context,
@@ -86,7 +102,9 @@ def audit(
             policies_dir = output_path / "policies"
             ensure_directory(policies_dir)
 
-            policies_summary = _process_policies(iam_client, account_id, policies_dir, format, include_aws_managed)
+            policies_summary = _process_policies(
+                iam_client, account_id, policies_dir, format, include_aws_managed
+            )
             audit_summary.update(policies_summary)
 
         # Save audit summary
@@ -106,7 +124,11 @@ def audit(
             "Output Format": format.upper(),
         }
 
-        print_output(summary_display, output_format=config.aws_output_format, title="IAM Audit Summary")
+        print_output(
+            summary_display,
+            output_format=config.aws_output_format,
+            title="IAM Audit Summary",
+        )
 
         console.print(f"\n[green]✅ IAM audit completed successfully![/green]")
         console.print(f"[dim]Files saved to: {output_path.absolute()}[/dim]")
@@ -116,7 +138,9 @@ def audit(
         raise click.Abort()
 
 
-def _process_roles(iam_client, account_id: str, roles_dir: Path, format: str) -> Dict[str, int]:
+def _process_roles(
+    iam_client, account_id: str, roles_dir: Path, format: str
+) -> Dict[str, int]:
     """Process IAM roles and save their policies."""
     roles_processed = 0
     inline_policies_processed = 0
@@ -126,7 +150,9 @@ def _process_roles(iam_client, account_id: str, roles_dir: Path, format: str) ->
         paginator = iam_client.get_paginator("list_roles")
 
         with Progress(
-            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
         ) as progress:
             task = progress.add_task("Processing IAM roles...", total=None)
 
@@ -141,14 +167,20 @@ def _process_roles(iam_client, account_id: str, roles_dir: Path, format: str) ->
 
                     # Process inline policies
                     try:
-                        inline_policies = iam_client.list_role_policies(RoleName=role_name)["PolicyNames"]
+                        inline_policies = iam_client.list_role_policies(
+                            RoleName=role_name
+                        )["PolicyNames"]
 
                         for policy_name in inline_policies:
-                            filename = f"{account_id}-{role_name}-{policy_name}.{format}"
+                            filename = (
+                                f"{account_id}-{role_name}-{policy_name}.{format}"
+                            )
                             file_path = roles_dir / filename
 
                             if not file_path.exists():
-                                policy = iam_client.get_role_policy(RoleName=role_name, PolicyName=policy_name)
+                                policy = iam_client.get_role_policy(
+                                    RoleName=role_name, PolicyName=policy_name
+                                )
                                 policy_document = policy["PolicyDocument"]
 
                                 # Add metadata
@@ -165,29 +197,37 @@ def _process_roles(iam_client, account_id: str, roles_dir: Path, format: str) ->
                                 inline_policies_processed += 1
 
                     except Exception as e:
-                        logger.warning(f"Error processing inline policies for role {role_name}: {e}")
+                        logger.warning(
+                            f"Error processing inline policies for role {role_name}: {e}"
+                        )
 
                     # Process attached policies
                     try:
-                        attached_policies = iam_client.list_attached_role_policies(RoleName=role_name)[
-                            "AttachedPolicies"
-                        ]
+                        attached_policies = iam_client.list_attached_role_policies(
+                            RoleName=role_name
+                        )["AttachedPolicies"]
 
                         for attached_policy in attached_policies:
                             policy_arn = attached_policy["PolicyArn"]
                             policy_name = attached_policy["PolicyName"]
-                            filename = f"{account_id}-{role_name}-{policy_name}.{format}"
+                            filename = (
+                                f"{account_id}-{role_name}-{policy_name}.{format}"
+                            )
                             file_path = roles_dir / filename
 
                             if not file_path.exists():
                                 # Get policy details
                                 policy = iam_client.get_policy(PolicyArn=policy_arn)
-                                default_version_id = policy["Policy"]["DefaultVersionId"]
+                                default_version_id = policy["Policy"][
+                                    "DefaultVersionId"
+                                ]
 
                                 policy_version = iam_client.get_policy_version(
                                     PolicyArn=policy_arn, VersionId=default_version_id
                                 )
-                                policy_document = policy_version["PolicyVersion"]["Document"]
+                                policy_document = policy_version["PolicyVersion"][
+                                    "Document"
+                                ]
 
                                 # Add metadata
                                 policy_with_metadata = {
@@ -205,7 +245,9 @@ def _process_roles(iam_client, account_id: str, roles_dir: Path, format: str) ->
                                 attached_policies_processed += 1
 
                     except Exception as e:
-                        logger.warning(f"Error processing attached policies for role {role_name}: {e}")
+                        logger.warning(
+                            f"Error processing attached policies for role {role_name}: {e}"
+                        )
 
     except Exception as e:
         logger.error(f"Error processing roles: {e}")
@@ -219,7 +261,11 @@ def _process_roles(iam_client, account_id: str, roles_dir: Path, format: str) ->
 
 
 def _process_policies(
-    iam_client, account_id: str, policies_dir: Path, format: str, include_aws_managed: bool
+    iam_client,
+    account_id: str,
+    policies_dir: Path,
+    format: str,
+    include_aws_managed: bool,
 ) -> Dict[str, int]:
     """Process IAM policies and save them."""
     policies_processed = 0
@@ -231,7 +277,9 @@ def _process_policies(
         scope = "All" if include_aws_managed else "Local"
 
         with Progress(
-            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
         ) as progress:
             task = progress.add_task("Processing IAM policies...", total=None)
 
@@ -243,10 +291,14 @@ def _process_policies(
                     policy_arn = policy["Arn"]
                     policies_processed += 1
 
-                    progress.update(task, description=f"Processing policy: {policy_name}")
+                    progress.update(
+                        task, description=f"Processing policy: {policy_name}"
+                    )
 
                     # Skip AWS managed policies unless explicitly requested
-                    if not include_aws_managed and policy_arn.startswith("arn:aws:iam::aws:"):
+                    if not include_aws_managed and policy_arn.startswith(
+                        "arn:aws:iam::aws:"
+                    ):
                         continue
 
                     filename = f"{account_id}-{policy_name}.{format}"
@@ -256,9 +308,12 @@ def _process_policies(
                         try:
                             # Get policy version
                             policy_version = iam_client.get_policy_version(
-                                PolicyArn=policy_arn, VersionId=policy["DefaultVersionId"]
+                                PolicyArn=policy_arn,
+                                VersionId=policy["DefaultVersionId"],
                             )
-                            policy_document = policy_version["PolicyVersion"]["Document"]
+                            policy_document = policy_version["PolicyVersion"][
+                                "Document"
+                            ]
 
                             # Add metadata
                             policy_with_metadata = {
@@ -266,7 +321,9 @@ def _process_policies(
                                 "PolicyName": policy_name,
                                 "PolicyArn": policy_arn,
                                 "PolicyType": "Managed",
-                                "IsAWSManaged": policy_arn.startswith("arn:aws:iam::aws:"),
+                                "IsAWSManaged": policy_arn.startswith(
+                                    "arn:aws:iam::aws:"
+                                ),
                                 "AccountId": account_id,
                                 "AuditTimestamp": datetime.now().isoformat(),
                                 "PolicyMetadata": policy,
@@ -275,7 +332,9 @@ def _process_policies(
                             save_to_file(policy_with_metadata, file_path, format)
 
                         except Exception as e:
-                            logger.warning(f"Error processing policy {policy_name}: {e}")
+                            logger.warning(
+                                f"Error processing policy {policy_name}: {e}"
+                            )
 
     except Exception as e:
         logger.error(f"Error processing policies: {e}")
@@ -284,7 +343,9 @@ def _process_policies(
 
 @iam_group.command(name="list-roles")
 @click.option("--path-prefix", help="Filter roles by path prefix")
-@click.option("--max-items", type=int, default=100, help="Maximum number of roles to return")
+@click.option(
+    "--max-items", type=int, default=100, help="Maximum number of roles to return"
+)
 @click.pass_context
 def list_roles(ctx: click.Context, path_prefix: Optional[str], max_items: int) -> None:
     """List IAM roles with details."""
@@ -307,7 +368,11 @@ def list_roles(ctx: click.Context, path_prefix: Optional[str], max_items: int) -
                     {
                         "Role Name": role["RoleName"],
                         "Path": role["Path"],
-                        "Created": role["CreateDate"].strftime("%Y-%m-%d %H:%M") if role.get("CreateDate") else "",
+                        "Created": (
+                            role["CreateDate"].strftime("%Y-%m-%d %H:%M")
+                            if role.get("CreateDate")
+                            else ""
+                        ),
                         "Max Session Duration": f"{role.get('MaxSessionDuration', 3600)}s",
                         "Description": (
                             role.get("Description", "")[:50] + "..."
@@ -319,7 +384,9 @@ def list_roles(ctx: click.Context, path_prefix: Optional[str], max_items: int) -
 
         if roles_data:
             print_output(
-                roles_data, output_format=config.aws_output_format, title=f"IAM Roles ({len(roles_data)} found)"
+                roles_data,
+                output_format=config.aws_output_format,
+                title=f"IAM Roles ({len(roles_data)} found)",
             )
         else:
             console.print("[yellow]No IAM roles found[/yellow]")
@@ -330,11 +397,22 @@ def list_roles(ctx: click.Context, path_prefix: Optional[str], max_items: int) -
 
 
 @iam_group.command(name="list-policies")
-@click.option("--scope", type=click.Choice(["All", "AWS", "Local"]), default="Local", help="Policy scope to list")
-@click.option("--only-attached", is_flag=True, help="Only show policies that are attached to users, groups, or roles")
+@click.option(
+    "--scope",
+    type=click.Choice(["All", "AWS", "Local"]),
+    default="Local",
+    help="Policy scope to list",
+)
+@click.option(
+    "--only-attached",
+    is_flag=True,
+    help="Only show policies that are attached to users, groups, or roles",
+)
 @click.option("--path-prefix", help="Filter policies by path prefix")
 @click.pass_context
-def list_policies(ctx: click.Context, scope: str, only_attached: bool, path_prefix: Optional[str]) -> None:
+def list_policies(
+    ctx: click.Context, scope: str, only_attached: bool, path_prefix: Optional[str]
+) -> None:
     """List IAM policies."""
     config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
@@ -358,8 +436,16 @@ def list_policies(ctx: click.Context, scope: str, only_attached: bool, path_pref
                         "Policy Name": policy["PolicyName"],
                         "ARN": policy["Arn"],
                         "Path": policy["Path"],
-                        "Created": policy["CreateDate"].strftime("%Y-%m-%d %H:%M") if policy.get("CreateDate") else "",
-                        "Updated": policy["UpdateDate"].strftime("%Y-%m-%d %H:%M") if policy.get("UpdateDate") else "",
+                        "Created": (
+                            policy["CreateDate"].strftime("%Y-%m-%d %H:%M")
+                            if policy.get("CreateDate")
+                            else ""
+                        ),
+                        "Updated": (
+                            policy["UpdateDate"].strftime("%Y-%m-%d %H:%M")
+                            if policy.get("UpdateDate")
+                            else ""
+                        ),
                         "Attachment Count": policy.get("AttachmentCount", 0),
                         "Is Attachable": "Yes" if policy.get("IsAttachable") else "No",
                         "Description": (
@@ -404,14 +490,20 @@ def role_details(ctx: click.Context, role_name: str) -> None:
             raise click.Abort()
 
         # Get attached policies
-        attached_policies = iam_client.list_attached_role_policies(RoleName=role_name)["AttachedPolicies"]
+        attached_policies = iam_client.list_attached_role_policies(RoleName=role_name)[
+            "AttachedPolicies"
+        ]
 
         # Get inline policies
-        inline_policies = iam_client.list_role_policies(RoleName=role_name)["PolicyNames"]
+        inline_policies = iam_client.list_role_policies(RoleName=role_name)[
+            "PolicyNames"
+        ]
 
         # Get instance profiles
         try:
-            instance_profiles = iam_client.list_instance_profiles_for_role(RoleName=role_name)["InstanceProfiles"]
+            instance_profiles = iam_client.list_instance_profiles_for_role(
+                RoleName=role_name
+            )["InstanceProfiles"]
         except Exception:
             instance_profiles = []
 
@@ -419,28 +511,47 @@ def role_details(ctx: click.Context, role_name: str) -> None:
             "Role Name": role["RoleName"],
             "ARN": role["Arn"],
             "Path": role["Path"],
-            "Created": role["CreateDate"].strftime("%Y-%m-%d %H:%M:%S") if role.get("CreateDate") else "",
+            "Created": (
+                role["CreateDate"].strftime("%Y-%m-%d %H:%M:%S")
+                if role.get("CreateDate")
+                else ""
+            ),
             "Max Session Duration": f"{role.get('MaxSessionDuration', 3600)} seconds",
             "Description": role.get("Description", "Not set"),
             "Attached Policies": len(attached_policies),
             "Inline Policies": len(inline_policies),
             "Instance Profiles": len(instance_profiles),
-            "Permissions Boundary": role.get("PermissionsBoundary", {}).get("PermissionsBoundaryArn", "Not set"),
+            "Permissions Boundary": role.get("PermissionsBoundary", {}).get(
+                "PermissionsBoundaryArn", "Not set"
+            ),
         }
 
-        print_output(role_details, output_format=config.aws_output_format, title=f"IAM Role Details: {role_name}")
+        print_output(
+            role_details,
+            output_format=config.aws_output_format,
+            title=f"IAM Role Details: {role_name}",
+        )
 
         # Show attached policies
         if attached_policies:
             attached_data = [
-                {"Policy Name": policy["PolicyName"], "Policy ARN": policy["PolicyArn"]} for policy in attached_policies
+                {"Policy Name": policy["PolicyName"], "Policy ARN": policy["PolicyArn"]}
+                for policy in attached_policies
             ]
-            print_output(attached_data, output_format=config.aws_output_format, title="Attached Policies")
+            print_output(
+                attached_data,
+                output_format=config.aws_output_format,
+                title="Attached Policies",
+            )
 
         # Show inline policies
         if inline_policies:
             inline_data = [{"Policy Name": policy} for policy in inline_policies]
-            print_output(inline_data, output_format=config.aws_output_format, title="Inline Policies")
+            print_output(
+                inline_data,
+                output_format=config.aws_output_format,
+                title="Inline Policies",
+            )
 
     except Exception as e:
         console.print(f"[red]Error getting role details:[/red] {e}")
@@ -467,29 +578,45 @@ def policy_details(ctx: click.Context, policy_arn: str) -> None:
             raise click.Abort()
 
         # Get policy document
-        policy_version = iam_client.get_policy_version(PolicyArn=policy_arn, VersionId=policy["DefaultVersionId"])
+        policy_version = iam_client.get_policy_version(
+            PolicyArn=policy_arn, VersionId=policy["DefaultVersionId"]
+        )
 
         policy_details = {
             "Policy Name": policy["PolicyName"],
             "ARN": policy["Arn"],
             "Path": policy["Path"],
-            "Created": policy["CreateDate"].strftime("%Y-%m-%d %H:%M:%S") if policy.get("CreateDate") else "",
-            "Updated": policy["UpdateDate"].strftime("%Y-%m-%d %H:%M:%S") if policy.get("UpdateDate") else "",
+            "Created": (
+                policy["CreateDate"].strftime("%Y-%m-%d %H:%M:%S")
+                if policy.get("CreateDate")
+                else ""
+            ),
+            "Updated": (
+                policy["UpdateDate"].strftime("%Y-%m-%d %H:%M:%S")
+                if policy.get("UpdateDate")
+                else ""
+            ),
             "Default Version": policy["DefaultVersionId"],
             "Attachment Count": policy.get("AttachmentCount", 0),
-            "Permissions Boundary Usage Count": policy.get("PermissionsBoundaryUsageCount", 0),
+            "Permissions Boundary Usage Count": policy.get(
+                "PermissionsBoundaryUsageCount", 0
+            ),
             "Is Attachable": "Yes" if policy.get("IsAttachable") else "No",
             "Description": policy.get("Description", "Not set"),
         }
 
         print_output(
-            policy_details, output_format=config.aws_output_format, title=f"IAM Policy Details: {policy['PolicyName']}"
+            policy_details,
+            output_format=config.aws_output_format,
+            title=f"IAM Policy Details: {policy['PolicyName']}",
         )
 
         # Show policy document
         if config.aws_output_format == "json":
             console.print("\n[bold]Policy Document:[/bold]")
-            console.print_json(json.dumps(policy_version["PolicyVersion"]["Document"], indent=2))
+            console.print_json(
+                json.dumps(policy_version["PolicyVersion"]["Document"], indent=2)
+            )
 
     except Exception as e:
         console.print(f"[red]Error getting policy details:[/red] {e}")

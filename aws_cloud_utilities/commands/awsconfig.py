@@ -68,14 +68,29 @@ def awsconfig_group():
 
 
 @awsconfig_group.command(name="download")
-@click.option("--bucket", required=True, help="S3 bucket name containing AWS Config files")
+@click.option(
+    "--bucket", required=True, help="S3 bucket name containing AWS Config files"
+)
 @click.option("--prefix", required=True, help="S3 prefix for Config files")
-@click.option("--start-date", required=True, help="Start date for download range (YYYY-MM-DD)")
-@click.option("--end-date", required=True, help="End date for download range (YYYY-MM-DD)")
-@click.option("--output-file", help="Output CSV file name (default: config_data_<timestamp>.csv)")
+@click.option(
+    "--start-date", required=True, help="Start date for download range (YYYY-MM-DD)"
+)
+@click.option(
+    "--end-date", required=True, help="End date for download range (YYYY-MM-DD)"
+)
+@click.option(
+    "--output-file", help="Output CSV file name (default: config_data_<timestamp>.csv)"
+)
 @click.option("--region", help="AWS region for S3 access (default: current region)")
-@click.option("--format", type=click.Choice(["csv", "json"]), default="csv", help="Output format (default: csv)")
-@click.option("--keep-temp-files", is_flag=True, help="Keep downloaded temporary JSON files")
+@click.option(
+    "--format",
+    type=click.Choice(["csv", "json"]),
+    default="csv",
+    help="Output format (default: csv)",
+)
+@click.option(
+    "--keep-temp-files", is_flag=True, help="Keep downloaded temporary JSON files"
+)
 @click.pass_context
 def download(
     ctx: click.Context,
@@ -125,13 +140,22 @@ def download(
 
         # Execute the download and processing
         download_summary = _download_config_files(
-            s3_client, bucket, prefix, start_dt, end_dt, output_file, format, keep_temp_files
+            s3_client,
+            bucket,
+            prefix,
+            start_dt,
+            end_dt,
+            output_file,
+            format,
+            keep_temp_files,
         )
 
         # Display summary
         _display_download_summary(config, download_summary, output_file)
 
-        console.print("\n[green]✅ Config data processing completed successfully![/green]")
+        console.print(
+            "\n[green]✅ Config data processing completed successfully![/green]"
+        )
         console.print(f"[dim]Output saved to: {output_file}[/dim]")
 
     except Exception as e:
@@ -140,11 +164,19 @@ def download(
 
 
 @awsconfig_group.command(name="show-rules")
-@click.option("--region", help="AWS region to analyze Config rules (default: current region)")
-@click.option("--all-regions", is_flag=True, help="Analyze Config rules across all regions")
+@click.option(
+    "--region", help="AWS region to analyze Config rules (default: current region)"
+)
+@click.option(
+    "--all-regions", is_flag=True, help="Analyze Config rules across all regions"
+)
 @click.option("--rule-name", help="Specific Config rule to analyze")
-@click.option("--include-metrics", is_flag=True, help="Include compliance metrics and statistics")
-@click.option("--output-file", help="Output file for rules analysis (supports .json, .yaml, .csv)")
+@click.option(
+    "--include-metrics", is_flag=True, help="Include compliance metrics and statistics"
+)
+@click.option(
+    "--output-file", help="Output file for rules analysis (supports .json, .yaml, .csv)"
+)
 @click.pass_context
 def show_rules(
     ctx: click.Context,
@@ -165,12 +197,16 @@ def show_rules(
         else:
             target_regions = [region or config.aws_region or "us-east-1"]
 
-        console.print(f"[blue]Analyzing AWS Config rules across {len(target_regions)} regions[/blue]")
+        console.print(
+            f"[blue]Analyzing AWS Config rules across {len(target_regions)} regions[/blue]"
+        )
         if rule_name:
             console.print(f"[dim]Focusing on rule: {rule_name}[/dim]")
 
         # Collect rules data
-        rules_analysis = _analyze_config_rules(aws_auth, target_regions, rule_name, include_metrics)
+        rules_analysis = _analyze_config_rules(
+            aws_auth, target_regions, rule_name, include_metrics
+        )
 
         # Display results
         _display_rules_analysis(config, rules_analysis, include_metrics)
@@ -195,14 +231,20 @@ def show_rules(
 
 
 @awsconfig_group.command(name="list-rules")
-@click.option("--region", help="AWS region to list Config rules from (default: current region)")
+@click.option(
+    "--region", help="AWS region to list Config rules from (default: current region)"
+)
 @click.option("--all-regions", is_flag=True, help="List Config rules from all regions")
 @click.option(
     "--compliance-state",
-    type=click.Choice(["COMPLIANT", "NON_COMPLIANT", "NOT_APPLICABLE", "INSUFFICIENT_DATA"]),
+    type=click.Choice(
+        ["COMPLIANT", "NON_COMPLIANT", "NOT_APPLICABLE", "INSUFFICIENT_DATA"]
+    ),
     help="Filter rules by compliance state",
 )
-@click.option("--output-file", help="Output file for rules list (supports .json, .yaml, .csv)")
+@click.option(
+    "--output-file", help="Output file for rules list (supports .json, .yaml, .csv)"
+)
 @click.pass_context
 def list_rules(
     ctx: click.Context,
@@ -235,13 +277,17 @@ def list_rules(
                         # Get compliance information if filtering is requested
                         if compliance_state:
                             try:
-                                compliance_response = config_client.get_compliance_details_by_config_rule(
-                                    ConfigRuleName=rule["ConfigRuleName"]
+                                compliance_response = (
+                                    config_client.get_compliance_details_by_config_rule(
+                                        ConfigRuleName=rule["ConfigRuleName"]
+                                    )
                                 )
 
                                 # Check if any evaluation result matches the filter
                                 matches_filter = False
-                                for result in compliance_response.get("EvaluationResults", []):
+                                for result in compliance_response.get(
+                                    "EvaluationResults", []
+                                ):
                                     if result.get("ComplianceType") == compliance_state:
                                         matches_filter = True
                                         break
@@ -250,7 +296,9 @@ def list_rules(
                                     continue
 
                             except Exception as e:
-                                logger.debug(f"Could not get compliance for rule {rule['ConfigRuleName']}: {e}")
+                                logger.debug(
+                                    f"Could not get compliance for rule {rule['ConfigRuleName']}: {e}"
+                                )
                                 continue
 
                         all_rules.append(
@@ -259,7 +307,9 @@ def list_rules(
                                 "Region": target_region,
                                 "State": rule.get("ConfigRuleState", ""),
                                 "Source": rule.get("Source", {}).get("Owner", ""),
-                                "Source Identifier": rule.get("Source", {}).get("SourceIdentifier", ""),
+                                "Source Identifier": rule.get("Source", {}).get(
+                                    "SourceIdentifier", ""
+                                ),
                                 "Description": (
                                     rule.get("Description", "")[:100] + "..."
                                     if len(rule.get("Description", "")) > 100
@@ -271,11 +321,15 @@ def list_rules(
                         )
 
             except Exception as e:
-                logger.warning(f"Error listing Config rules in region {target_region}: {e}")
+                logger.warning(
+                    f"Error listing Config rules in region {target_region}: {e}"
+                )
 
         if all_rules:
             print_output(
-                all_rules, output_format=config.aws_output_format, title=f"AWS Config Rules ({len(all_rules)} found)"
+                all_rules,
+                output_format=config.aws_output_format,
+                title=f"AWS Config Rules ({len(all_rules)} found)",
             )
 
             # Save to file if requested
@@ -300,15 +354,27 @@ def list_rules(
 
 
 @awsconfig_group.command(name="compliance-status")
-@click.option("--region", help="AWS region to check compliance status (default: current region)")
-@click.option("--all-regions", is_flag=True, help="Check compliance status across all regions")
-@click.option("--resource-type", help="Filter by specific AWS resource type (e.g., AWS::EC2::Instance)")
+@click.option(
+    "--region", help="AWS region to check compliance status (default: current region)"
+)
+@click.option(
+    "--all-regions", is_flag=True, help="Check compliance status across all regions"
+)
+@click.option(
+    "--resource-type",
+    help="Filter by specific AWS resource type (e.g., AWS::EC2::Instance)",
+)
 @click.option(
     "--compliance-type",
-    type=click.Choice(["COMPLIANT", "NON_COMPLIANT", "NOT_APPLICABLE", "INSUFFICIENT_DATA"]),
+    type=click.Choice(
+        ["COMPLIANT", "NON_COMPLIANT", "NOT_APPLICABLE", "INSUFFICIENT_DATA"]
+    ),
     help="Filter by compliance type",
 )
-@click.option("--output-file", help="Output file for compliance status (supports .json, .yaml, .csv)")
+@click.option(
+    "--output-file",
+    help="Output file for compliance status (supports .json, .yaml, .csv)",
+)
 @click.pass_context
 def compliance_status(
     ctx: click.Context,
@@ -329,10 +395,14 @@ def compliance_status(
         else:
             target_regions = [region or config.aws_region or "us-east-1"]
 
-        console.print(f"[blue]Checking AWS Config compliance status across {len(target_regions)} regions[/blue]")
+        console.print(
+            f"[blue]Checking AWS Config compliance status across {len(target_regions)} regions[/blue]"
+        )
 
         # Collect compliance data
-        compliance_data = _get_compliance_status(aws_auth, target_regions, resource_type, compliance_type)
+        compliance_data = _get_compliance_status(
+            aws_auth, target_regions, resource_type, compliance_type
+        )
 
         # Display results
         _display_compliance_status(config, compliance_data)
@@ -357,12 +427,26 @@ def compliance_status(
 
 
 @awsconfig_group.command(name="compliance-checker")
-@click.option("--region", help="AWS region to check compliance (default: current region)")
+@click.option(
+    "--region", help="AWS region to check compliance (default: current region)"
+)
 @click.option("--all-regions", is_flag=True, help="Check compliance across all regions")
-@click.option("--resource-type", help="Filter by specific AWS resource type (e.g., AWS::EC2::Instance)")
-@click.option("--show-compliant", is_flag=True, help="Include compliant resources in the output")
-@click.option("--show-details", is_flag=True, help="Show detailed resource information and rule descriptions")
-@click.option("--output-file", help="Output file for compliance report (supports .json, .yaml, .csv)")
+@click.option(
+    "--resource-type",
+    help="Filter by specific AWS resource type (e.g., AWS::EC2::Instance)",
+)
+@click.option(
+    "--show-compliant", is_flag=True, help="Include compliant resources in the output"
+)
+@click.option(
+    "--show-details",
+    is_flag=True,
+    help="Show detailed resource information and rule descriptions",
+)
+@click.option(
+    "--output-file",
+    help="Output file for compliance report (supports .json, .yaml, .csv)",
+)
 @click.pass_context
 def compliance_checker(
     ctx: click.Context,
@@ -396,7 +480,9 @@ def compliance_checker(
         )
 
         # Display results
-        _display_comprehensive_compliance_report(config, compliance_report, show_compliant, show_details)
+        _display_comprehensive_compliance_report(
+            config, compliance_report, show_compliant, show_details
+        )
 
         # Save to file if requested
         if output_file:
@@ -410,7 +496,9 @@ def compliance_checker(
             output_path = output_path.parent / new_filename
 
             save_to_file(compliance_report, output_path, file_format)
-            console.print(f"[green]Comprehensive compliance report saved to:[/green] {output_path}")
+            console.print(
+                f"[green]Comprehensive compliance report saved to:[/green] {output_path}"
+            )
 
     except Exception as e:
         console.print(f"[red]Error running compliance checker:[/red] {e}")
@@ -442,7 +530,9 @@ def _download_config_files(
         paginator = s3_client.get_paginator("list_objects_v2")
 
         with Progress(
-            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
         ) as progress:
 
             task = progress.add_task("Scanning S3 objects...", total=None)
@@ -465,10 +555,15 @@ def _download_config_files(
 
                         # Check if file is in date range
                         if start_date <= file_date <= end_date:
-                            progress.update(task, description=f"Processing {os.path.basename(key)}...")
+                            progress.update(
+                                task,
+                                description=f"Processing {os.path.basename(key)}...",
+                            )
 
                             # Download file
-                            local_filename = f"temp_{get_timestamp()}_{os.path.basename(key)}"
+                            local_filename = (
+                                f"temp_{get_timestamp()}_{os.path.basename(key)}"
+                            )
                             temp_files.append(local_filename)
 
                             try:
@@ -485,12 +580,16 @@ def _download_config_files(
                                                 if isinstance(item, dict):
                                                     flattened = _flatten_json(item)
                                                     flattened["_source_file"] = key
-                                                    flattened["_processed_date"] = datetime.now().isoformat()
+                                                    flattened["_processed_date"] = (
+                                                        datetime.now().isoformat()
+                                                    )
                                                     all_records.append(flattened)
                                         elif isinstance(data, dict):
                                             flattened = _flatten_json(data)
                                             flattened["_source_file"] = key
-                                            flattened["_processed_date"] = datetime.now().isoformat()
+                                            flattened["_processed_date"] = (
+                                                datetime.now().isoformat()
+                                            )
                                             all_records.append(flattened)
 
                                         processed_files += 1
@@ -532,7 +631,9 @@ def _download_config_files(
     }
 
 
-def _flatten_json(nested_json: Dict[str, Any], parent_key: str = "", sep: str = ".") -> Dict[str, Any]:
+def _flatten_json(
+    nested_json: Dict[str, Any], parent_key: str = "", sep: str = "."
+) -> Dict[str, Any]:
     """Recursively flatten a nested JSON object."""
     items = []
 
@@ -544,7 +645,9 @@ def _flatten_json(nested_json: Dict[str, Any], parent_key: str = "", sep: str = 
         elif isinstance(v, list):
             for i, item in enumerate(v):
                 if isinstance(item, dict):
-                    items.extend(_flatten_json(item, f"{new_key}[{i}]", sep=sep).items())
+                    items.extend(
+                        _flatten_json(item, f"{new_key}[{i}]", sep=sep).items()
+                    )
                 else:
                     items.append((f"{new_key}[{i}]", item))
         else:
@@ -582,7 +685,9 @@ def _write_json_output(records: List[Dict[str, Any]], output_file: str) -> None:
         json.dump(records, f, indent=2, default=str)
 
 
-def _display_download_summary(config: Config, summary: Dict[str, Any], output_file: str) -> None:
+def _display_download_summary(
+    config: Config, summary: Dict[str, Any], output_file: str
+) -> None:
     """Display download summary."""
     summary_data = {
         "Total Records": summary["total_records"],
@@ -593,11 +698,16 @@ def _display_download_summary(config: Config, summary: Dict[str, Any], output_fi
         "Output File": output_file,
     }
 
-    print_output(summary_data, output_format=config.aws_output_format, title="Download Summary")
+    print_output(
+        summary_data, output_format=config.aws_output_format, title="Download Summary"
+    )
 
 
 def _analyze_config_rules(
-    aws_auth: AWSAuth, regions: List[str], rule_name: Optional[str], include_metrics: bool
+    aws_auth: AWSAuth,
+    regions: List[str],
+    rule_name: Optional[str],
+    include_metrics: bool,
 ) -> Dict[str, Any]:
     """Analyze AWS Config rules with metrics and statistics."""
 
@@ -605,7 +715,12 @@ def _analyze_config_rules(
         """Analyze Config rules in a single region."""
         region_data = {
             "rules": [],
-            "summary": {"total_rules": 0, "compliant_rules": 0, "non_compliant_rules": 0, "insufficient_data_rules": 0},
+            "summary": {
+                "total_rules": 0,
+                "compliant_rules": 0,
+                "non_compliant_rules": 0,
+                "insufficient_data_rules": 0,
+            },
         }
 
         try:
@@ -620,7 +735,9 @@ def _analyze_config_rules(
                         "name": rule.get("ConfigRuleName", ""),
                         "state": rule.get("ConfigRuleState", ""),
                         "source": rule.get("Source", {}).get("Owner", ""),
-                        "source_identifier": rule.get("Source", {}).get("SourceIdentifier", ""),
+                        "source_identifier": rule.get("Source", {}).get(
+                            "SourceIdentifier", ""
+                        ),
                         "description": rule.get("Description", ""),
                         "region": region,
                     }
@@ -632,13 +749,19 @@ def _analyze_config_rules(
                     # Get compliance metrics if requested
                     if include_metrics:
                         try:
-                            compliance_response = config_client.get_compliance_details_by_config_rule(
-                                ConfigRuleName=rule_data["name"]
+                            compliance_response = (
+                                config_client.get_compliance_details_by_config_rule(
+                                    ConfigRuleName=rule_data["name"]
+                                )
                             )
 
                             compliance_summary = defaultdict(int)
-                            for result in compliance_response.get("EvaluationResults", []):
-                                compliance_type = result.get("ComplianceType", "UNKNOWN")
+                            for result in compliance_response.get(
+                                "EvaluationResults", []
+                            ):
+                                compliance_type = result.get(
+                                    "ComplianceType", "UNKNOWN"
+                                )
                                 compliance_summary[compliance_type] += 1
 
                             rule_data["compliance_metrics"] = dict(compliance_summary)
@@ -652,7 +775,9 @@ def _analyze_config_rules(
                                 region_data["summary"]["insufficient_data_rules"] += 1
 
                         except Exception as e:
-                            logger.debug(f"Could not get compliance for rule {rule_data['name']}: {e}")
+                            logger.debug(
+                                f"Could not get compliance for rule {rule_data['name']}: {e}"
+                            )
                             rule_data["compliance_metrics"] = {"error": str(e)}
 
                     region_data["rules"].append(rule_data)
@@ -666,7 +791,11 @@ def _analyze_config_rules(
 
     # Analyze regions in parallel
     region_results = parallel_execute(
-        analyze_region, regions, max_workers=4, show_progress=True, description="Analyzing Config rules"
+        analyze_region,
+        regions,
+        max_workers=4,
+        show_progress=True,
+        description="Analyzing Config rules",
     )
 
     # Organize results
@@ -688,15 +817,24 @@ def _analyze_config_rules(
         # Update global summary
         summary = region_data.get("summary", {})
         analysis_data["global_summary"]["total_rules"] += summary.get("total_rules", 0)
-        analysis_data["global_summary"]["compliant_rules"] += summary.get("compliant_rules", 0)
-        analysis_data["global_summary"]["non_compliant_rules"] += summary.get("non_compliant_rules", 0)
-        analysis_data["global_summary"]["insufficient_data_rules"] += summary.get("insufficient_data_rules", 0)
+        analysis_data["global_summary"]["compliant_rules"] += summary.get(
+            "compliant_rules", 0
+        )
+        analysis_data["global_summary"]["non_compliant_rules"] += summary.get(
+            "non_compliant_rules", 0
+        )
+        analysis_data["global_summary"]["insufficient_data_rules"] += summary.get(
+            "insufficient_data_rules", 0
+        )
 
     return analysis_data
 
 
 def _get_compliance_status(
-    aws_auth: AWSAuth, regions: List[str], resource_type: Optional[str], compliance_type: Optional[str]
+    aws_auth: AWSAuth,
+    regions: List[str],
+    resource_type: Optional[str],
+    compliance_type: Optional[str],
 ) -> Dict[str, Any]:
     """Get compliance status across regions."""
 
@@ -734,7 +872,9 @@ def _get_compliance_status(
                             region_data["total_evaluations"] += count
 
             except Exception as e:
-                logger.debug(f"Could not get compliance summary for region {region}: {e}")
+                logger.debug(
+                    f"Could not get compliance summary for region {region}: {e}"
+                )
                 region_data["error"] = str(e)
 
         except Exception as e:
@@ -745,7 +885,11 @@ def _get_compliance_status(
 
     # Get compliance data in parallel
     region_results = parallel_execute(
-        get_region_compliance, regions, max_workers=4, show_progress=True, description="Checking compliance status"
+        get_region_compliance,
+        regions,
+        max_workers=4,
+        show_progress=True,
+        description="Checking compliance status",
     )
 
     # Organize results
@@ -764,7 +908,9 @@ def _get_compliance_status(
         compliance_data["regions"][region] = region_data
 
         # Update global summary
-        compliance_data["global_summary"]["total_evaluations"] += region_data.get("total_evaluations", 0)
+        compliance_data["global_summary"]["total_evaluations"] += region_data.get(
+            "total_evaluations", 0
+        )
 
         for comp_type, count in region_data.get("compliance_summary", {}).items():
             compliance_data["global_summary"]["compliance_summary"][comp_type] += count
@@ -776,12 +922,16 @@ def _get_compliance_status(
     compliance_data["global_summary"]["compliance_summary"] = dict(
         compliance_data["global_summary"]["compliance_summary"]
     )
-    compliance_data["global_summary"]["resource_summary"] = dict(compliance_data["global_summary"]["resource_summary"])
+    compliance_data["global_summary"]["resource_summary"] = dict(
+        compliance_data["global_summary"]["resource_summary"]
+    )
 
     return compliance_data
 
 
-def _display_rules_analysis(config: Config, analysis_data: Dict[str, Any], include_metrics: bool) -> None:
+def _display_rules_analysis(
+    config: Config, analysis_data: Dict[str, Any], include_metrics: bool
+) -> None:
     """Display Config rules analysis results."""
 
     # Global summary
@@ -795,7 +945,11 @@ def _display_rules_analysis(config: Config, analysis_data: Dict[str, Any], inclu
         "Analysis Timestamp": analysis_data["timestamp"],
     }
 
-    print_output(summary_display, output_format=config.aws_output_format, title="AWS Config Rules Analysis Summary")
+    print_output(
+        summary_display,
+        output_format=config.aws_output_format,
+        title="AWS Config Rules Analysis Summary",
+    )
 
     # Regional breakdown
     if include_metrics:
@@ -814,7 +968,11 @@ def _display_rules_analysis(config: Config, analysis_data: Dict[str, Any], inclu
                 )
 
         if regional_data:
-            print_output(regional_data, output_format=config.aws_output_format, title="Rules Analysis by Region")
+            print_output(
+                regional_data,
+                output_format=config.aws_output_format,
+                title="Rules Analysis by Region",
+            )
 
 
 def _display_compliance_status(config: Config, compliance_data: Dict[str, Any]) -> None:
@@ -833,26 +991,38 @@ def _display_compliance_status(config: Config, compliance_data: Dict[str, Any]) 
     for comp_type, count in compliance_summary.items():
         summary_display[f"{comp_type.title()} Resources"] = count
 
-    print_output(summary_display, output_format=config.aws_output_format, title="AWS Config Compliance Status Summary")
+    print_output(
+        summary_display,
+        output_format=config.aws_output_format,
+        title="AWS Config Compliance Status Summary",
+    )
 
     # Resource type breakdown
     resource_summary = global_summary.get("resource_summary", {})
     if resource_summary:
         resource_data = [
             {"Resource Type": res_type, "Total Evaluations": count}
-            for res_type, count in sorted(resource_summary.items(), key=lambda x: x[1], reverse=True)
+            for res_type, count in sorted(
+                resource_summary.items(), key=lambda x: x[1], reverse=True
+            )
         ][
             :10
         ]  # Top 10 resource types
 
         if resource_data:
             print_output(
-                resource_data, output_format=config.aws_output_format, title="Top Resource Types by Evaluation Count"
+                resource_data,
+                output_format=config.aws_output_format,
+                title="Top Resource Types by Evaluation Count",
             )
 
 
 def _generate_comprehensive_compliance_report(
-    aws_auth: AWSAuth, regions: List[str], resource_type_filter: Optional[str], show_compliant: bool, show_details: bool
+    aws_auth: AWSAuth,
+    regions: List[str],
+    resource_type_filter: Optional[str],
+    show_compliant: bool,
+    show_details: bool,
 ) -> Dict[str, Any]:
     """Generate comprehensive compliance report similar to the standalone script."""
 
@@ -880,12 +1050,18 @@ def _generate_comprehensive_compliance_report(
             region_data["config_rules"] = _get_enhanced_config_rules(config_client)
 
             # Determine resource types to check
-            resource_types = [resource_type_filter] if resource_type_filter else SUPPORTED_RESOURCE_TYPES
+            resource_types = (
+                [resource_type_filter]
+                if resource_type_filter
+                else SUPPORTED_RESOURCE_TYPES
+            )
 
             # Get resource compliance for each type
             console.print(f"[dim]Checking resource compliance for {region}...[/dim]")
             for res_type in resource_types:
-                compliance_status = _get_resource_compliance_by_type(config_client, res_type)
+                compliance_status = _get_resource_compliance_by_type(
+                    config_client, res_type
+                )
                 if compliance_status:
                     region_data["resource_compliance"][res_type] = compliance_status
 
@@ -961,14 +1137,17 @@ def _get_enhanced_config_rules(config_client) -> Dict[str, Dict]:
         for page in paginator.paginate():
             for rule in page.get("ConfigRules", []):
                 rule_name = rule["ConfigRuleName"]
-                source_identifier = rule.get("Source", {}).get("SourceIdentifier", "").lower()
+                source_identifier = (
+                    rule.get("Source", {}).get("SourceIdentifier", "").lower()
+                )
 
                 rules[rule_name] = {
                     "name": rule_name,
                     "state": rule.get("ConfigRuleState", "UNKNOWN"),
                     "source": rule.get("Source", {}).get("SourceIdentifier", "Custom"),
                     "description": MANAGED_RULE_DESCRIPTIONS.get(
-                        source_identifier, rule.get("Description", "No description available")
+                        source_identifier,
+                        rule.get("Description", "No description available"),
                     ),
                 }
     except Exception as e:
@@ -977,7 +1156,9 @@ def _get_enhanced_config_rules(config_client) -> Dict[str, Dict]:
     return rules
 
 
-def _get_resource_compliance_by_type(config_client, resource_type: str) -> Dict[str, str]:
+def _get_resource_compliance_by_type(
+    config_client, resource_type: str
+) -> Dict[str, str]:
     """Get compliance status for all resources of a specific type."""
     compliance_status = {}
 
@@ -989,20 +1170,27 @@ def _get_resource_compliance_by_type(config_client, resource_type: str) -> Dict[
                 resource_id = resource["resourceId"]
 
                 try:
-                    compliance_response = config_client.get_compliance_details_by_resource(
-                        ResourceType=resource_type, ResourceId=resource_id
+                    compliance_response = (
+                        config_client.get_compliance_details_by_resource(
+                            ResourceType=resource_type, ResourceId=resource_id
+                        )
                     )
 
                     evaluations = compliance_response.get("EvaluationResults", [])
                     if evaluations:
                         # Get worst compliance status
-                        statuses = [e.get("ComplianceType", "NOT_APPLICABLE") for e in evaluations]
+                        statuses = [
+                            e.get("ComplianceType", "NOT_APPLICABLE")
+                            for e in evaluations
+                        ]
                         if "NON_COMPLIANT" in statuses:
                             compliance_status[resource_id] = "NON_COMPLIANT"
                         elif "COMPLIANT" in statuses:
                             compliance_status[resource_id] = "COMPLIANT"
                         else:
-                            compliance_status[resource_id] = statuses[0] if statuses else "NOT_APPLICABLE"
+                            compliance_status[resource_id] = (
+                                statuses[0] if statuses else "NOT_APPLICABLE"
+                            )
                     else:
                         compliance_status[resource_id] = "NOT_TRACKED"
 
@@ -1034,9 +1222,15 @@ def _get_rule_compliance_summary(config_client) -> Dict[str, Dict]:
 
                 rule_summary[rule_name] = {
                     "compliance_type": compliance_type,
-                    "compliant_count": contributor_count.get("CappedCount", 0) if compliance_type == "COMPLIANT" else 0,
+                    "compliant_count": (
+                        contributor_count.get("CappedCount", 0)
+                        if compliance_type == "COMPLIANT"
+                        else 0
+                    ),
                     "non_compliant_count": (
-                        contributor_count.get("CappedCount", 0) if compliance_type == "NON_COMPLIANT" else 0
+                        contributor_count.get("CappedCount", 0)
+                        if compliance_type == "NON_COMPLIANT"
+                        else 0
                     ),
                 }
     except Exception as e:
@@ -1052,7 +1246,9 @@ def _calculate_region_summary_stats(region_data: Dict[str, Any]) -> None:
     # Count rules
     config_rules = region_data.get("config_rules", {})
     summary["total_config_rules"] = len(config_rules)
-    summary["active_rules"] = sum(1 for r in config_rules.values() if r.get("state") == "ACTIVE")
+    summary["active_rules"] = sum(
+        1 for r in config_rules.values() if r.get("state") == "ACTIVE"
+    )
 
     # Count resources
     resource_compliance = region_data.get("resource_compliance", {})
@@ -1084,7 +1280,9 @@ def _display_comprehensive_compliance_report(
 
     total_resources = max(global_summary["total_resources"], 1)
     compliant_pct = global_summary["compliant_resources"] / total_resources * 100
-    non_compliant_pct = global_summary["non_compliant_resources"] / total_resources * 100
+    non_compliant_pct = (
+        global_summary["non_compliant_resources"] / total_resources * 100
+    )
     not_tracked_pct = global_summary["not_tracked_resources"] / total_resources * 100
 
     summary_data = {
@@ -1096,7 +1294,9 @@ def _display_comprehensive_compliance_report(
         "Active Rules": global_summary["active_rules"],
     }
 
-    print_output(summary_data, output_format=config.aws_output_format, title="Global Summary")
+    print_output(
+        summary_data, output_format=config.aws_output_format, title="Global Summary"
+    )
 
     # Non-compliant resources by type
     console.print("\n[bold red]NON-COMPLIANT RESOURCES BY TYPE[/bold red]")
@@ -1107,7 +1307,9 @@ def _display_comprehensive_compliance_report(
         if "error" in region_data:
             continue
 
-        for resource_type, resources in region_data.get("resource_compliance", {}).items():
+        for resource_type, resources in region_data.get(
+            "resource_compliance", {}
+        ).items():
             non_compliant = [r for r, s in resources.items() if s == "NON_COMPLIANT"]
             if non_compliant:
                 sample_resources = ", ".join(non_compliant[:3])
@@ -1124,7 +1326,11 @@ def _display_comprehensive_compliance_report(
                 )
 
     if non_compliant_by_type:
-        print_output(non_compliant_by_type, output_format=config.aws_output_format, title="Non-Compliant Resources")
+        print_output(
+            non_compliant_by_type,
+            output_format=config.aws_output_format,
+            title="Non-Compliant Resources",
+        )
     else:
         console.print("[green]✅ No non-compliant resources found![/green]")
 
@@ -1137,7 +1343,9 @@ def _display_comprehensive_compliance_report(
         if "error" in region_data:
             continue
 
-        for resource_type, resources in region_data.get("resource_compliance", {}).items():
+        for resource_type, resources in region_data.get(
+            "resource_compliance", {}
+        ).items():
             not_tracked = [r for r, s in resources.items() if s == "NOT_TRACKED"]
             if not_tracked:
                 sample_resources = ", ".join(not_tracked[:3])
@@ -1154,7 +1362,11 @@ def _display_comprehensive_compliance_report(
                 )
 
     if not_tracked_by_type:
-        print_output(not_tracked_by_type, output_format=config.aws_output_format, title="Not Tracked Resources")
+        print_output(
+            not_tracked_by_type,
+            output_format=config.aws_output_format,
+            title="Not Tracked Resources",
+        )
     else:
         console.print("[green]✅ All resources are being tracked![/green]")
 
@@ -1175,10 +1387,13 @@ def _display_comprehensive_compliance_report(
                 compliance_info = rule_compliance.get(rule_name, {})
                 rules_table.append(
                     {
-                        "Rule Name": rule_name[:40] + ("..." if len(rule_name) > 40 else ""),
+                        "Rule Name": rule_name[:40]
+                        + ("..." if len(rule_name) > 40 else ""),
                         "Region": region,
                         "State": rule_info["state"],
-                        "Non-Compliant Count": compliance_info.get("non_compliant_count", 0),
+                        "Non-Compliant Count": compliance_info.get(
+                            "non_compliant_count", 0
+                        ),
                         "Description": rule_info["description"][:60]
                         + ("..." if len(rule_info["description"]) > 60 else ""),
                     }
@@ -1186,7 +1401,9 @@ def _display_comprehensive_compliance_report(
 
         if rules_table:
             print_output(
-                rules_table[:20],  # Limit to first 20 rules to avoid overwhelming output
+                rules_table[
+                    :20
+                ],  # Limit to first 20 rules to avoid overwhelming output
                 output_format=config.aws_output_format,
                 title="Config Rules Summary (Top 20)",
             )

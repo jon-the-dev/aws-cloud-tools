@@ -34,7 +34,9 @@ class RDSManager:
         self.rds_client = self.session.client("rds")
         self.cloudwatch_client = self.session.client("cloudwatch")
 
-    def troubleshoot_mysql_connections(self, db_instance_identifier: str) -> Dict[str, Any]:
+    def troubleshoot_mysql_connections(
+        self, db_instance_identifier: str
+    ) -> Dict[str, Any]:
         """Troubleshoot MySQL RDS connection issues.
 
         Args:
@@ -58,7 +60,9 @@ class RDSManager:
             results["instance_info"] = self._get_instance_info(db_instance_identifier)
 
             # Get connection metrics from CloudWatch
-            results["connection_metrics"] = self._get_connection_metrics(db_instance_identifier)
+            results["connection_metrics"] = self._get_connection_metrics(
+                db_instance_identifier
+            )
 
             # Get parameter group information
             results["parameter_info"] = self._get_parameter_info(db_instance_identifier)
@@ -78,7 +82,9 @@ class RDSManager:
     def _get_instance_info(self, db_instance_identifier: str) -> Dict[str, Any]:
         """Get RDS instance information."""
         try:
-            response = self.rds_client.describe_db_instances(DBInstanceIdentifier=db_instance_identifier)
+            response = self.rds_client.describe_db_instances(
+                DBInstanceIdentifier=db_instance_identifier
+            )
 
             instance = response["DBInstances"][0]
 
@@ -90,14 +96,24 @@ class RDSManager:
                 "allocated_storage": instance.get("AllocatedStorage"),
                 "max_allocated_storage": instance.get("MaxAllocatedStorage"),
                 "multi_az": instance.get("MultiAZ"),
-                "vpc_security_groups": [sg["VpcSecurityGroupId"] for sg in instance.get("VpcSecurityGroups", [])],
-                "parameter_groups": [pg["DBParameterGroupName"] for pg in instance.get("DBParameterGroups", [])],
+                "vpc_security_groups": [
+                    sg["VpcSecurityGroupId"]
+                    for sg in instance.get("VpcSecurityGroups", [])
+                ],
+                "parameter_groups": [
+                    pg["DBParameterGroupName"]
+                    for pg in instance.get("DBParameterGroups", [])
+                ],
                 "endpoint": instance.get("Endpoint", {}).get("Address"),
                 "port": instance.get("Endpoint", {}).get("Port"),
                 "backup_retention_period": instance.get("BackupRetentionPeriod"),
                 "preferred_backup_window": instance.get("PreferredBackupWindow"),
-                "preferred_maintenance_window": instance.get("PreferredMaintenanceWindow"),
-                "performance_insights_enabled": instance.get("PerformanceInsightsEnabled", False),
+                "preferred_maintenance_window": instance.get(
+                    "PreferredMaintenanceWindow"
+                ),
+                "performance_insights_enabled": instance.get(
+                    "PerformanceInsightsEnabled", False
+                ),
             }
 
         except Exception as e:
@@ -124,7 +140,12 @@ class RDSManager:
                 response = self.cloudwatch_client.get_metric_statistics(
                     Namespace="AWS/RDS",
                     MetricName=metric_name,
-                    Dimensions=[{"Name": "DBInstanceIdentifier", "Value": db_instance_identifier}],
+                    Dimensions=[
+                        {
+                            "Name": "DBInstanceIdentifier",
+                            "Value": db_instance_identifier,
+                        }
+                    ],
                     StartTime=start_time,
                     EndTime=end_time,
                     Period=300,  # 5 minutes
@@ -133,13 +154,19 @@ class RDSManager:
 
                 if response["Datapoints"]:
                     # Sort by timestamp
-                    datapoints = sorted(response["Datapoints"], key=lambda x: x["Timestamp"])
+                    datapoints = sorted(
+                        response["Datapoints"], key=lambda x: x["Timestamp"]
+                    )
 
                     metrics_data[metric_name] = {
                         "current_avg": round(datapoints[-1].get("Average", 0), 2),
                         "current_max": round(datapoints[-1].get("Maximum", 0), 2),
-                        "peak_avg": round(max(dp.get("Average", 0) for dp in datapoints), 2),
-                        "peak_max": round(max(dp.get("Maximum", 0) for dp in datapoints), 2),
+                        "peak_avg": round(
+                            max(dp.get("Average", 0) for dp in datapoints), 2
+                        ),
+                        "peak_max": round(
+                            max(dp.get("Maximum", 0) for dp in datapoints), 2
+                        ),
                         "datapoints_count": len(datapoints),
                     }
                 else:
@@ -155,7 +182,9 @@ class RDSManager:
         """Get parameter group information."""
         try:
             # Get instance info first
-            response = self.rds_client.describe_db_instances(DBInstanceIdentifier=db_instance_identifier)
+            response = self.rds_client.describe_db_instances(
+                DBInstanceIdentifier=db_instance_identifier
+            )
 
             instance = response["DBInstances"][0]
             parameter_groups = instance.get("DBParameterGroups", [])
@@ -166,7 +195,9 @@ class RDSManager:
                 pg_name = pg["DBParameterGroupName"]
 
                 # Get parameters
-                params_response = self.rds_client.describe_db_parameters(DBParameterGroupName=pg_name)
+                params_response = self.rds_client.describe_db_parameters(
+                    DBParameterGroupName=pg_name
+                )
 
                 # Filter connection-related parameters
                 connection_params = {}
@@ -189,7 +220,9 @@ class RDSManager:
                             "source": param.get("Source"),
                             "is_modifiable": param.get("IsModifiable"),
                             "description": (
-                                param.get("Description", "")[:100] + "..." if param.get("Description", "") else ""
+                                param.get("Description", "")[:100] + "..."
+                                if param.get("Description", "")
+                                else ""
                             ),
                         }
 
@@ -208,10 +241,14 @@ class RDSManager:
         """Get MySQL error logs."""
         try:
             # List log files
-            response = self.rds_client.describe_db_log_files(DBInstanceIdentifier=db_instance_identifier)
+            response = self.rds_client.describe_db_log_files(
+                DBInstanceIdentifier=db_instance_identifier
+            )
 
             error_logs = [
-                log for log in response.get("DescribeDBLogFiles", []) if "error" in log.get("LogFileName", "").lower()
+                log
+                for log in response.get("DescribeDBLogFiles", [])
+                if "error" in log.get("LogFileName", "").lower()
             ]
 
             if not error_logs:
@@ -223,7 +260,9 @@ class RDSManager:
 
             # Download log file content (last 500 lines)
             response = self.rds_client.download_db_log_file_portion(
-                DBInstanceIdentifier=db_instance_identifier, LogFileName=log_file_name, NumberOfLines=500
+                DBInstanceIdentifier=db_instance_identifier,
+                LogFileName=log_file_name,
+                NumberOfLines=500,
             )
 
             log_content = response.get("LogFileData", "")
@@ -249,7 +288,9 @@ class RDSManager:
                 "log_file_name": log_file_name,
                 "log_size": latest_log.get("Size", 0),
                 "last_written": latest_log.get("LastWritten"),
-                "connection_errors": connection_errors[-10:],  # Last 10 connection errors
+                "connection_errors": connection_errors[
+                    -10:
+                ],  # Last 10 connection errors
                 "total_connection_errors": len(connection_errors),
             }
 
@@ -285,7 +326,10 @@ class RDSManager:
 
         # Check error logs
         error_logs = results.get("error_logs", {})
-        if "total_connection_errors" in error_logs and error_logs["total_connection_errors"] > 0:
+        if (
+            "total_connection_errors" in error_logs
+            and error_logs["total_connection_errors"] > 0
+        ):
             recommendations.append(
                 f"🔴 HIGH: Found {error_logs['total_connection_errors']} connection-related errors in logs. "
                 "Review error log details for specific issues."
@@ -302,7 +346,9 @@ class RDSManager:
 
         # Check Performance Insights
         if not instance_info.get("performance_insights_enabled", False):
-            recommendations.append("🟢 LOW: Enable Performance Insights for detailed query and connection analysis.")
+            recommendations.append(
+                "🟢 LOW: Enable Performance Insights for detailed query and connection analysis."
+            )
 
         # General recommendations
         recommendations.extend(
@@ -317,7 +363,9 @@ class RDSManager:
         return recommendations
 
 
-def display_troubleshooting_results(results: Dict[str, Any], db_instance_identifier: str) -> None:
+def display_troubleshooting_results(
+    results: Dict[str, Any], db_instance_identifier: str
+) -> None:
     """Display troubleshooting results in a formatted way."""
 
     console.print(f"\n[bold blue]MySQL Connection Troubleshooting Report[/bold blue]")
@@ -326,7 +374,9 @@ def display_troubleshooting_results(results: Dict[str, Any], db_instance_identif
     # Instance Information
     instance_info = results.get("instance_info", {})
     if instance_info and "error" not in instance_info:
-        table = Table(title="Instance Information", show_header=True, header_style="bold magenta")
+        table = Table(
+            title="Instance Information", show_header=True, header_style="bold magenta"
+        )
         table.add_column("Property", style="cyan")
         table.add_column("Value", style="white")
 
@@ -341,7 +391,11 @@ def display_troubleshooting_results(results: Dict[str, Any], db_instance_identif
     # Connection Metrics
     metrics = results.get("connection_metrics", {})
     if metrics:
-        table = Table(title="Connection Metrics (Last 24 Hours)", show_header=True, header_style="bold magenta")
+        table = Table(
+            title="Connection Metrics (Last 24 Hours)",
+            show_header=True,
+            header_style="bold magenta",
+        )
         table.add_column("Metric", style="cyan")
         table.add_column("Current Avg", style="white")
         table.add_column("Current Max", style="white")
@@ -367,7 +421,11 @@ def display_troubleshooting_results(results: Dict[str, Any], db_instance_identif
         for pg_name, pg_data in param_info.items():
             connection_params = pg_data.get("connection_parameters", {})
             if connection_params:
-                table = Table(title=f"Connection Parameters - {pg_name}", show_header=True, header_style="bold magenta")
+                table = Table(
+                    title=f"Connection Parameters - {pg_name}",
+                    show_header=True,
+                    header_style="bold magenta",
+                )
                 table.add_column("Parameter", style="cyan")
                 table.add_column("Value", style="white")
                 table.add_column("Source", style="yellow")
@@ -417,7 +475,9 @@ def rds_group(ctx: click.Context) -> None:
 @click.argument("db_instance_identifier")
 @click.option("--output-file", help="Save detailed results to JSON file")
 @click.pass_context
-def troubleshoot_mysql(ctx: click.Context, db_instance_identifier: str, output_file: Optional[str]) -> None:
+def troubleshoot_mysql(
+    ctx: click.Context, db_instance_identifier: str, output_file: Optional[str]
+) -> None:
     """Troubleshoot MySQL RDS connection issues.
 
     This command analyzes your MySQL RDS instance for connection-related issues
@@ -437,7 +497,9 @@ def troubleshoot_mysql(ctx: click.Context, db_instance_identifier: str, output_f
 
         rds_manager = RDSManager(config, aws_auth)
 
-        with console.status(f"[bold green]Analyzing MySQL instance {db_instance_identifier}..."):
+        with console.status(
+            f"[bold green]Analyzing MySQL instance {db_instance_identifier}..."
+        ):
             results = rds_manager.troubleshoot_mysql_connections(db_instance_identifier)
 
         if "error" in results:
@@ -465,7 +527,9 @@ def troubleshoot_mysql(ctx: click.Context, db_instance_identifier: str, output_f
 @click.option("--engine", help="Filter by database engine (e.g., mysql, postgres)")
 @click.option("--status", help="Filter by instance status (e.g., available, stopped)")
 @click.pass_context
-def list_instances(ctx: click.Context, engine: Optional[str], status: Optional[str]) -> None:
+def list_instances(
+    ctx: click.Context, engine: Optional[str], status: Optional[str]
+) -> None:
     """List RDS instances in the current region.
 
     Examples:
@@ -487,17 +551,27 @@ def list_instances(ctx: click.Context, engine: Optional[str], status: Optional[s
 
         # Apply filters
         if engine:
-            instances = [i for i in instances if i.get("Engine", "").lower() == engine.lower()]
+            instances = [
+                i for i in instances if i.get("Engine", "").lower() == engine.lower()
+            ]
 
         if status:
-            instances = [i for i in instances if i.get("DBInstanceStatus", "").lower() == status.lower()]
+            instances = [
+                i
+                for i in instances
+                if i.get("DBInstanceStatus", "").lower() == status.lower()
+            ]
 
         if not instances:
-            console.print("[yellow]No RDS instances found matching the criteria.[/yellow]")
+            console.print(
+                "[yellow]No RDS instances found matching the criteria.[/yellow]"
+            )
             return
 
         # Display results
-        table = Table(title="RDS Instances", show_header=True, header_style="bold magenta")
+        table = Table(
+            title="RDS Instances", show_header=True, header_style="bold magenta"
+        )
         table.add_column("Instance ID", style="cyan")
         table.add_column("Engine", style="white")
         table.add_column("Version", style="white")

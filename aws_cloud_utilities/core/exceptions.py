@@ -101,7 +101,9 @@ class PermissionError(AWSError):
             resource: Resource that was accessed
         """
         if resource:
-            message = f"Permission denied for action '{action}' on resource '{resource}'"
+            message = (
+                f"Permission denied for action '{action}' on resource '{resource}'"
+            )
         else:
             message = f"Permission denied for action '{action}'"
         super().__init__(message, "PERMISSION_DENIED")
