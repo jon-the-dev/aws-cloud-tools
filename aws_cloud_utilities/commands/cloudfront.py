@@ -2,6 +2,7 @@
 
 import logging
 import json
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
@@ -289,6 +290,154 @@ def distribution_details(
     except Exception as e:
         console.print(f"[red]Error getting distribution details:[/red] {e}")
         raise click.Abort()
+
+
+@cloudfront_group.command(name="invalidate")
+@click.argument("target", required=True)
+@click.option("--paths", multiple=True, help="Paths to invalidate (default: /*)")
+@click.option("--output-file", help="Output file for invalidation details (supports .json, .yaml)")
+@click.pass_context
+def invalidate(
+    ctx: click.Context, 
+    target: str, 
+    paths: Tuple[str, ...], 
+    output_file: Optional[str]
+) -> None:
+    """Invalidate CloudFront distribution cache by domain name or distribution ID.
+    
+    TARGET can be either:
+    - A domain name (e.g., example.com)
+    - A distribution ID (e.g., E1234567890123)
+    """
+    config: Config = ctx.obj["config"]
+    aws_auth: AWSAuth = ctx.obj["aws_auth"]
+
+    try:
+        # Default to /* if no paths specified
+        invalidation_paths = list(paths) if paths else ["/*"]
+        
+        console.print(f"[blue]Processing CloudFront invalidation for: {target}[/blue]")
+        console.print(f"[dim]Paths to invalidate: {', '.join(invalidation_paths)}[/dim]")
+
+        # Get CloudFront client
+        cf_client = aws_auth.get_client("cloudfront")
+
+        # Determine if target is a distribution ID or domain name
+        distribution_id = _get_distribution_id(cf_client, target)
+        
+        if not distribution_id:
+            console.print(f"[red]No CloudFront distribution found for: {target}[/red]")
+            raise click.Abort()
+
+        console.print(f"[green]Found distribution ID:[/green] {distribution_id}")
+
+        # Create invalidation
+        invalidation_result = _create_invalidation(cf_client, distribution_id, invalidation_paths)
+        
+        # Display results
+        result_data = {
+            "Target": target,
+            "Distribution ID": distribution_id,
+            "Invalidation ID": invalidation_result["Invalidation"]["Id"],
+            "Status": invalidation_result["Invalidation"]["Status"],
+            "Paths": invalidation_paths,
+            "Caller Reference": invalidation_result["Invalidation"]["InvalidationBatch"]["CallerReference"],
+            "Created At": invalidation_result["Invalidation"]["CreateTime"].strftime("%Y-%m-%d %H:%M:%S UTC")
+        }
+
+        print_output(
+            result_data,
+            output_format=config.aws_output_format,
+            title=f"CloudFront Invalidation Created"
+        )
+
+        # Save to file if requested
+        if output_file:
+            output_path = Path(output_file)
+            file_format = output_path.suffix.lstrip(".") or "json"
+
+            # Add timestamp to filename
+            timestamp = get_timestamp()
+            stem = output_path.stem
+            new_filename = f"{stem}_{timestamp}{output_path.suffix}"
+            output_path = output_path.parent / new_filename
+
+            # Include full invalidation data
+            save_data = {
+                "invalidation_summary": result_data,
+                "full_response": invalidation_result,
+                "created_at": datetime.now().isoformat(),
+            }
+
+            save_to_file(save_data, output_path, file_format)
+            console.print(f"[green]Invalidation details saved to:[/green] {output_path}")
+
+        console.print(f"\n[green]✅ CloudFront invalidation created successfully![/green]")
+        console.print(f"[dim]Note: Invalidations typically take 10-15 minutes to complete[/dim]")
+
+    except Exception as e:
+        console.print(f"[red]Error creating CloudFront invalidation:[/red] {e}")
+        raise click.Abort()
+
+
+def _get_distribution_id(cf_client, target: str) -> Optional[str]:
+    """Get distribution ID from target (domain name or distribution ID)."""
+    try:
+        # Check if target is already a distribution ID (starts with E and is alphanumeric)
+        if target.startswith("E") and len(target) > 10 and target.replace("E", "").isalnum():
+            # Verify the distribution exists
+            try:
+                cf_client.get_distribution(Id=target)
+                return target
+            except cf_client.exceptions.NoSuchDistribution:
+                return None
+        
+        # Target is a domain name, search for it in distributions
+        paginator = cf_client.get_paginator("list_distributions")
+        
+        for page in paginator.paginate():
+            if "Items" not in page["DistributionList"]:
+                continue
+                
+            for distribution in page["DistributionList"]["Items"]:
+                # Check aliases
+                aliases = distribution["DistributionConfig"].get("Aliases", {}).get("Items", [])
+                if target in aliases:
+                    return distribution["Id"]
+                
+                # Check CloudFront domain name
+                if distribution.get("DomainName") == target:
+                    return distribution["Id"]
+        
+        return None
+        
+    except Exception as e:
+        logger.debug(f"Error finding distribution for target {target}: {e}")
+        return None
+
+
+def _create_invalidation(cf_client, distribution_id: str, paths: List[str]) -> Dict[str, Any]:
+    """Create an invalidation for the specified distribution and paths."""
+    try:
+        # Generate unique caller reference using timestamp
+        caller_reference = f"invalidate_{int(time.time() * 1000)}"
+        
+        response = cf_client.create_invalidation(
+            DistributionId=distribution_id,
+            InvalidationBatch={
+                "Paths": {
+                    "Quantity": len(paths),
+                    "Items": paths
+                },
+                "CallerReference": caller_reference
+            }
+        )
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error creating invalidation for distribution {distribution_id}: {e}")
+        raise
 
 
 def _get_sns_topic_arn(aws_auth: AWSAuth, topic_name: str, region: str) -> Optional[str]:

@@ -75,10 +75,7 @@ aws-cloud-utilities cloudfront distribution-details DISTRIBUTION_ID
 - `DISTRIBUTION_ID` - ID of the distribution to analyze
 
 **Options:**
-- `--include-config` - Include full distribution configuration
-- `--include-origins` - Include origin configuration details
-- `--include-behaviors` - Include cache behavior details
-- `--include-invalidations` - Include recent invalidation history
+- `--show-config` - Include full distribution configuration
 - `--output-file FILE` - Save results to file
 
 **Examples:**
@@ -86,14 +83,41 @@ aws-cloud-utilities cloudfront distribution-details DISTRIBUTION_ID
 # Basic distribution details
 aws-cloud-utilities cloudfront distribution-details E1234567890123
 
-# Comprehensive details
-aws-cloud-utilities cloudfront distribution-details E1234567890123 --include-config --include-origins --include-behaviors
-
-# Include invalidation history
-aws-cloud-utilities cloudfront distribution-details E1234567890123 --include-invalidations
+# Include full configuration
+aws-cloud-utilities cloudfront distribution-details E1234567890123 --show-config
 
 # Save to file
 aws-cloud-utilities cloudfront distribution-details E1234567890123 --output-file distribution-analysis.json
+```
+
+### `invalidate`
+
+Invalidate CloudFront distribution cache by domain name or distribution ID.
+
+```bash
+aws-cloud-utilities cloudfront invalidate TARGET
+```
+
+**Arguments:**
+- `TARGET` - Either a domain name (e.g., example.com) or distribution ID (e.g., E1234567890123)
+
+**Options:**
+- `--paths PATH` - Specific paths to invalidate (can be used multiple times, default: /*)
+- `--output-file FILE` - Save invalidation details to file
+
+**Examples:**
+```bash
+# Invalidate all paths for a domain
+aws-cloud-utilities cloudfront invalidate example.com
+
+# Invalidate specific paths
+aws-cloud-utilities cloudfront invalidate example.com --paths /images/* --paths /css/*
+
+# Invalidate by distribution ID
+aws-cloud-utilities cloudfront invalidate E1234567890123
+
+# Save invalidation details
+aws-cloud-utilities cloudfront invalidate example.com --output-file invalidation-details.json
 ```
 
 ## Global Options
@@ -208,30 +232,70 @@ echo "=== Analysis Complete ==="
 echo "Performance data saved to: $ANALYSIS_DIR"
 ```
 
+### Cache Invalidation Workflow
+
+```bash
+#!/bin/bash
+# Deploy and invalidate CloudFront cache
+
+DOMAIN="example.com"
+PATHS_TO_INVALIDATE=("/api/*" "/static/css/*" "/static/js/*")
+
+echo "=== Pre-Deployment Status ==="
+aws-cloud-utilities cloudfront distribution-details $DOMAIN --show-config
+
+echo "=== Deploying Application ==="
+# Your deployment commands here
+# ...
+
+echo "=== Invalidating CloudFront Cache ==="
+PATHS_ARGS=""
+for path in "${PATHS_TO_INVALIDATE[@]}"; do
+    PATHS_ARGS="$PATHS_ARGS --paths $path"
+done
+
+aws-cloud-utilities cloudfront invalidate $DOMAIN $PATHS_ARGS --output-file invalidation-$(date +%Y%m%d-%H%M%S).json
+
+echo "=== Deployment Complete ==="
+echo "Cache invalidation initiated. Check AWS Console for status."
+```
+
 ## Common Use Cases
 
 1. **Distribution Management**
    ```bash
-   aws-cloud-utilities cloudfront list-distributions --include-config
+   aws-cloud-utilities cloudfront list-distributions --include-disabled
    aws-cloud-utilities cloudfront distribution-details E1234567890123
    ```
 
-2. **Logging Configuration**
+2. **Cache Invalidation**
    ```bash
-   aws-cloud-utilities cloudfront update-logging --enable --bucket my-logs-bucket --prefix cloudfront/
+   # Invalidate all content
+   aws-cloud-utilities cloudfront invalidate example.com
+   
+   # Invalidate specific paths
+   aws-cloud-utilities cloudfront invalidate example.com --paths /api/* --paths /static/*
+   
+   # Invalidate by distribution ID
+   aws-cloud-utilities cloudfront invalidate E1234567890123
+   ```
+
+3. **Logging Configuration**
+   ```bash
+   aws-cloud-utilities cloudfront update-logging --log-bucket my-logs-bucket --log-prefix cloudfront/
    aws-cloud-utilities cloudfront update-logging --dry-run
    ```
 
-3. **Configuration Audit**
+4. **Configuration Audit**
    ```bash
-   aws-cloud-utilities cloudfront list-distributions --include-config --output-file audit.json
-   aws-cloud-utilities cloudfront distribution-details E1234567890123 --include-origins --include-behaviors
+   aws-cloud-utilities cloudfront list-distributions --show-logging-status --output-file audit.json
+   aws-cloud-utilities cloudfront distribution-details E1234567890123 --show-config
    ```
 
-4. **Status Monitoring**
+5. **Status Monitoring**
    ```bash
-   aws-cloud-utilities cloudfront list-distributions --status InProgress
-   aws-cloud-utilities cloudfront list-distributions --status Deployed
+   aws-cloud-utilities cloudfront list-distributions --include-disabled
+   aws-cloud-utilities cloudfront list-distributions --show-logging-status
    ```
 
 ## Integration with Other Commands
