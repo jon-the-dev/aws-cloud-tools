@@ -104,7 +104,7 @@ cli_instance = AWSCloudUtilitiesCLI()
 @click.option("--verbose", is_flag=True, help="Enable verbose output")
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option("--config", help="Configuration file path")
-@click.version_option(version="2.1.1", prog_name="aws-cloud-utilities")
+@click.version_option(version="2.1.2", prog_name="aws-cloud-utilities")
 @click.pass_context
 def main(
     ctx: click.Context,
@@ -188,7 +188,7 @@ def info(ctx: click.Context) -> None:
         caller_identity = aws_auth.get_caller_identity()
 
         info_data = {
-            "Version": "2.0.0",
+            "Version": "2.1.2",
             "AWS Account ID": caller_identity.get("Account", "Unknown"),
             "AWS User/Role": caller_identity.get("Arn", "Unknown"),
             "AWS Profile": config.aws_profile or "default",

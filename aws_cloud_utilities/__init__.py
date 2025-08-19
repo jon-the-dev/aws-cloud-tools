@@ -1,6 +1,6 @@
 """AWS Cloud Utilities - A unified toolkit for AWS operations."""
 
-__version__ = "2.1.1"
+__version__ = "2.1.2"
 __author__ = "Jon"
 __email__ = "jon@zer0day.net"
 __description__ = (
