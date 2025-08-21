@@ -13,7 +13,13 @@ from typing import Dict, Any, List, Optional, Tuple, Union
 from concurrent.futures import ThreadPoolExecutor
 import click
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TaskProgressColumn,
+)
 
 from ..core.config import Config
 from ..core.auth import AWSAuth
@@ -54,13 +60,28 @@ def logs_group():
 
 
 @logs_group.command(name="list-groups")
-@click.option("--region", help="AWS region to list log groups from (default: current region)")
-@click.option("--all-regions", is_flag=True, help="List log groups from all available regions")
-@click.option("--include-size", is_flag=True, help="Include storage size information for each log group")
-@click.option("--output-file", help="Output file for log groups list (supports .json, .yaml, .csv)")
+@click.option(
+    "--region", help="AWS region to list log groups from (default: current region)"
+)
+@click.option(
+    "--all-regions", is_flag=True, help="List log groups from all available regions"
+)
+@click.option(
+    "--include-size",
+    is_flag=True,
+    help="Include storage size information for each log group",
+)
+@click.option(
+    "--output-file",
+    help="Output file for log groups list (supports .json, .yaml, .csv)",
+)
 @click.pass_context
 def list_groups(
-    ctx: click.Context, region: Optional[str], all_regions: bool, include_size: bool, output_file: Optional[str]
+    ctx: click.Context,
+    region: Optional[str],
+    all_regions: bool,
+    include_size: bool,
+    output_file: Optional[str],
 ) -> None:
     """List CloudWatch log groups with details."""
     config: Config = ctx.obj["config"]
@@ -73,7 +94,9 @@ def list_groups(
         else:
             target_regions = [region or config.aws_region or "us-east-1"]
 
-        console.print(f"[blue]Listing CloudWatch log groups across {len(target_regions)} regions[/blue]")
+        console.print(
+            f"[blue]Listing CloudWatch log groups across {len(target_regions)} regions[/blue]"
+        )
 
         # Get log groups data
         log_groups_data = _get_all_log_groups(aws_auth, target_regions, include_size)
@@ -108,13 +131,33 @@ def list_groups(
 
 @logs_group.command(name="download")
 @click.argument("log_group")
-@click.option("--days", type=int, default=7, help="Number of days to look back for logs (default: 7)")
-@click.option("--region", help="AWS region where the log group is located (default: current region)")
-@click.option("--output-dir", help="Output directory for downloaded logs (default: ./logs_<timestamp>)")
-@click.option("--all-groups", is_flag=True, help="Download logs from all log groups (use 'ALL' as log_group argument)")
+@click.option(
+    "--days",
+    type=int,
+    default=7,
+    help="Number of days to look back for logs (default: 7)",
+)
+@click.option(
+    "--region",
+    help="AWS region where the log group is located (default: current region)",
+)
+@click.option(
+    "--output-dir",
+    help="Output directory for downloaded logs (default: ./logs_<timestamp>)",
+)
+@click.option(
+    "--all-groups",
+    is_flag=True,
+    help="Download logs from all log groups (use 'ALL' as log_group argument)",
+)
 @click.pass_context
 def download(
-    ctx: click.Context, log_group: str, days: int, region: Optional[str], output_dir: Optional[str], all_groups: bool
+    ctx: click.Context,
+    log_group: str,
+    days: int,
+    region: Optional[str],
+    output_dir: Optional[str],
+    all_groups: bool,
 ) -> None:
     """Download CloudWatch logs for a specific log group or all groups."""
     config: Config = ctx.obj["config"]
@@ -133,7 +176,9 @@ def download(
 
         # Handle ALL groups case
         if log_group.upper() == "ALL" or all_groups:
-            console.print(f"[blue]Downloading logs from all log groups in region {target_region}[/blue]")
+            console.print(
+                f"[blue]Downloading logs from all log groups in region {target_region}[/blue]"
+            )
             console.print(f"[dim]Looking back {days} days[/dim]")
             console.print(f"[dim]Output directory: {output_path}[/dim]")
 
@@ -156,7 +201,9 @@ def download(
             console.print(f"[dim]Output directory: {output_path}[/dim]")
 
             # Download from single group
-            download_results = _download_single_log_group(aws_auth, target_region, log_group, days, output_path)
+            download_results = _download_single_log_group(
+                aws_auth, target_region, log_group, days, output_path
+            )
 
         # Display results
         _display_download_results(config, download_results)
@@ -172,12 +219,26 @@ def download(
 @logs_group.command(name="set-retention")
 @click.argument("log_group")
 @click.argument("retention", type=int, default=30)
-@click.option("--region", help="AWS region where the log group is located (default: current region)")
-@click.option("--if-never", is_flag=True, help="Only set retention if current retention is 'Never'")
-@click.option("--dry-run", is_flag=True, help="Show what would be changed without making changes")
+@click.option(
+    "--region",
+    help="AWS region where the log group is located (default: current region)",
+)
+@click.option(
+    "--if-never",
+    is_flag=True,
+    help="Only set retention if current retention is 'Never'",
+)
+@click.option(
+    "--dry-run", is_flag=True, help="Show what would be changed without making changes"
+)
 @click.pass_context
 def set_retention(
-    ctx: click.Context, log_group: str, retention: int, region: Optional[str], if_never: bool, dry_run: bool
+    ctx: click.Context,
+    log_group: str,
+    retention: int,
+    region: Optional[str],
+    if_never: bool,
+    dry_run: bool,
 ) -> None:
     """Set retention policy for a CloudWatch log group."""
     config: Config = ctx.obj["config"]
@@ -187,7 +248,9 @@ def set_retention(
         target_region = region or config.aws_region or "us-east-1"
 
         console.print(f"[blue]Setting retention for log group: {log_group}[/blue]")
-        console.print(f"[dim]Region: {target_region}, Retention: {retention} days[/dim]")
+        console.print(
+            f"[dim]Region: {target_region}, Retention: {retention} days[/dim]"
+        )
         if if_never:
             console.print("[dim]Only updating groups with 'Never' retention[/dim]")
         if dry_run:
@@ -215,25 +278,35 @@ def set_retention(
             current_retention = target_group.get("retentionInDays")
 
             # Display current status
-            current_display = "Never" if current_retention is None else f"{current_retention} days"
+            current_display = (
+                "Never" if current_retention is None else f"{current_retention} days"
+            )
             console.print(f"[dim]Current retention: {current_display}[/dim]")
 
             # Check if we should skip based on --if-never flag
             if if_never and current_retention is not None:
-                console.print(f"[yellow]Skipping: Current retention is not 'Never' ({current_retention} days)[/yellow]")
+                console.print(
+                    f"[yellow]Skipping: Current retention is not 'Never' ({current_retention} days)[/yellow]"
+                )
                 return
 
             # Check if retention is already set to the target value
             if current_retention == retention:
-                console.print(f"[yellow]Retention already set to {retention} days[/yellow]")
+                console.print(
+                    f"[yellow]Retention already set to {retention} days[/yellow]"
+                )
                 return
 
             if dry_run:
-                console.print(f"[yellow][DRY RUN] Would set retention to {retention} days[/yellow]")
+                console.print(
+                    f"[yellow][DRY RUN] Would set retention to {retention} days[/yellow]"
+                )
                 return
 
             # Set retention
-            logs_client.put_retention_policy(logGroupName=log_group, retentionInDays=retention)
+            logs_client.put_retention_policy(
+                logGroupName=log_group, retentionInDays=retention
+            )
 
             console.print(f"[green]✅ Retention set to {retention} days[/green]")
 
@@ -248,10 +321,15 @@ def set_retention(
 
 @logs_group.command(name="delete-group")
 @click.argument("log_group")
-@click.option("--region", help="AWS region where the log group is located (default: current region)")
+@click.option(
+    "--region",
+    help="AWS region where the log group is located (default: current region)",
+)
 @click.option("--confirm", is_flag=True, help="Skip confirmation prompt")
 @click.pass_context
-def delete_group(ctx: click.Context, log_group: str, region: Optional[str], confirm: bool) -> None:
+def delete_group(
+    ctx: click.Context, log_group: str, region: Optional[str], confirm: bool
+) -> None:
     """Delete a CloudWatch log group."""
     config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
@@ -266,7 +344,9 @@ def delete_group(ctx: click.Context, log_group: str, region: Optional[str], conf
 
         # Confirmation
         if not confirm:
-            if not click.confirm(f"\nAre you sure you want to delete log group '{log_group}'?"):
+            if not click.confirm(
+                f"\nAre you sure you want to delete log group '{log_group}'?"
+            ):
                 console.print("[yellow]Operation cancelled[/yellow]")
                 return
 
@@ -276,7 +356,9 @@ def delete_group(ctx: click.Context, log_group: str, region: Optional[str], conf
         # Delete log group
         try:
             logs_client.delete_log_group(logGroupName=log_group)
-            console.print(f"[green]✅ Log group '{log_group}' deleted successfully[/green]")
+            console.print(
+                f"[green]✅ Log group '{log_group}' deleted successfully[/green]"
+            )
 
         except logs_client.exceptions.ResourceNotFoundException:
             console.print(f"[red]Log group '{log_group}' not found[/red]")
@@ -289,10 +371,20 @@ def delete_group(ctx: click.Context, log_group: str, region: Optional[str], conf
 
 @logs_group.command(name="combine")
 @click.argument("log_folder")
-@click.option("--output-file", help="Output file for combined logs (default: combined_logs_<timestamp>.log)")
-@click.option("--sort-lines", is_flag=True, default=True, help="Sort log lines chronologically (default: enabled)")
+@click.option(
+    "--output-file",
+    help="Output file for combined logs (default: combined_logs_<timestamp>.log)",
+)
+@click.option(
+    "--sort-lines",
+    is_flag=True,
+    default=True,
+    help="Sort log lines chronologically (default: enabled)",
+)
 @click.pass_context
-def combine(ctx: click.Context, log_folder: str, output_file: Optional[str], sort_lines: bool) -> None:
+def combine(
+    ctx: click.Context, log_folder: str, output_file: Optional[str], sort_lines: bool
+) -> None:
     """Combine multiple log files into a single sorted file."""
     config: Config = ctx.obj["config"]
 
@@ -300,7 +392,9 @@ def combine(ctx: click.Context, log_folder: str, output_file: Optional[str], sor
         folder_path = Path(log_folder).resolve()
 
         if not folder_path.is_dir():
-            console.print(f"[red]Provided path '{folder_path}' is not a directory[/red]")
+            console.print(
+                f"[red]Provided path '{folder_path}' is not a directory[/red]"
+            )
             raise click.Abort()
 
         # Generate output filename if not provided
@@ -326,7 +420,11 @@ def combine(ctx: click.Context, log_folder: str, output_file: Optional[str], sor
             "Processing Time": f"{combine_results['processing_time']:.2f} seconds",
         }
 
-        print_output(results_display, output_format=config.aws_output_format, title="Log Combine Results")
+        print_output(
+            results_display,
+            output_format=config.aws_output_format,
+            title="Log Combine Results",
+        )
 
         console.print(f"\n[green]✅ Log files combined successfully![/green]")
         console.print(f"[dim]Combined log saved to: {output_file}[/dim]")
@@ -338,17 +436,37 @@ def combine(ctx: click.Context, log_folder: str, output_file: Optional[str], sor
 
 @logs_group.command(name="aggregate")
 @click.argument("input_directory")
-@click.option("--output-dir", help="Output directory for aggregated files (default: ./aggregated_logs)")
-@click.option("--target-size", type=int, default=250, help="Target size for aggregated files in MB (default: 250)")
+@click.option(
+    "--output-dir",
+    help="Output directory for aggregated files (default: ./aggregated_logs)",
+)
+@click.option(
+    "--target-size",
+    type=int,
+    default=250,
+    help="Target size for aggregated files in MB (default: 250)",
+)
 @click.option(
     "--log-type",
     type=click.Choice(["cloudtrail", "cloudfront", "elb", "alb", "route53", "all"]),
     help="Log type to process (auto-detect if not specified)",
 )
-@click.option("--prefix", default="aggregated", help="Prefix for output files (default: aggregated)")
-@click.option("--keep-structure", is_flag=True, help="Keep original directory structure in output")
-@click.option("--no-compression", is_flag=True, help="Disable compression of output files")
-@click.option("--delete-source", is_flag=True, help="Delete source files after successful processing")
+@click.option(
+    "--prefix",
+    default="aggregated",
+    help="Prefix for output files (default: aggregated)",
+)
+@click.option(
+    "--keep-structure", is_flag=True, help="Keep original directory structure in output"
+)
+@click.option(
+    "--no-compression", is_flag=True, help="Disable compression of output files"
+)
+@click.option(
+    "--delete-source",
+    is_flag=True,
+    help="Delete source files after successful processing",
+)
 @click.pass_context
 def aggregate(
     ctx: click.Context,
@@ -368,7 +486,9 @@ def aggregate(
         input_path = Path(input_directory).resolve()
 
         if not input_path.is_dir():
-            console.print(f"[red]Input directory '{input_path}' does not exist or is not a directory[/red]")
+            console.print(
+                f"[red]Input directory '{input_path}' does not exist or is not a directory[/red]"
+            )
             raise click.Abort()
 
         # Generate output directory if not provided
@@ -382,19 +502,32 @@ def aggregate(
         console.print(f"[dim]Output directory: {output_path}[/dim]")
         console.print(f"[dim]Target size: {target_size} MB[/dim]")
         console.print(f"[dim]Log type: {log_type or 'auto-detect'}[/dim]")
-        console.print(f"[dim]Compression: {'Disabled' if no_compression else 'Enabled'}[/dim]")
+        console.print(
+            f"[dim]Compression: {'Disabled' if no_compression else 'Enabled'}[/dim]"
+        )
         if delete_source:
-            console.print("[yellow]⚠️  Source files will be deleted after processing[/yellow]")
+            console.print(
+                "[yellow]⚠️  Source files will be deleted after processing[/yellow]"
+            )
 
         # Confirmation for delete operation
         if delete_source:
-            if not click.confirm("Are you sure you want to delete source files after processing?"):
+            if not click.confirm(
+                "Are you sure you want to delete source files after processing?"
+            ):
                 console.print("[yellow]Operation cancelled[/yellow]")
                 return
 
         # Execute aggregation
         aggregation_results = _aggregate_log_files(
-            input_path, output_path, target_size, log_type, prefix, keep_structure, not no_compression, delete_source
+            input_path,
+            output_path,
+            target_size,
+            log_type,
+            prefix,
+            keep_structure,
+            not no_compression,
+            delete_source,
         )
 
         # Display results
@@ -408,7 +541,9 @@ def aggregate(
         raise click.Abort()
 
 
-def _get_all_log_groups(aws_auth: AWSAuth, regions: List[str], include_size: bool) -> List[Dict[str, Any]]:
+def _get_all_log_groups(
+    aws_auth: AWSAuth, regions: List[str], include_size: bool
+) -> List[Dict[str, Any]]:
     """Get all CloudWatch log groups across regions."""
 
     def get_region_log_groups(region: str) -> Tuple[str, List[Dict[str, Any]]]:
@@ -432,7 +567,9 @@ def _get_all_log_groups(aws_auth: AWSAuth, regions: List[str], include_size: boo
 
                     # Format creation time
                     if group_data["Creation Time"]:
-                        creation_dt = datetime.fromtimestamp(group_data["Creation Time"] / 1000)
+                        creation_dt = datetime.fromtimestamp(
+                            group_data["Creation Time"] / 1000
+                        )
                         group_data["Created"] = creation_dt.strftime("%Y-%m-%d %H:%M")
                     else:
                         group_data["Created"] = "Unknown"
@@ -443,7 +580,9 @@ def _get_all_log_groups(aws_auth: AWSAuth, regions: List[str], include_size: boo
 
                     # Format size if requested
                     if include_size:
-                        group_data["Storage Size"] = _human_readable_size(group_data["Stored Bytes"])
+                        group_data["Storage Size"] = _human_readable_size(
+                            group_data["Stored Bytes"]
+                        )
 
                     # Remove raw values
                     del group_data["Creation Time"]
@@ -459,7 +598,11 @@ def _get_all_log_groups(aws_auth: AWSAuth, regions: List[str], include_size: boo
 
     # Get log groups in parallel
     region_results = parallel_execute(
-        get_region_log_groups, regions, max_workers=4, show_progress=True, description="Scanning log groups"
+        get_region_log_groups,
+        regions,
+        max_workers=4,
+        show_progress=True,
+        description="Scanning log groups",
     )
 
     # Combine results
@@ -518,12 +661,16 @@ def _download_single_log_group(
         paginator = logs_client.get_paginator("describe_log_streams")
 
         with Progress(
-            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
         ) as progress:
 
             task = progress.add_task(f"Processing {log_group}...", total=None)
 
-            for page in paginator.paginate(logGroupName=log_group, orderBy="LastEventTime", descending=True):
+            for page in paginator.paginate(
+                logGroupName=log_group, orderBy="LastEventTime", descending=True
+            ):
                 for stream in page.get("logStreams", []):
                     stream_name = stream["logStreamName"]
 
@@ -531,11 +678,18 @@ def _download_single_log_group(
                     if stream.get("lastEventTime", 0) < start_timestamp:
                         continue
 
-                    progress.update(task, description=f"Processing stream: {stream_name[:50]}...")
+                    progress.update(
+                        task, description=f"Processing stream: {stream_name[:50]}..."
+                    )
 
                     # Download events from this stream
                     stream_result = _download_log_stream(
-                        logs_client, log_group, stream_name, start_timestamp, end_timestamp, output_path
+                        logs_client,
+                        log_group,
+                        stream_name,
+                        start_timestamp,
+                        end_timestamp,
+                        output_path,
                     )
 
                     result["streams_processed"] += 1
@@ -554,13 +708,20 @@ def _download_single_log_group(
 
 
 def _download_multiple_log_groups(
-    aws_auth: AWSAuth, region: str, log_groups: List[str], days: int, output_path: Path, max_workers: int
+    aws_auth: AWSAuth,
+    region: str,
+    log_groups: List[str],
+    days: int,
+    output_path: Path,
+    max_workers: int,
 ) -> Dict[str, Any]:
     """Download logs from multiple log groups in parallel."""
 
     def download_group(log_group: str) -> Dict[str, Any]:
         """Download logs from a single group."""
-        return _download_single_log_group(aws_auth, region, log_group, days, output_path)
+        return _download_single_log_group(
+            aws_auth, region, log_group, days, output_path
+        )
 
     # Process groups in parallel
     with Progress(
@@ -571,7 +732,9 @@ def _download_multiple_log_groups(
         console=console,
     ) as progress:
 
-        task = progress.add_task("Downloading from log groups...", total=len(log_groups))
+        task = progress.add_task(
+            "Downloading from log groups...", total=len(log_groups)
+        )
 
         results = []
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -598,7 +761,12 @@ def _download_multiple_log_groups(
 
 
 def _download_log_stream(
-    logs_client, log_group: str, stream_name: str, start_time: int, end_time: int, output_path: Path
+    logs_client,
+    log_group: str,
+    stream_name: str,
+    start_time: int,
+    end_time: int,
+    output_path: Path,
 ) -> Dict[str, Any]:
     """Download events from a single log stream."""
 
@@ -616,7 +784,10 @@ def _download_log_stream(
 
         events = []
         for page in paginator.paginate(
-            logGroupName=log_group, logStreamName=stream_name, startTime=start_time, endTime=end_time
+            logGroupName=log_group,
+            logStreamName=stream_name,
+            startTime=start_time,
+            endTime=end_time,
         ):
             events.extend(page.get("events", []))
 
@@ -637,7 +808,9 @@ def _download_log_stream(
     return result
 
 
-def _combine_log_files(folder_path: Path, output_file: str, sort_lines: bool) -> Dict[str, Any]:
+def _combine_log_files(
+    folder_path: Path, output_file: str, sort_lines: bool
+) -> Dict[str, Any]:
     """Combine multiple log files into a single file."""
 
     start_time = datetime.now()
@@ -716,7 +889,11 @@ def _display_download_results(config: Config, results: Dict[str, Any]) -> None:
             "Errors": len(results["errors"]),
         }
 
-    print_output(summary_display, output_format=config.aws_output_format, title="Log Download Results")
+    print_output(
+        summary_display,
+        output_format=config.aws_output_format,
+        title="Log Download Results",
+    )
 
     # Show errors if any
     if results.get("errors"):
@@ -769,11 +946,19 @@ def _aggregate_log_files(
             if not files:
                 continue
 
-            console.print(f"[dim]Processing {len(files)} {detected_log_type} files...[/dim]")
+            console.print(
+                f"[dim]Processing {len(files)} {detected_log_type} files...[/dim]"
+            )
 
             # Aggregate files of this type
             type_result = _aggregate_files_by_type(
-                files, output_path, detected_log_type, target_size_bytes, prefix, compress, delete_source
+                files,
+                output_path,
+                detected_log_type,
+                target_size_bytes,
+                prefix,
+                compress,
+                delete_source,
             )
 
             result["files_processed"] += type_result["processed"]
@@ -831,7 +1016,10 @@ def _detect_log_type(file_path: Path, specified_type: Optional[str]) -> Optional
         if content_sample.strip().startswith("{"):
             try:
                 json_data = json.loads(content_sample)
-                if "Records" in json_data and "eventVersion" in json_data.get("Records", [{}])[0]:
+                if (
+                    "Records" in json_data
+                    and "eventVersion" in json_data.get("Records", [{}])[0]
+                ):
                     return LOG_TYPE_CLOUDTRAIL
                 elif "Records" in json_data:
                     return LOG_TYPE_CLOUDFRONT
@@ -883,7 +1071,14 @@ def _aggregate_files_by_type(
 ) -> Dict[str, Any]:
     """Aggregate files of a specific type."""
 
-    result = {"processed": 0, "output_files": 0, "input_size": 0, "output_size": 0, "deleted": 0, "errors": []}
+    result = {
+        "processed": 0,
+        "output_files": 0,
+        "input_size": 0,
+        "output_size": 0,
+        "deleted": 0,
+        "errors": [],
+    }
 
     current_batch = []
     current_size = 0
@@ -897,7 +1092,9 @@ def _aggregate_files_by_type(
             # Check if adding this file would exceed target size
             if current_size + file_size > target_size_bytes and current_batch:
                 # Write current batch
-                _write_aggregated_file(current_batch, output_path, log_type, prefix, batch_number, compress)
+                _write_aggregated_file(
+                    current_batch, output_path, log_type, prefix, batch_number, compress
+                )
                 result["output_files"] += 1
                 batch_number += 1
 
@@ -915,7 +1112,9 @@ def _aggregate_files_by_type(
 
     # Write final batch if any files remain
     if current_batch:
-        _write_aggregated_file(current_batch, output_path, log_type, prefix, batch_number, compress)
+        _write_aggregated_file(
+            current_batch, output_path, log_type, prefix, batch_number, compress
+        )
         result["output_files"] += 1
 
     # Delete source files if requested
@@ -935,7 +1134,12 @@ def _aggregate_files_by_type(
 
 
 def _write_aggregated_file(
-    files: List[Path], output_path: Path, log_type: str, prefix: str, batch_number: int, compress: bool
+    files: List[Path],
+    output_path: Path,
+    log_type: str,
+    prefix: str,
+    batch_number: int,
+    compress: bool,
 ) -> None:
     """Write aggregated file from a batch of input files."""
 
@@ -994,7 +1198,11 @@ def _display_aggregation_results(config: Config, results: Dict[str, Any]) -> Non
         "Errors": len(results["errors"]),
     }
 
-    print_output(summary_display, output_format=config.aws_output_format, title="Log Aggregation Results")
+    print_output(
+        summary_display,
+        output_format=config.aws_output_format,
+        title="Log Aggregation Results",
+    )
 
     # Show errors if any
     if results["errors"]:

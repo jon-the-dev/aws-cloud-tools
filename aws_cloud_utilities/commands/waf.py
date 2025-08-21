@@ -57,7 +57,10 @@ class WAFAnalyzer:
         try:
             logger.info(f"Getting WAF metrics for {web_acl_name}: {metric_name}")
 
-            metric_dimensions = [{"Name": "WebACL", "Value": web_acl_name}, {"Name": "Region", "Value": self.region}]
+            metric_dimensions = [
+                {"Name": "WebACL", "Value": web_acl_name},
+                {"Name": "Region", "Value": self.region},
+            ]
 
             if dimensions:
                 metric_dimensions.extend(dimensions)
@@ -87,7 +90,10 @@ def waf_group(ctx: click.Context) -> None:
 
 @waf_group.command(name="list")
 @click.option(
-    "--scope", type=click.Choice(["REGIONAL", "CLOUDFRONT"]), default="REGIONAL", help="WAF scope (default: REGIONAL)"
+    "--scope",
+    type=click.Choice(["REGIONAL", "CLOUDFRONT"]),
+    default="REGIONAL",
+    help="WAF scope (default: REGIONAL)",
 )
 @click.option("--output-file", help="Save output to file")
 @click.pass_obj
@@ -98,7 +104,9 @@ def list_web_acls(config: Config, scope: str, output_file: Optional[str]):
         analyzer = WAFAnalyzer(aws_auth, config.region)
 
         with Progress(
-            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
         ) as progress:
             task = progress.add_task(f"Listing Web ACLs ({scope})...", total=None)
             web_acls = analyzer.list_web_acls(scope)
@@ -109,7 +117,12 @@ def list_web_acls(config: Config, scope: str, output_file: Optional[str]):
             return
 
         # Format output
-        output_data = {"scope": scope, "count": len(web_acls), "web_acls": web_acls, "timestamp": get_timestamp()}
+        output_data = {
+            "scope": scope,
+            "count": len(web_acls),
+            "web_acls": web_acls,
+            "timestamp": get_timestamp(),
+        }
 
         print_output(output_data, config.output_format)
 
@@ -124,13 +137,20 @@ def list_web_acls(config: Config, scope: str, output_file: Optional[str]):
 
 @waf_group.command(name="stats")
 @click.option("--web-acl", required=True, help="Web ACL name to analyze")
-@click.option("--hours", type=int, default=24, help="Hours of data to analyze (default: 24)")
 @click.option(
-    "--scope", type=click.Choice(["REGIONAL", "CLOUDFRONT"]), default="REGIONAL", help="WAF scope (default: REGIONAL)"
+    "--hours", type=int, default=24, help="Hours of data to analyze (default: 24)"
+)
+@click.option(
+    "--scope",
+    type=click.Choice(["REGIONAL", "CLOUDFRONT"]),
+    default="REGIONAL",
+    help="WAF scope (default: REGIONAL)",
 )
 @click.option("--output-file", help="Save output to file")
 @click.pass_obj
-def get_waf_stats(config: Config, web_acl: str, hours: int, scope: str, output_file: Optional[str]):
+def get_waf_stats(
+    config: Config, web_acl: str, hours: int, scope: str, output_file: Optional[str]
+):
     """Get comprehensive WAF statistics for troubleshooting."""
     try:
         aws_auth = AWSAuth(config)
@@ -140,13 +160,21 @@ def get_waf_stats(config: Config, web_acl: str, hours: int, scope: str, output_f
         start_time = end_time - timedelta(hours=hours)
 
         with Progress(
-            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
         ) as progress:
-            task = progress.add_task(f"Analyzing WAF stats for {web_acl}...", total=None)
+            task = progress.add_task(
+                f"Analyzing WAF stats for {web_acl}...", total=None
+            )
 
             # Get metrics
-            blocked_requests = analyzer.get_waf_metrics(web_acl, "BlockedRequests", start_time, end_time)
-            allowed_requests = analyzer.get_waf_metrics(web_acl, "AllowedRequests", start_time, end_time)
+            blocked_requests = analyzer.get_waf_metrics(
+                web_acl, "BlockedRequests", start_time, end_time
+            )
+            allowed_requests = analyzer.get_waf_metrics(
+                web_acl, "AllowedRequests", start_time, end_time
+            )
 
             progress.update(task, completed=True)
 
@@ -159,19 +187,30 @@ def get_waf_stats(config: Config, web_acl: str, hours: int, scope: str, output_f
         stats = {
             "web_acl": web_acl,
             "scope": scope,
-            "time_range": {"hours": hours, "start": start_time.isoformat(), "end": end_time.isoformat()},
+            "time_range": {
+                "hours": hours,
+                "start": start_time.isoformat(),
+                "end": end_time.isoformat(),
+            },
             "summary": {
                 "total_requests": int(total_requests),
                 "blocked_requests": int(total_blocked),
                 "allowed_requests": int(total_allowed),
-                "block_rate_percent": round((total_blocked / total_requests * 100) if total_requests > 0 else 0, 2),
+                "block_rate_percent": round(
+                    (total_blocked / total_requests * 100) if total_requests > 0 else 0,
+                    2,
+                ),
             },
             "recent_activity": {
                 "last_hour_blocked": int(
-                    sum(point.get("Sum", 0) for point in blocked_requests[-12:]) if blocked_requests else 0
+                    sum(point.get("Sum", 0) for point in blocked_requests[-12:])
+                    if blocked_requests
+                    else 0
                 ),
                 "last_hour_allowed": int(
-                    sum(point.get("Sum", 0) for point in allowed_requests[-12:]) if allowed_requests else 0
+                    sum(point.get("Sum", 0) for point in allowed_requests[-12:])
+                    if allowed_requests
+                    else 0
                 ),
             },
             "timestamp": get_timestamp(),
@@ -179,9 +218,13 @@ def get_waf_stats(config: Config, web_acl: str, hours: int, scope: str, output_f
 
         # Add analysis
         if stats["summary"]["block_rate_percent"] > 20:
-            stats["analysis"] = ["High block rate detected - review WAF rules for false positives"]
+            stats["analysis"] = [
+                "High block rate detected - review WAF rules for false positives"
+            ]
         elif stats["summary"]["total_requests"] == 0:
-            stats["analysis"] = ["No requests detected - verify WAF is properly associated with resources"]
+            stats["analysis"] = [
+                "No requests detected - verify WAF is properly associated with resources"
+            ]
         else:
             stats["analysis"] = ["WAF appears to be functioning normally"]
 
@@ -198,10 +241,14 @@ def get_waf_stats(config: Config, web_acl: str, hours: int, scope: str, output_f
 
 @waf_group.command(name="troubleshoot")
 @click.option("--web-acl", required=True, help="Web ACL name to troubleshoot")
-@click.option("--hours", type=int, default=24, help="Hours of data to analyze (default: 24)")
+@click.option(
+    "--hours", type=int, default=24, help="Hours of data to analyze (default: 24)"
+)
 @click.option("--output-file", help="Save troubleshooting report to file")
 @click.pass_obj
-def troubleshoot_waf(config: Config, web_acl: str, hours: int, output_file: Optional[str]):
+def troubleshoot_waf(
+    config: Config, web_acl: str, hours: int, output_file: Optional[str]
+):
     """Generate comprehensive WAF troubleshooting report."""
     try:
         aws_auth = AWSAuth(config)
@@ -211,13 +258,21 @@ def troubleshoot_waf(config: Config, web_acl: str, hours: int, output_file: Opti
         start_time = end_time - timedelta(hours=hours)
 
         with Progress(
-            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
         ) as progress:
-            task = progress.add_task(f"Generating troubleshooting report for {web_acl}...", total=None)
+            task = progress.add_task(
+                f"Generating troubleshooting report for {web_acl}...", total=None
+            )
 
             # Get comprehensive metrics
-            blocked_requests = analyzer.get_waf_metrics(web_acl, "BlockedRequests", start_time, end_time)
-            allowed_requests = analyzer.get_waf_metrics(web_acl, "AllowedRequests", start_time, end_time)
+            blocked_requests = analyzer.get_waf_metrics(
+                web_acl, "BlockedRequests", start_time, end_time
+            )
+            allowed_requests = analyzer.get_waf_metrics(
+                web_acl, "AllowedRequests", start_time, end_time
+            )
 
             progress.update(task, completed=True)
 
@@ -231,7 +286,10 @@ def troubleshoot_waf(config: Config, web_acl: str, hours: int, output_file: Opti
         report = {
             "web_acl": web_acl,
             "analysis_period": f"{hours} hours",
-            "time_range": {"start": start_time.isoformat(), "end": end_time.isoformat()},
+            "time_range": {
+                "start": start_time.isoformat(),
+                "end": end_time.isoformat(),
+            },
             "metrics": {
                 "total_requests": int(total_requests),
                 "total_blocked": int(total_blocked),
@@ -244,7 +302,8 @@ def troubleshoot_waf(config: Config, web_acl: str, hours: int, output_file: Opti
                 "no_traffic": total_requests == 0,
                 "recent_spike": (
                     any(
-                        point.get("Sum", 0) > (total_blocked / len(blocked_requests) * 2)
+                        point.get("Sum", 0)
+                        > (total_blocked / len(blocked_requests) * 2)
                         for point in blocked_requests[-6:]  # Last 30 minutes
                     )
                     if blocked_requests
@@ -261,7 +320,9 @@ def troubleshoot_waf(config: Config, web_acl: str, hours: int, output_file: Opti
                 "CRITICAL: Very high block rate (>20%) - review WAF rules for false positives"
             )
         elif report["analysis"]["high_block_rate"]:
-            report["recommendations"].append("WARNING: High block rate (>10%) - monitor for false positives")
+            report["recommendations"].append(
+                "WARNING: High block rate (>10%) - monitor for false positives"
+            )
 
         if report["analysis"]["recent_spike"]:
             report["recommendations"].append(
@@ -285,7 +346,9 @@ def troubleshoot_waf(config: Config, web_acl: str, hours: int, output_file: Opti
 
         if output_file:
             save_to_file(report, output_file, config.output_format)
-            console.print(f"[green]Troubleshooting report saved to: {output_file}[/green]")
+            console.print(
+                f"[green]Troubleshooting report saved to: {output_file}[/green]"
+            )
 
     except Exception as e:
         logger.error(f"Error generating troubleshooting report: {e}")
@@ -317,7 +380,9 @@ def troubleshoot_waf(config: Config, web_acl: str, hours: int, output_file: Opti
         """Get detailed information about a specific Web ACL."""
         try:
             logger.info(f"Getting details for Web ACL: {web_acl_name}")
-            response = self.wafv2_client.get_web_acl(Name=web_acl_name, Scope=scope, Id=web_acl_id)
+            response = self.wafv2_client.get_web_acl(
+                Name=web_acl_name, Scope=scope, Id=web_acl_id
+            )
             return response.get("WebACL")
         except (ClientError, BotoCoreError) as e:
             logger.error(f"Failed to get Web ACL details for {web_acl_name}: {e}")
@@ -335,7 +400,10 @@ def troubleshoot_waf(config: Config, web_acl: str, hours: int, output_file: Opti
         try:
             logger.info(f"Getting WAF metrics for {web_acl_name}: {metric_name}")
 
-            metric_dimensions = [{"Name": "WebACL", "Value": web_acl_name}, {"Name": "Region", "Value": self.region}]
+            metric_dimensions = [
+                {"Name": "WebACL", "Value": web_acl_name},
+                {"Name": "Region", "Value": self.region},
+            ]
 
             if dimensions:
                 metric_dimensions.extend(dimensions)
@@ -356,27 +424,43 @@ def troubleshoot_waf(config: Config, web_acl: str, hours: int, output_file: Opti
             return []
 
     def get_rule_metrics(
-        self, web_acl_name: str, rule_name: str, start_time: datetime, end_time: datetime
+        self,
+        web_acl_name: str,
+        rule_name: str,
+        start_time: datetime,
+        end_time: datetime,
     ) -> Dict[str, List[Dict[str, Any]]]:
         """Get metrics for a specific WAF rule."""
         metrics = {}
 
         # Get blocked requests by rule
         blocked_requests = self.get_waf_metrics(
-            web_acl_name, "BlockedRequests", start_time, end_time, [{"Name": "Rule", "Value": rule_name}]
+            web_acl_name,
+            "BlockedRequests",
+            start_time,
+            end_time,
+            [{"Name": "Rule", "Value": rule_name}],
         )
         metrics["blocked_requests"] = blocked_requests
 
         # Get allowed requests by rule
         allowed_requests = self.get_waf_metrics(
-            web_acl_name, "AllowedRequests", start_time, end_time, [{"Name": "Rule", "Value": rule_name}]
+            web_acl_name,
+            "AllowedRequests",
+            start_time,
+            end_time,
+            [{"Name": "Rule", "Value": rule_name}],
         )
         metrics["allowed_requests"] = allowed_requests
 
         return metrics
 
     def get_sampled_requests(
-        self, web_acl_arn: str, rule_metric_name: str, scope: str = "REGIONAL", max_items: int = 100
+        self,
+        web_acl_arn: str,
+        rule_metric_name: str,
+        scope: str = "REGIONAL",
+        max_items: int = 100,
     ) -> List[Dict[str, Any]]:
         """Get sampled requests for analysis."""
         try:
@@ -399,7 +483,9 @@ def troubleshoot_waf(config: Config, web_acl: str, hours: int, output_file: Opti
             logger.error(f"Failed to get sampled requests: {e}")
             return []
 
-    def analyze_request_patterns(self, sampled_requests: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def analyze_request_patterns(
+        self, sampled_requests: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """Analyze patterns in sampled requests."""
         if not sampled_requests:
             return {"total_samples": 0}
@@ -430,32 +516,52 @@ def troubleshoot_waf(config: Config, web_acl: str, hours: int, output_file: Opti
             for header in headers:
                 if header.get("Name", "").lower() == "user-agent":
                     ua = header.get("Value", "Unknown")[:50]  # Truncate for readability
-                    patterns["top_user_agents"][ua] = patterns["top_user_agents"].get(ua, 0) + 1
+                    patterns["top_user_agents"][ua] = (
+                        patterns["top_user_agents"].get(ua, 0) + 1
+                    )
 
             # Source IPs
             client_ip = req_details.get("ClientIP", "Unknown")
-            patterns["top_source_ips"][client_ip] = patterns["top_source_ips"].get(client_ip, 0) + 1
+            patterns["top_source_ips"][client_ip] = (
+                patterns["top_source_ips"].get(client_ip, 0) + 1
+            )
 
             # Countries
             country = req_details.get("Country", "Unknown")
-            patterns["top_countries"][country] = patterns["top_countries"].get(country, 0) + 1
+            patterns["top_countries"][country] = (
+                patterns["top_countries"].get(country, 0) + 1
+            )
 
             # HTTP methods
             method = req_details.get("HTTPMethod", "Unknown")
-            patterns["request_methods"][method] = patterns["request_methods"].get(method, 0) + 1
+            patterns["request_methods"][method] = (
+                patterns["request_methods"].get(method, 0) + 1
+            )
 
             # URI patterns (first part of path)
             uri = req_details.get("URI", "/")
             uri_part = uri.split("/")[1] if len(uri.split("/")) > 1 else "/"
-            patterns["uri_patterns"][uri_part] = patterns["uri_patterns"].get(uri_part, 0) + 1
+            patterns["uri_patterns"][uri_part] = (
+                patterns["uri_patterns"].get(uri_part, 0) + 1
+            )
 
         # Sort top items
-        for key in ["top_user_agents", "top_source_ips", "top_countries", "request_methods", "uri_patterns"]:
-            patterns[key] = dict(sorted(patterns[key].items(), key=lambda x: x[1], reverse=True)[:10])
+        for key in [
+            "top_user_agents",
+            "top_source_ips",
+            "top_countries",
+            "request_methods",
+            "uri_patterns",
+        ]:
+            patterns[key] = dict(
+                sorted(patterns[key].items(), key=lambda x: x[1], reverse=True)[:10]
+            )
 
         return patterns
 
-    def get_rate_limiting_metrics(self, web_acl_name: str, hours: int = 24) -> Dict[str, Any]:
+    def get_rate_limiting_metrics(
+        self, web_acl_name: str, hours: int = 24
+    ) -> Dict[str, Any]:
         """Get rate limiting metrics and analysis."""
         end_time = datetime.utcnow()
         start_time = end_time - timedelta(hours=hours)
@@ -464,14 +570,19 @@ def troubleshoot_waf(config: Config, web_acl: str, hours: int, output_file: Opti
         rate_metrics = {}
 
         # Get blocked requests due to rate limiting
-        blocked_by_rate = self.get_waf_metrics(web_acl_name, "BlockedRequests", start_time, end_time)
+        blocked_by_rate = self.get_waf_metrics(
+            web_acl_name, "BlockedRequests", start_time, end_time
+        )
 
         rate_metrics["blocked_requests"] = blocked_by_rate
         rate_metrics["analysis"] = {
             "total_blocked": sum(point.get("Sum", 0) for point in blocked_by_rate),
-            "peak_blocks_per_minute": max((point.get("Maximum", 0) for point in blocked_by_rate), default=0),
+            "peak_blocks_per_minute": max(
+                (point.get("Maximum", 0) for point in blocked_by_rate), default=0
+            ),
             "average_blocks_per_minute": (
-                sum(point.get("Average", 0) for point in blocked_by_rate) / len(blocked_by_rate)
+                sum(point.get("Average", 0) for point in blocked_by_rate)
+                / len(blocked_by_rate)
                 if blocked_by_rate
                 else 0
             ),
@@ -479,7 +590,9 @@ def troubleshoot_waf(config: Config, web_acl: str, hours: int, output_file: Opti
 
         return rate_metrics
 
-    def generate_troubleshooting_report(self, web_acl_name: str, hours: int = 24) -> Dict[str, Any]:
+    def generate_troubleshooting_report(
+        self, web_acl_name: str, hours: int = 24
+    ) -> Dict[str, Any]:
         """Generate comprehensive troubleshooting report."""
         logger.info(f"Generating troubleshooting report for {web_acl_name}")
 
@@ -488,15 +601,23 @@ def troubleshoot_waf(config: Config, web_acl: str, hours: int, output_file: Opti
 
         report = {
             "web_acl": web_acl_name,
-            "time_range": {"start": start_time.isoformat(), "end": end_time.isoformat(), "hours": hours},
+            "time_range": {
+                "start": start_time.isoformat(),
+                "end": end_time.isoformat(),
+                "hours": hours,
+            },
             "metrics": {},
             "analysis": {},
             "recommendations": [],
         }
 
         # Get overall metrics
-        blocked_requests = self.get_waf_metrics(web_acl_name, "BlockedRequests", start_time, end_time)
-        allowed_requests = self.get_waf_metrics(web_acl_name, "AllowedRequests", start_time, end_time)
+        blocked_requests = self.get_waf_metrics(
+            web_acl_name, "BlockedRequests", start_time, end_time
+        )
+        allowed_requests = self.get_waf_metrics(
+            web_acl_name, "AllowedRequests", start_time, end_time
+        )
 
         total_blocked = sum(point.get("Sum", 0) for point in blocked_requests)
         total_allowed = sum(point.get("Sum", 0) for point in allowed_requests)
@@ -506,7 +627,9 @@ def troubleshoot_waf(config: Config, web_acl: str, hours: int, output_file: Opti
             "total_requests": total_requests,
             "total_blocked": total_blocked,
             "total_allowed": total_allowed,
-            "block_rate": (total_blocked / total_requests * 100) if total_requests > 0 else 0,
+            "block_rate": (
+                (total_blocked / total_requests * 100) if total_requests > 0 else 0
+            ),
             "blocked_requests_timeline": blocked_requests,
             "allowed_requests_timeline": allowed_requests,
         }
@@ -525,7 +648,9 @@ def troubleshoot_waf(config: Config, web_acl: str, hours: int, output_file: Opti
 
         # Recommendations
         if report["metrics"]["block_rate"] > 20:
-            report["recommendations"].append("High block rate detected - review WAF rules for false positives")
+            report["recommendations"].append(
+                "High block rate detected - review WAF rules for false positives"
+            )
 
         if report["analysis"].get("recent_spike"):
             report["recommendations"].append(
@@ -533,10 +658,14 @@ def troubleshoot_waf(config: Config, web_acl: str, hours: int, output_file: Opti
             )
 
         if total_requests == 0:
-            report["recommendations"].append("No requests detected - verify WAF is properly associated with resources")
+            report["recommendations"].append(
+                "No requests detected - verify WAF is properly associated with resources"
+            )
 
         if report["metrics"]["block_rate"] < 1 and total_requests > 1000:
-            report["recommendations"].append("Very low block rate - consider reviewing WAF rules for effectiveness")
+            report["recommendations"].append(
+                "Very low block rate - consider reviewing WAF rules for effectiveness"
+            )
 
         return report
 
@@ -554,43 +683,71 @@ def add_waf_parser(subparsers) -> None:
     # List Web ACLs
     list_parser = waf_subparsers.add_parser("list", help="List all Web ACLs")
     list_parser.add_argument(
-        "--scope", choices=["REGIONAL", "CLOUDFRONT"], default="REGIONAL", help="WAF scope (default: REGIONAL)"
+        "--scope",
+        choices=["REGIONAL", "CLOUDFRONT"],
+        default="REGIONAL",
+        help="WAF scope (default: REGIONAL)",
     )
 
     # Get WAF stats
     stats_parser = waf_subparsers.add_parser("stats", help="Get WAF statistics")
     stats_parser.add_argument("--web-acl", required=True, help="Web ACL name")
-    stats_parser.add_argument("--hours", type=int, default=24, help="Hours of data to analyze (default: 24)")
     stats_parser.add_argument(
-        "--scope", choices=["REGIONAL", "CLOUDFRONT"], default="REGIONAL", help="WAF scope (default: REGIONAL)"
+        "--hours", type=int, default=24, help="Hours of data to analyze (default: 24)"
+    )
+    stats_parser.add_argument(
+        "--scope",
+        choices=["REGIONAL", "CLOUDFRONT"],
+        default="REGIONAL",
+        help="WAF scope (default: REGIONAL)",
     )
 
     # Rule analysis
-    rule_parser = waf_subparsers.add_parser("rule-stats", help="Analyze specific rule performance")
+    rule_parser = waf_subparsers.add_parser(
+        "rule-stats", help="Analyze specific rule performance"
+    )
     rule_parser.add_argument("--web-acl", required=True, help="Web ACL name")
     rule_parser.add_argument("--rule", required=True, help="Rule name")
-    rule_parser.add_argument("--hours", type=int, default=24, help="Hours of data to analyze (default: 24)")
+    rule_parser.add_argument(
+        "--hours", type=int, default=24, help="Hours of data to analyze (default: 24)"
+    )
 
     # Troubleshooting report
-    troubleshoot_parser = waf_subparsers.add_parser("troubleshoot", help="Generate troubleshooting report")
+    troubleshoot_parser = waf_subparsers.add_parser(
+        "troubleshoot", help="Generate troubleshooting report"
+    )
     troubleshoot_parser.add_argument("--web-acl", required=True, help="Web ACL name")
-    troubleshoot_parser.add_argument("--hours", type=int, default=24, help="Hours of data to analyze (default: 24)")
+    troubleshoot_parser.add_argument(
+        "--hours", type=int, default=24, help="Hours of data to analyze (default: 24)"
+    )
 
     # Request analysis
-    requests_parser = waf_subparsers.add_parser("requests", help="Analyze sampled requests")
+    requests_parser = waf_subparsers.add_parser(
+        "requests", help="Analyze sampled requests"
+    )
     requests_parser.add_argument("--web-acl-arn", required=True, help="Web ACL ARN")
     requests_parser.add_argument("--rule", required=True, help="Rule metric name")
     requests_parser.add_argument(
-        "--max-items", type=int, default=100, help="Maximum number of sampled requests (default: 100)"
+        "--max-items",
+        type=int,
+        default=100,
+        help="Maximum number of sampled requests (default: 100)",
     )
     requests_parser.add_argument(
-        "--scope", choices=["REGIONAL", "CLOUDFRONT"], default="REGIONAL", help="WAF scope (default: REGIONAL)"
+        "--scope",
+        choices=["REGIONAL", "CLOUDFRONT"],
+        default="REGIONAL",
+        help="WAF scope (default: REGIONAL)",
     )
 
     # Rate limiting analysis
-    rate_parser = waf_subparsers.add_parser("rate-limiting", help="Analyze rate limiting effectiveness")
+    rate_parser = waf_subparsers.add_parser(
+        "rate-limiting", help="Analyze rate limiting effectiveness"
+    )
     rate_parser.add_argument("--web-acl", required=True, help="Web ACL name")
-    rate_parser.add_argument("--hours", type=int, default=24, help="Hours of data to analyze (default: 24)")
+    rate_parser.add_argument(
+        "--hours", type=int, default=24, help="Hours of data to analyze (default: 24)"
+    )
 
 
 def handle_waf_command(args) -> None:
@@ -598,7 +755,9 @@ def handle_waf_command(args) -> None:
     setup_logging(args.verbose if hasattr(args, "verbose") else False)
 
     session = get_aws_session(args.profile if hasattr(args, "profile") else None)
-    analyzer = WAFAnalyzer(session, args.region if hasattr(args, "region") else "us-east-1")
+    analyzer = WAFAnalyzer(
+        session, args.region if hasattr(args, "region") else "us-east-1"
+    )
 
     if args.waf_command == "list":
         web_acls = analyzer.list_web_acls(args.scope)
@@ -617,8 +776,16 @@ def handle_waf_command(args) -> None:
                 rows.append(
                     [
                         acl.get("Name", "N/A"),
-                        acl.get("Id", "N/A")[:20] + "..." if len(acl.get("Id", "")) > 20 else acl.get("Id", "N/A"),
-                        acl.get("ARN", "N/A")[:60] + "..." if len(acl.get("ARN", "")) > 60 else acl.get("ARN", "N/A"),
+                        (
+                            acl.get("Id", "N/A")[:20] + "..."
+                            if len(acl.get("Id", "")) > 20
+                            else acl.get("Id", "N/A")
+                        ),
+                        (
+                            acl.get("ARN", "N/A")[:60] + "..."
+                            if len(acl.get("ARN", "")) > 60
+                            else acl.get("ARN", "N/A")
+                        ),
                         description,
                     ]
                 )
@@ -629,8 +796,12 @@ def handle_waf_command(args) -> None:
         start_time = end_time - timedelta(hours=args.hours)
 
         # Get basic metrics
-        blocked_requests = analyzer.get_waf_metrics(args.web_acl, "BlockedRequests", start_time, end_time)
-        allowed_requests = analyzer.get_waf_metrics(args.web_acl, "AllowedRequests", start_time, end_time)
+        blocked_requests = analyzer.get_waf_metrics(
+            args.web_acl, "BlockedRequests", start_time, end_time
+        )
+        allowed_requests = analyzer.get_waf_metrics(
+            args.web_acl, "AllowedRequests", start_time, end_time
+        )
 
         total_blocked = sum(point.get("Sum", 0) for point in blocked_requests)
         total_allowed = sum(point.get("Sum", 0) for point in allowed_requests)
@@ -642,13 +813,19 @@ def handle_waf_command(args) -> None:
             "total_requests": total_requests,
             "blocked_requests": total_blocked,
             "allowed_requests": total_allowed,
-            "block_rate_percent": round((total_blocked / total_requests * 100) if total_requests > 0 else 0, 2),
+            "block_rate_percent": round(
+                (total_blocked / total_requests * 100) if total_requests > 0 else 0, 2
+            ),
             "recent_activity": {
                 "last_hour_blocked": (
-                    sum(point.get("Sum", 0) for point in blocked_requests[-12:]) if blocked_requests else 0
+                    sum(point.get("Sum", 0) for point in blocked_requests[-12:])
+                    if blocked_requests
+                    else 0
                 ),
                 "last_hour_allowed": (
-                    sum(point.get("Sum", 0) for point in allowed_requests[-12:]) if allowed_requests else 0
+                    sum(point.get("Sum", 0) for point in allowed_requests[-12:])
+                    if allowed_requests
+                    else 0
                 ),
             },
         }
@@ -666,8 +843,14 @@ def handle_waf_command(args) -> None:
                 ["Blocked Requests", f"{stats['blocked_requests']:,}"],
                 ["Allowed Requests", f"{stats['allowed_requests']:,}"],
                 ["Block Rate", f"{stats['block_rate_percent']}%"],
-                ["Last Hour Blocked", f"{stats['recent_activity']['last_hour_blocked']:,}"],
-                ["Last Hour Allowed", f"{stats['recent_activity']['last_hour_allowed']:,}"],
+                [
+                    "Last Hour Blocked",
+                    f"{stats['recent_activity']['last_hour_blocked']:,}",
+                ],
+                [
+                    "Last Hour Allowed",
+                    f"{stats['recent_activity']['last_hour_allowed']:,}",
+                ],
             ]
             print(format_table(headers, rows, f"WAF Statistics - {args.web_acl}"))
 
@@ -675,10 +858,16 @@ def handle_waf_command(args) -> None:
         end_time = datetime.utcnow()
         start_time = end_time - timedelta(hours=args.hours)
 
-        rule_metrics = analyzer.get_rule_metrics(args.web_acl, args.rule, start_time, end_time)
+        rule_metrics = analyzer.get_rule_metrics(
+            args.web_acl, args.rule, start_time, end_time
+        )
 
-        blocked_total = sum(point.get("Sum", 0) for point in rule_metrics.get("blocked_requests", []))
-        allowed_total = sum(point.get("Sum", 0) for point in rule_metrics.get("allowed_requests", []))
+        blocked_total = sum(
+            point.get("Sum", 0) for point in rule_metrics.get("blocked_requests", [])
+        )
+        allowed_total = sum(
+            point.get("Sum", 0) for point in rule_metrics.get("allowed_requests", [])
+        )
 
         rule_stats = {
             "web_acl": args.web_acl,
@@ -686,7 +875,12 @@ def handle_waf_command(args) -> None:
             "blocked_by_rule": blocked_total,
             "allowed_by_rule": allowed_total,
             "rule_effectiveness": round(
-                (blocked_total / (blocked_total + allowed_total) * 100) if (blocked_total + allowed_total) > 0 else 0, 2
+                (
+                    (blocked_total / (blocked_total + allowed_total) * 100)
+                    if (blocked_total + allowed_total) > 0
+                    else 0
+                ),
+                2,
             ),
         }
 
@@ -719,10 +913,20 @@ def handle_waf_command(args) -> None:
                 ["Total Requests", f"{report['metrics']['total_requests']:,}"],
                 ["Blocked Requests", f"{report['metrics']['total_blocked']:,}"],
                 ["Block Rate", f"{report['metrics']['block_rate']:.2f}%"],
-                ["High Block Rate", "Yes" if report["analysis"].get("high_block_rate") else "No"],
-                ["Recent Spike", "Yes" if report["analysis"].get("recent_spike") else "No"],
+                [
+                    "High Block Rate",
+                    "Yes" if report["analysis"].get("high_block_rate") else "No",
+                ],
+                [
+                    "Recent Spike",
+                    "Yes" if report["analysis"].get("recent_spike") else "No",
+                ],
             ]
-            print(format_table(headers, rows, f"WAF Troubleshooting Report - {args.web_acl}"))
+            print(
+                format_table(
+                    headers, rows, f"WAF Troubleshooting Report - {args.web_acl}"
+                )
+            )
 
             # Print recommendations
             if report["recommendations"]:
@@ -731,7 +935,9 @@ def handle_waf_command(args) -> None:
                     print(f"  {i}. {rec}")
 
     elif args.waf_command == "requests":
-        sampled_requests = analyzer.get_sampled_requests(args.web_acl_arn, args.rule, args.scope, args.max_items)
+        sampled_requests = analyzer.get_sampled_requests(
+            args.web_acl_arn, args.rule, args.scope, args.max_items
+        )
         patterns = analyzer.analyze_request_patterns(sampled_requests)
 
         if hasattr(args, "output") and args.output == "json":
@@ -739,7 +945,9 @@ def handle_waf_command(args) -> None:
         else:
             print(f"\n📊 Request Analysis for Rule: {args.rule}")
             print(f"Total Samples: {patterns['total_samples']}")
-            print(f"Blocked: {patterns['blocked_count']}, Allowed: {patterns['allowed_count']}")
+            print(
+                f"Blocked: {patterns['blocked_count']}, Allowed: {patterns['allowed_count']}"
+            )
 
             if patterns["top_source_ips"]:
                 print("\n🌐 Top Source IPs:")
@@ -769,9 +977,14 @@ def handle_waf_command(args) -> None:
                 ["Analysis Period", f"{args.hours} hours"],
                 ["Total Blocked", f"{analysis.get('total_blocked', 0):,}"],
                 ["Peak Blocks/Min", f"{analysis.get('peak_blocks_per_minute', 0):,}"],
-                ["Avg Blocks/Min", f"{analysis.get('average_blocks_per_minute', 0):.2f}"],
+                [
+                    "Avg Blocks/Min",
+                    f"{analysis.get('average_blocks_per_minute', 0):.2f}",
+                ],
             ]
-            print(format_table(headers, rows, f"Rate Limiting Analysis - {args.web_acl}"))
+            print(
+                format_table(headers, rows, f"Rate Limiting Analysis - {args.web_acl}")
+            )
 
     else:
         logger.error(f"Unknown WAF command: {args.waf_command}")

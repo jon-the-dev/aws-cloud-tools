@@ -77,7 +77,9 @@ def get_all_regions(service_name: str = "ec2") -> List[str]:
         ]
 
 
-def format_output(data: Any, output_format: str = "table", headers: Optional[List[str]] = None) -> str:
+def format_output(
+    data: Any, output_format: str = "table", headers: Optional[List[str]] = None
+) -> str:
     """Format data for output.
 
     Args:
@@ -122,7 +124,10 @@ def format_output(data: Any, output_format: str = "table", headers: Optional[Lis
 
 
 def print_output(
-    data: Any, output_format: str = "table", headers: Optional[List[str]] = None, title: Optional[str] = None
+    data: Any,
+    output_format: str = "table",
+    headers: Optional[List[str]] = None,
+    title: Optional[str] = None,
 ) -> None:
     """Print formatted output to console.
 
@@ -140,11 +145,17 @@ def print_output(
     if output_format == "table":
         console.print(formatted_output)
     else:
-        console.print_json(formatted_output) if output_format == "json" else console.print(formatted_output)
+        (
+            console.print_json(formatted_output)
+            if output_format == "json"
+            else console.print(formatted_output)
+        )
 
 
 def create_rich_table(
-    data: List[Dict[str, Any]], title: Optional[str] = None, headers: Optional[List[str]] = None
+    data: List[Dict[str, Any]],
+    title: Optional[str] = None,
+    headers: Optional[List[str]] = None,
 ) -> Table:
     """Create a rich table from data.
 
@@ -178,7 +189,11 @@ def create_rich_table(
 
 
 def parallel_execute(
-    func: callable, items: List[Any], max_workers: int = 4, show_progress: bool = True, description: str = "Processing"
+    func: callable,
+    items: List[Any],
+    max_workers: int = 4,
+    show_progress: bool = True,
+    description: str = "Processing",
 ) -> List[Any]:
     """Execute function in parallel for multiple items.
 
@@ -196,7 +211,9 @@ def parallel_execute(
 
     if show_progress:
         with Progress(
-            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
         ) as progress:
             task = progress.add_task(description, total=len(items))
 
@@ -227,7 +244,9 @@ def parallel_execute(
     return results
 
 
-def save_to_file(data: Any, filepath: Union[str, Path], file_format: str = "json") -> None:
+def save_to_file(
+    data: Any, filepath: Union[str, Path], file_format: str = "json"
+) -> None:
     """Save data to file.
 
     Args:
@@ -352,7 +371,9 @@ def chunk_list(lst: List[Any], chunk_size: int) -> List[List[Any]]:
     return [lst[i : i + chunk_size] for i in range(0, len(lst), chunk_size)]
 
 
-def flatten_dict(d: Dict[str, Any], parent_key: str = "", sep: str = ".") -> Dict[str, Any]:
+def flatten_dict(
+    d: Dict[str, Any], parent_key: str = "", sep: str = "."
+) -> Dict[str, Any]:
     """Flatten nested dictionary.
 
     Args:

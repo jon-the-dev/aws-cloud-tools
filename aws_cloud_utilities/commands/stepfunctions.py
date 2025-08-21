@@ -7,11 +7,23 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 import click
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TaskProgressColumn,
+)
 
 from ..core.config import Config
 from ..core.auth import AWSAuth
-from ..core.utils import print_output, save_to_file, get_timestamp, get_detailed_timestamp, ensure_directory
+from ..core.utils import (
+    print_output,
+    save_to_file,
+    get_timestamp,
+    get_detailed_timestamp,
+    ensure_directory,
+)
 from ..core.exceptions import AWSError
 
 logger = logging.getLogger(__name__)
@@ -25,12 +37,22 @@ def stepfunctions_group():
 
 
 @stepfunctions_group.command(name="list")
-@click.option("--region", help="AWS region to list state machines from (default: current region)")
-@click.option("--all-regions", is_flag=True, help="List state machines from all regions")
-@click.option("--output-file", help="Output file for state machines list (supports .json, .yaml, .csv)")
+@click.option(
+    "--region", help="AWS region to list state machines from (default: current region)"
+)
+@click.option(
+    "--all-regions", is_flag=True, help="List state machines from all regions"
+)
+@click.option(
+    "--output-file",
+    help="Output file for state machines list (supports .json, .yaml, .csv)",
+)
 @click.pass_context
 def list_state_machines(
-    ctx: click.Context, region: Optional[str], all_regions: bool, output_file: Optional[str]
+    ctx: click.Context,
+    region: Optional[str],
+    all_regions: bool,
+    output_file: Optional[str],
 ) -> None:
     """List all Step Functions state machines."""
     config: Config = ctx.obj["config"]
@@ -60,7 +82,9 @@ def list_state_machines(
                                 "Type": machine.get("type", ""),
                                 "Status": machine.get("status", ""),
                                 "Created": (
-                                    machine.get("creationDate", "").strftime("%Y-%m-%d %H:%M")
+                                    machine.get("creationDate", "").strftime(
+                                        "%Y-%m-%d %H:%M"
+                                    )
                                     if machine.get("creationDate")
                                     else ""
                                 ),
@@ -69,7 +93,9 @@ def list_state_machines(
                         )
 
             except Exception as e:
-                logger.warning(f"Error listing state machines in region {target_region}: {e}")
+                logger.warning(
+                    f"Error listing state machines in region {target_region}: {e}"
+                )
 
         if all_state_machines:
             print_output(
@@ -90,7 +116,9 @@ def list_state_machines(
                 output_path = output_path.parent / new_filename
 
                 save_to_file(all_state_machines, output_path, file_format)
-                console.print(f"[green]State machines list saved to:[/green] {output_path}")
+                console.print(
+                    f"[green]State machines list saved to:[/green] {output_path}"
+                )
         else:
             console.print("[yellow]No Step Functions state machines found[/yellow]")
 
@@ -101,11 +129,19 @@ def list_state_machines(
 
 @stepfunctions_group.command(name="describe")
 @click.argument("state_machine_arn")
-@click.option("--show-definition", is_flag=True, help="Show the state machine definition")
-@click.option("--output-file", help="Output file for state machine details (supports .json, .yaml)")
+@click.option(
+    "--show-definition", is_flag=True, help="Show the state machine definition"
+)
+@click.option(
+    "--output-file",
+    help="Output file for state machine details (supports .json, .yaml)",
+)
 @click.pass_context
 def describe_state_machine(
-    ctx: click.Context, state_machine_arn: str, show_definition: bool, output_file: Optional[str]
+    ctx: click.Context,
+    state_machine_arn: str,
+    show_definition: bool,
+    output_file: Optional[str],
 ) -> None:
     """Get detailed information about a Step Functions state machine."""
     config: Config = ctx.obj["config"]
@@ -118,7 +154,9 @@ def describe_state_machine(
 
         # Get state machine details
         try:
-            response = sf_client.describe_state_machine(stateMachineArn=state_machine_arn)
+            response = sf_client.describe_state_machine(
+                stateMachineArn=state_machine_arn
+            )
         except sf_client.exceptions.StateMachineDoesNotExist:
             console.print(f"[red]State machine not found:[/red] {state_machine_arn}")
             raise click.Abort()
@@ -134,10 +172,14 @@ def describe_state_machine(
             "Type": response.get("type", ""),
             "Role ARN": response.get("roleArn", ""),
             "Created": (
-                response.get("creationDate", "").strftime("%Y-%m-%d %H:%M:%S") if response.get("creationDate") else ""
+                response.get("creationDate", "").strftime("%Y-%m-%d %H:%M:%S")
+                if response.get("creationDate")
+                else ""
             ),
             "Updated": (
-                response.get("updateDate", "").strftime("%Y-%m-%d %H:%M:%S") if response.get("updateDate") else ""
+                response.get("updateDate", "").strftime("%Y-%m-%d %H:%M:%S")
+                if response.get("updateDate")
+                else ""
             ),
             "Region": region,
         }
@@ -179,7 +221,9 @@ def describe_state_machine(
                 save_data["updateDate"] = save_data["updateDate"].isoformat()
 
             save_to_file(save_data, output_path, file_format)
-            console.print(f"[green]State machine details saved to:[/green] {output_path}")
+            console.print(
+                f"[green]State machine details saved to:[/green] {output_path}"
+            )
 
     except Exception as e:
         console.print(f"[red]Error describing state machine:[/red] {e}")
@@ -188,13 +232,25 @@ def describe_state_machine(
 
 @stepfunctions_group.command(name="execute")
 @click.argument("state_machine_arn")
-@click.option("--input", default="{}", help="JSON input for the execution (default: {})")
+@click.option(
+    "--input", default="{}", help="JSON input for the execution (default: {})"
+)
 @click.option("--name", help="Name for the execution (auto-generated if not provided)")
 @click.option("--wait", is_flag=True, help="Wait for execution to complete")
-@click.option("--timeout", type=int, default=300, help="Timeout in seconds for execution wait (default: 300)")
+@click.option(
+    "--timeout",
+    type=int,
+    default=300,
+    help="Timeout in seconds for execution wait (default: 300)",
+)
 @click.pass_context
 def execute_state_machine(
-    ctx: click.Context, state_machine_arn: str, input: str, name: Optional[str], wait: bool, timeout: int
+    ctx: click.Context,
+    state_machine_arn: str,
+    input: str,
+    name: Optional[str],
+    wait: bool,
+    timeout: int,
 ) -> None:
     """Start an execution of a Step Functions state machine."""
     config: Config = ctx.obj["config"]
@@ -222,7 +278,9 @@ def execute_state_machine(
         # Start execution
         try:
             response = sf_client.start_execution(
-                stateMachineArn=state_machine_arn, name=name, input=json.dumps(input_data)
+                stateMachineArn=state_machine_arn,
+                name=name,
+                input=json.dumps(input_data),
             )
             execution_arn = response["executionArn"]
 
@@ -279,11 +337,23 @@ def execute_state_machine(
     type=click.Choice(["RUNNING", "SUCCEEDED", "FAILED", "TIMED_OUT", "ABORTED"]),
     help="Filter executions by status",
 )
-@click.option("--max-results", type=int, default=10, help="Maximum number of executions to list (default: 10)")
-@click.option("--output-file", help="Output file for executions list (supports .json, .yaml, .csv)")
+@click.option(
+    "--max-results",
+    type=int,
+    default=10,
+    help="Maximum number of executions to list (default: 10)",
+)
+@click.option(
+    "--output-file",
+    help="Output file for executions list (supports .json, .yaml, .csv)",
+)
 @click.pass_context
 def list_executions(
-    ctx: click.Context, state_machine_arn: str, status: Optional[str], max_results: int, output_file: Optional[str]
+    ctx: click.Context,
+    state_machine_arn: str,
+    status: Optional[str],
+    max_results: int,
+    output_file: Optional[str],
 ) -> None:
     """List executions of a Step Functions state machine."""
     config: Config = ctx.obj["config"]
@@ -358,11 +428,20 @@ def list_executions(
 @stepfunctions_group.command(name="logs")
 @click.argument("execution_arn")
 @click.argument("log_group")
-@click.option("--lines", type=int, default=100, help="Maximum number of log lines to retrieve (default: 100)")
+@click.option(
+    "--lines",
+    type=int,
+    default=100,
+    help="Maximum number of log lines to retrieve (default: 100)",
+)
 @click.option("--output-file", help="Output file for logs (supports .txt, .json)")
 @click.pass_context
 def show_execution_logs(
-    ctx: click.Context, execution_arn: str, log_group: str, lines: int, output_file: Optional[str]
+    ctx: click.Context,
+    execution_arn: str,
+    log_group: str,
+    lines: int,
+    output_file: Optional[str],
 ) -> None:
     """Show CloudWatch logs for a Step Functions execution."""
     config: Config = ctx.obj["config"]
@@ -436,7 +515,9 @@ def show_execution_logs(
                             "retrieved_at": datetime.now().isoformat(),
                             "events": [
                                 {
-                                    "timestamp": datetime.fromtimestamp(event["timestamp"] / 1000).isoformat(),
+                                    "timestamp": datetime.fromtimestamp(
+                                        event["timestamp"] / 1000
+                                    ).isoformat(),
                                     "message": event["message"],
                                 }
                                 for event in events
@@ -450,7 +531,9 @@ def show_execution_logs(
 
                     console.print(f"\n[green]Logs saved to:[/green] {output_path}")
             else:
-                console.print("[yellow]No log events found for the specified execution[/yellow]")
+                console.print(
+                    "[yellow]No log events found for the specified execution[/yellow]"
+                )
 
         except Exception as e:
             console.print(f"[red]Error retrieving logs:[/red] {e}")
@@ -469,7 +552,9 @@ def _extract_region_from_arn(arn: str) -> str:
         raise ValueError(f"Invalid ARN format: {arn}")
 
 
-def _wait_for_execution(sf_client, execution_arn: str, timeout: int) -> Optional[Dict[str, Any]]:
+def _wait_for_execution(
+    sf_client, execution_arn: str, timeout: int
+) -> Optional[Dict[str, Any]]:
     """Wait for Step Functions execution to complete."""
     import time
 

@@ -51,7 +51,11 @@ def check_level(ctx: click.Context, method: str) -> None:
             "Account ID": aws_auth.get_account_id(),
         }
 
-        print_output(support_info, output_format=config.aws_output_format, title="AWS Support Level")
+        print_output(
+            support_info,
+            output_format=config.aws_output_format,
+            title="AWS Support Level",
+        )
 
     except Exception as e:
         console.print(f"[red]Error checking support level:[/red] {e}")
@@ -73,7 +77,9 @@ def severity_levels(ctx: click.Context) -> None:
             severity_levels_data = []
 
             for severity_level in response["severityLevels"]:
-                severity_levels_data.append({"Code": severity_level["code"], "Name": severity_level["name"]})
+                severity_levels_data.append(
+                    {"Code": severity_level["code"], "Name": severity_level["name"]}
+                )
 
             if severity_levels_data:
                 print_output(
@@ -82,11 +88,15 @@ def severity_levels(ctx: click.Context) -> None:
                     title="Available Support Severity Levels",
                 )
             else:
-                console.print("[yellow]No severity levels available - Basic support plan[/yellow]")
+                console.print(
+                    "[yellow]No severity levels available - Basic support plan[/yellow]"
+                )
 
         except support_client.exceptions.ClientError as err:
             if err.response["Error"]["Code"] == "SubscriptionRequiredException":
-                console.print("[yellow]Basic support plan - No premium support features available[/yellow]")
+                console.print(
+                    "[yellow]Basic support plan - No premium support features available[/yellow]"
+                )
             else:
                 raise AWSError(f"Error getting severity levels: {err}")
 
@@ -96,8 +106,15 @@ def severity_levels(ctx: click.Context) -> None:
 
 
 @support_group.command(name="cases")
-@click.option("--status", type=click.Choice(["all", "open", "resolved"]), default="open", help="Filter cases by status")
-@click.option("--max-results", type=int, default=25, help="Maximum number of cases to return")
+@click.option(
+    "--status",
+    type=click.Choice(["all", "open", "resolved"]),
+    default="open",
+    help="Filter cases by status",
+)
+@click.option(
+    "--max-results", type=int, default=25, help="Maximum number of cases to return"
+)
 @click.pass_context
 def cases(ctx: click.Context, status: str, max_results: int) -> None:
     """List AWS support cases."""
@@ -131,21 +148,29 @@ def cases(ctx: click.Context, status: str, max_results: int) -> None:
                         "Status": case.get("status", ""),
                         "Severity": case.get("severityCode", ""),
                         "Service": case.get("serviceCode", ""),
-                        "Submitted": case.get("timeCreated", "").split("T")[0] if case.get("timeCreated") else "",
+                        "Submitted": (
+                            case.get("timeCreated", "").split("T")[0]
+                            if case.get("timeCreated")
+                            else ""
+                        ),
                         "Language": case.get("language", ""),
                     }
                 )
 
             if cases_data:
                 print_output(
-                    cases_data, output_format=config.aws_output_format, title=f"AWS Support Cases ({status.title()})"
+                    cases_data,
+                    output_format=config.aws_output_format,
+                    title=f"AWS Support Cases ({status.title()})",
                 )
             else:
                 console.print(f"[yellow]No {status} support cases found[/yellow]")
 
         except support_client.exceptions.ClientError as err:
             if err.response["Error"]["Code"] == "SubscriptionRequiredException":
-                console.print("[yellow]Basic support plan - Cannot access support cases[/yellow]")
+                console.print(
+                    "[yellow]Basic support plan - Cannot access support cases[/yellow]"
+                )
             else:
                 raise AWSError(f"Error getting support cases: {err}")
 
@@ -179,14 +204,18 @@ def services(ctx: click.Context) -> None:
 
             if services_data:
                 print_output(
-                    services_data, output_format=config.aws_output_format, title="AWS Services Available for Support"
+                    services_data,
+                    output_format=config.aws_output_format,
+                    title="AWS Services Available for Support",
                 )
             else:
                 console.print("[yellow]No services information available[/yellow]")
 
         except support_client.exceptions.ClientError as err:
             if err.response["Error"]["Code"] == "SubscriptionRequiredException":
-                console.print("[yellow]Basic support plan - Limited service information available[/yellow]")
+                console.print(
+                    "[yellow]Basic support plan - Limited service information available[/yellow]"
+                )
             else:
                 raise AWSError(f"Error getting services: {err}")
 
@@ -233,7 +262,9 @@ def _check_support_via_api(aws_auth: AWSAuth) -> str:
     try:
         # This method requires additional dependencies and AWS CRT
         # For now, we'll use a simplified approach
-        console.print("[yellow]Support Plans API method requires additional setup[/yellow]")
+        console.print(
+            "[yellow]Support Plans API method requires additional setup[/yellow]"
+        )
         console.print("[dim]Falling back to severity levels method...[/dim]")
         return _check_support_via_severity_levels(aws_auth)
 
@@ -266,7 +297,9 @@ def trusted_advisor_group():
     help="Show detailed breakdown by check type",
 )
 @click.pass_context
-def cost_savings(ctx: click.Context, csv_file: str, export_only: bool, show_details: bool) -> None:
+def cost_savings(
+    ctx: click.Context, csv_file: str, export_only: bool, show_details: bool
+) -> None:
     """Analyze AWS Trusted Advisor cost optimization opportunities."""
     config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
@@ -277,9 +310,13 @@ def cost_savings(ctx: click.Context, csv_file: str, export_only: bool, show_deta
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
-            task = progress.add_task("Analyzing Trusted Advisor cost optimization checks...", total=None)
+            task = progress.add_task(
+                "Analyzing Trusted Advisor cost optimization checks...", total=None
+            )
 
-            total_savings, total_opportunities, check_details = _get_cost_savings_data(aws_auth, show_details)
+            total_savings, total_opportunities, check_details = _get_cost_savings_data(
+                aws_auth, show_details
+            )
             progress.remove_task(task)
 
         # Display current results
@@ -290,7 +327,9 @@ def cost_savings(ctx: click.Context, csv_file: str, export_only: bool, show_deta
         }
 
         print_output(
-            current_data, output_format=config.aws_output_format, title="AWS Trusted Advisor Cost Savings Analysis"
+            current_data,
+            output_format=config.aws_output_format,
+            title="AWS Trusted Advisor Cost Savings Analysis",
         )
 
         # Show detailed breakdown if requested
@@ -300,7 +339,9 @@ def cost_savings(ctx: click.Context, csv_file: str, export_only: bool, show_deta
         # Update CSV file unless export-only mode
         if not export_only:
             month_str = datetime.datetime.now().strftime("%Y-%m")
-            _update_cost_savings_csv(csv_file, month_str, total_savings, total_opportunities)
+            _update_cost_savings_csv(
+                csv_file, month_str, total_savings, total_opportunities
+            )
             console.print(f"[green]Historical data updated in '{csv_file}'[/green]")
 
     except Exception as e:
@@ -313,7 +354,9 @@ def cost_savings(ctx: click.Context, csv_file: str, export_only: bool, show_deta
 support_group.add_command(trusted_advisor_group)
 
 
-def _get_cost_savings_data(aws_auth: AWSAuth, include_details: bool = False) -> Tuple[float, int, List[Dict[str, Any]]]:
+def _get_cost_savings_data(
+    aws_auth: AWSAuth, include_details: bool = False
+) -> Tuple[float, int, List[Dict[str, Any]]]:
     """
     Retrieve cost optimization check results from Trusted Advisor.
 
@@ -333,7 +376,9 @@ def _get_cost_savings_data(aws_auth: AWSAuth, include_details: bool = False) -> 
         response = support_client.describe_trusted_advisor_checks(language="en")
     except support_client.exceptions.ClientError as err:
         if err.response["Error"]["Code"] == "SubscriptionRequiredException":
-            raise AWSError("Business or Enterprise support plan required for Trusted Advisor access")
+            raise AWSError(
+                "Business or Enterprise support plan required for Trusted Advisor access"
+            )
         raise AWSError(f"Error accessing Trusted Advisor: {err}")
 
     for check in response.get("checks", []):
@@ -342,7 +387,9 @@ def _get_cost_savings_data(aws_auth: AWSAuth, include_details: bool = False) -> 
             check_name = check.get("name", "Unknown Check")
 
             try:
-                result_response = support_client.describe_trusted_advisor_check_result(checkId=check_id, language="en")
+                result_response = support_client.describe_trusted_advisor_check_result(
+                    checkId=check_id, language="en"
+                )
             except Exception as e:
                 logger.warning(f"Skipping check {check_name}: {e}")
                 continue
@@ -365,7 +412,9 @@ def _get_cost_savings_data(aws_auth: AWSAuth, include_details: bool = False) -> 
                 for resource in flagged_resources:
                     try:
                         savings_str = resource[savings_index]
-                        savings_value = float(savings_str.replace("$", "").replace(",", "").strip())
+                        savings_value = float(
+                            savings_str.replace("$", "").replace(",", "").strip()
+                        )
                         check_savings += savings_value
                     except (ValueError, IndexError, TypeError):
                         continue
@@ -386,15 +435,23 @@ def _get_cost_savings_data(aws_auth: AWSAuth, include_details: bool = False) -> 
     return total_savings, total_opportunities, check_details
 
 
-def _display_cost_savings_details(check_details: List[Dict[str, Any]], output_format: str) -> None:
+def _display_cost_savings_details(
+    check_details: List[Dict[str, Any]], output_format: str
+) -> None:
     """Display detailed breakdown of cost savings by check type."""
     if not check_details:
         return
 
-    print_output(check_details, output_format=output_format, title="Cost Savings Breakdown by Check Type")
+    print_output(
+        check_details,
+        output_format=output_format,
+        title="Cost Savings Breakdown by Check Type",
+    )
 
 
-def _update_cost_savings_csv(csv_filename: str, month_str: str, total_savings: float, total_opportunities: int) -> None:
+def _update_cost_savings_csv(
+    csv_filename: str, month_str: str, total_savings: float, total_opportunities: int
+) -> None:
     """
     Update the CSV file with cost savings data for the current month.
 

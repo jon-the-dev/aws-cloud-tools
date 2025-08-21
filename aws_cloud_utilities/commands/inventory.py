@@ -7,7 +7,13 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 import click
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TaskProgressColumn,
+)
 
 from ..core.config import Config
 from ..core.auth import AWSAuth
@@ -32,14 +38,33 @@ def inventory_group():
 
 
 @inventory_group.command(name="scan")
-@click.option("--output-dir", help="Directory to save inventory files (default: ./inventory_<account_id>_<timestamp>)")
-@click.option("--services", help="Comma-separated list of services to scan (default: all supported services)")
-@click.option("--regions", help="Comma-separated list of regions to scan (default: all regions)")
-@click.option("--format", type=click.Choice(["json", "yaml"]), default="json", help="Output format for saved files")
 @click.option(
-    "--include-tags", is_flag=True, help="Include resource tags where available (slower but more comprehensive)"
+    "--output-dir",
+    help="Directory to save inventory files (default: ./inventory_<account_id>_<timestamp>)",
 )
-@click.option("--parallel-regions", type=int, help="Number of regions to process in parallel (default: from config)")
+@click.option(
+    "--services",
+    help="Comma-separated list of services to scan (default: all supported services)",
+)
+@click.option(
+    "--regions", help="Comma-separated list of regions to scan (default: all regions)"
+)
+@click.option(
+    "--format",
+    type=click.Choice(["json", "yaml"]),
+    default="json",
+    help="Output format for saved files",
+)
+@click.option(
+    "--include-tags",
+    is_flag=True,
+    help="Include resource tags where available (slower but more comprehensive)",
+)
+@click.option(
+    "--parallel-regions",
+    type=int,
+    help="Number of regions to process in parallel (default: from config)",
+)
 @click.pass_context
 def scan(
     ctx: click.Context,
@@ -65,7 +90,9 @@ def scan(
         output_path = Path(output_dir)
         ensure_directory(output_path)
 
-        console.print(f"[blue]Starting comprehensive AWS inventory scan for account {account_id}[/blue]")
+        console.print(
+            f"[blue]Starting comprehensive AWS inventory scan for account {account_id}[/blue]"
+        )
         console.print(f"[dim]Output directory: {output_path.absolute()}[/dim]")
 
         # Determine regions to scan
@@ -79,14 +106,22 @@ def scan(
             target_services = [s.strip() for s in services.split(",")]
             # Validate services
             supported_services = _get_supported_services()
-            invalid_services = [s for s in target_services if s not in supported_services]
+            invalid_services = [
+                s for s in target_services if s not in supported_services
+            ]
             if invalid_services:
-                console.print(f"[yellow]Warning: Unsupported services will be skipped: {invalid_services}[/yellow]")
-                target_services = [s for s in target_services if s in supported_services]
+                console.print(
+                    f"[yellow]Warning: Unsupported services will be skipped: {invalid_services}[/yellow]"
+                )
+                target_services = [
+                    s for s in target_services if s in supported_services
+                ]
         else:
             target_services = list(_get_supported_services().keys())
 
-        console.print(f"[dim]Scanning {len(target_services)} services across {len(target_regions)} regions[/dim]")
+        console.print(
+            f"[dim]Scanning {len(target_services)} services across {len(target_regions)} regions[/dim]"
+        )
 
         # Set up parallel processing
         max_workers = parallel_regions or config.workers
@@ -107,7 +142,14 @@ def scan(
 
         # Execute comprehensive scan
         all_resources = _execute_comprehensive_scan(
-            aws_auth, target_services, target_regions, output_path, format, include_tags, max_workers, scan_summary
+            aws_auth,
+            target_services,
+            target_regions,
+            output_path,
+            format,
+            include_tags,
+            max_workers,
+            scan_summary,
         )
 
         # Save scan summary
@@ -126,11 +168,29 @@ def scan(
 
 
 @inventory_group.command(name="workspaces")
-@click.option("--region", help="AWS region to scan for WorkSpaces (default: current region)")
-@click.option("--output-file", help="Output file for WorkSpaces report (supports .csv, .json, .yaml)")
-@click.option("--include-metrics", is_flag=True, help="Include CloudWatch metrics for each WorkSpace (slower)")
-@click.option("--lookback-days", type=int, default=30, help="Number of days to look back for metrics")
-@click.option("--metric-names", default="Available", help="Comma-separated list of CloudWatch metrics to collect")
+@click.option(
+    "--region", help="AWS region to scan for WorkSpaces (default: current region)"
+)
+@click.option(
+    "--output-file",
+    help="Output file for WorkSpaces report (supports .csv, .json, .yaml)",
+)
+@click.option(
+    "--include-metrics",
+    is_flag=True,
+    help="Include CloudWatch metrics for each WorkSpace (slower)",
+)
+@click.option(
+    "--lookback-days",
+    type=int,
+    default=30,
+    help="Number of days to look back for metrics",
+)
+@click.option(
+    "--metric-names",
+    default="Available",
+    help="Comma-separated list of CloudWatch metrics to collect",
+)
 @click.pass_context
 def workspaces(
     ctx: click.Context,
@@ -159,7 +219,9 @@ def workspaces(
         workspaces_data = _get_all_workspaces(workspaces_client)
 
         if not workspaces_data:
-            console.print("[yellow]No WorkSpaces found in the specified region[/yellow]")
+            console.print(
+                "[yellow]No WorkSpaces found in the specified region[/yellow]"
+            )
             return
 
         console.print(f"[dim]Found {len(workspaces_data)} WorkSpaces[/dim]")
@@ -174,7 +236,9 @@ def workspaces(
             TaskProgressColumn(),
             console=console,
         ) as progress:
-            task = progress.add_task("Processing WorkSpaces...", total=len(workspaces_data))
+            task = progress.add_task(
+                "Processing WorkSpaces...", total=len(workspaces_data)
+            )
 
             for ws in workspaces_data:
                 workspace_id = ws.get("WorkspaceId", "")
@@ -184,22 +248,32 @@ def workspaces(
                     tags = _get_workspace_tags(workspaces_client, workspace_id)
                     ws["Tags"] = tags
                 except Exception as e:
-                    logger.debug(f"Could not get tags for WorkSpace {workspace_id}: {e}")
+                    logger.debug(
+                        f"Could not get tags for WorkSpace {workspace_id}: {e}"
+                    )
                     ws["Tags"] = {}
 
                 # Get metrics if requested
                 if include_metrics:
                     try:
                         metrics = _get_workspace_metrics(
-                            aws_auth, target_region, workspace_id, metric_names.split(","), lookback_days
+                            aws_auth,
+                            target_region,
+                            workspace_id,
+                            metric_names.split(","),
+                            lookback_days,
                         )
                         ws["Metrics"] = metrics
                     except Exception as e:
-                        logger.debug(f"Could not get metrics for WorkSpace {workspace_id}: {e}")
+                        logger.debug(
+                            f"Could not get metrics for WorkSpace {workspace_id}: {e}"
+                        )
                         ws["Metrics"] = {}
 
                 enriched_workspaces.append(ws)
-                progress.update(task, advance=1, description=f"Processing: {workspace_id}")
+                progress.update(
+                    task, advance=1, description=f"Processing: {workspace_id}"
+                )
 
         # Format for output
         formatted_workspaces = []
@@ -212,8 +286,12 @@ def workspaces(
                 "Bundle ID": ws.get("BundleId", ""),
                 "Computer Name": ws.get("ComputerName", ""),
                 "IP Address": ws.get("IpAddress", ""),
-                "Root Volume Encrypted": "Yes" if ws.get("RootVolumeEncryptionEnabled") else "No",
-                "User Volume Encrypted": "Yes" if ws.get("UserVolumeEncryptionEnabled") else "No",
+                "Root Volume Encrypted": (
+                    "Yes" if ws.get("RootVolumeEncryptionEnabled") else "No"
+                ),
+                "User Volume Encrypted": (
+                    "Yes" if ws.get("UserVolumeEncryptionEnabled") else "No"
+                ),
                 "Volume Encryption Key": ws.get("VolumeEncryptionKey", ""),
                 "Tags": ws.get("Tags", {}),
             }
@@ -261,7 +339,11 @@ def services(ctx: click.Context) -> None:
     services_data = []
     for service, methods in supported_services.items():
         services_data.append(
-            {"Service": service, "Methods": len(methods), "Description": _get_service_description(service)}
+            {
+                "Service": service,
+                "Methods": len(methods),
+                "Description": _get_service_description(service),
+            }
         )
 
     print_output(
@@ -298,7 +380,10 @@ def _get_supported_services() -> Dict[str, List[Tuple[str, str]]]:
         ],
         "cloudfront": [
             ("list_distributions", "DistributionList"),
-            ("list_cloud_front_origin_access_identities", "CloudFrontOriginAccessIdentityList"),
+            (
+                "list_cloud_front_origin_access_identities",
+                "CloudFrontOriginAccessIdentityList",
+            ),
         ],
         "codedeploy": [
             ("list_applications", "Applications"),
@@ -320,7 +405,12 @@ def _get_supported_services() -> Dict[str, List[Tuple[str, str]]]:
         "elasticbeanstalk": [("describe_environments", "Environments")],
         "elb": [("describe_load_balancers", "LoadBalancerDescriptions")],
         "elbv2": [("describe_load_balancers", "LoadBalancers")],
-        "es": [("describe_reserved_elasticsearch_instances", "ReservedElasticsearchInstances")],
+        "es": [
+            (
+                "describe_reserved_elasticsearch_instances",
+                "ReservedElasticsearchInstances",
+            )
+        ],
         "lambda": [("list_functions", "Functions")],
         "rds": [
             ("describe_db_instances", "DBInstances"),
@@ -440,9 +530,13 @@ def _execute_comprehensive_scan(
             for method, key in supported_services[service]:
                 scan_tasks.append((service, region, method, key))
 
-    console.print(f"[dim]Executing {len(scan_tasks)} scan tasks across {max_workers} workers[/dim]")
+    console.print(
+        f"[dim]Executing {len(scan_tasks)} scan tasks across {max_workers} workers[/dim]"
+    )
 
-    def scan_service_region(task_data: Tuple[str, str, str, str]) -> Tuple[str, str, List[Dict[str, Any]]]:
+    def scan_service_region(
+        task_data: Tuple[str, str, str, str],
+    ) -> Tuple[str, str, List[Dict[str, Any]]]:
         """Scan a specific service in a specific region."""
         service, region, method, key = task_data
 
@@ -458,7 +552,9 @@ def _execute_comprehensive_scan(
                         resources.extend(page.get(key, []))
                 except Exception:
                     # Fallback to direct method call
-                    resources = _handle_non_paginated_service(client, method, key, service)
+                    resources = _handle_non_paginated_service(
+                        client, method, key, service
+                    )
             else:
                 resources = _handle_non_paginated_service(client, method, key, service)
 
@@ -508,7 +604,9 @@ def _execute_comprehensive_scan(
     return all_resources
 
 
-def _handle_non_paginated_service(client, method_name: str, key: str, service: str) -> List[Dict[str, Any]]:
+def _handle_non_paginated_service(
+    client, method_name: str, key: str, service: str
+) -> List[Dict[str, Any]]:
     """Handle services that don't support pagination."""
     method = getattr(client, method_name)
     params = {}
@@ -534,7 +632,9 @@ def _handle_non_paginated_service(client, method_name: str, key: str, service: s
     return resources
 
 
-def _enrich_with_tags(client, resources: List[Dict[str, Any]], service: str) -> List[Dict[str, Any]]:
+def _enrich_with_tags(
+    client, resources: List[Dict[str, Any]], service: str
+) -> List[Dict[str, Any]]:
     """Enrich resources with tags where supported."""
     # Only enrich for services that commonly support tagging
     tagging_services = {
@@ -557,7 +657,9 @@ def _enrich_with_tags(client, resources: List[Dict[str, Any]], service: str) -> 
                 continue
             elif service == "sns" and "TopicArn" in resource:
                 try:
-                    response = client.list_tags_for_resource(ResourceArn=resource["TopicArn"])
+                    response = client.list_tags_for_resource(
+                        ResourceArn=resource["TopicArn"]
+                    )
                     resource["Tags"] = response.get("Tags", [])
                 except Exception:
                     pass
@@ -567,7 +669,9 @@ def _enrich_with_tags(client, resources: List[Dict[str, Any]], service: str) -> 
     return resources
 
 
-def _display_scan_summary(config: Config, scan_summary: Dict[str, Any], output_path: Path) -> None:
+def _display_scan_summary(
+    config: Config, scan_summary: Dict[str, Any], output_path: Path
+) -> None:
     """Display a comprehensive scan summary."""
 
     # Main summary
@@ -583,26 +687,42 @@ def _display_scan_summary(config: Config, scan_summary: Dict[str, Any], output_p
         "Errors": len(scan_summary["errors"]),
     }
 
-    print_output(summary_display, output_format=config.aws_output_format, title="AWS Inventory Scan Summary")
+    print_output(
+        summary_display,
+        output_format=config.aws_output_format,
+        title="AWS Inventory Scan Summary",
+    )
 
     # Services summary
     if scan_summary["services_summary"]:
         services_data = [
             {"Service": service, "Resources": count}
-            for service, count in sorted(scan_summary["services_summary"].items(), key=lambda x: x[1], reverse=True)
+            for service, count in sorted(
+                scan_summary["services_summary"].items(),
+                key=lambda x: x[1],
+                reverse=True,
+            )
             if count > 0
         ]
 
         if services_data:
-            print_output(services_data, output_format=config.aws_output_format, title="Resources by Service")
+            print_output(
+                services_data,
+                output_format=config.aws_output_format,
+                title="Resources by Service",
+            )
 
     # Show errors if any
     if scan_summary["errors"]:
-        console.print(f"\n[yellow]Errors encountered ({len(scan_summary['errors'])}):[/yellow]")
+        console.print(
+            f"\n[yellow]Errors encountered ({len(scan_summary['errors'])}):[/yellow]"
+        )
         for error in scan_summary["errors"][:10]:  # Show first 10 errors
             console.print(f"  [dim]• {error}[/dim]")
         if len(scan_summary["errors"]) > 10:
-            console.print(f"  [dim]... and {len(scan_summary['errors']) - 10} more errors[/dim]")
+            console.print(
+                f"  [dim]... and {len(scan_summary['errors']) - 10} more errors[/dim]"
+            )
 
 
 def _get_all_workspaces(client) -> List[Dict[str, Any]]:
@@ -637,7 +757,11 @@ def _get_workspace_tags(client, workspace_id: str) -> Dict[str, str]:
 
 
 def _get_workspace_metrics(
-    aws_auth: AWSAuth, region: str, workspace_id: str, metric_names: List[str], lookback_days: int
+    aws_auth: AWSAuth,
+    region: str,
+    workspace_id: str,
+    metric_names: List[str],
+    lookback_days: int,
 ) -> Dict[str, float]:
     """Get CloudWatch metrics for a WorkSpace."""
     try:
@@ -660,7 +784,9 @@ def _get_workspace_metrics(
                         "Metric": {
                             "Namespace": "AWS/WorkSpaces",
                             "MetricName": metric_name,
-                            "Dimensions": [{"Name": "WorkspaceId", "Value": workspace_id}],
+                            "Dimensions": [
+                                {"Name": "WorkspaceId", "Value": workspace_id}
+                            ],
                         },
                         "Period": 86400,  # 1 day
                         "Stat": "Sum",
@@ -669,7 +795,9 @@ def _get_workspace_metrics(
                 }
 
                 response = cloudwatch_client.get_metric_data(
-                    MetricDataQueries=[metric_query], StartTime=start_time, EndTime=end_time
+                    MetricDataQueries=[metric_query],
+                    StartTime=start_time,
+                    EndTime=end_time,
                 )
 
                 results = response.get("MetricDataResults", [])
@@ -680,7 +808,9 @@ def _get_workspace_metrics(
                     metrics[metric_name] = 0
 
             except Exception as e:
-                logger.debug(f"Could not get metric {metric_name} for WorkSpace {workspace_id}: {e}")
+                logger.debug(
+                    f"Could not get metric {metric_name} for WorkSpace {workspace_id}: {e}"
+                )
                 metrics[metric_name] = 0
 
         return metrics
@@ -692,17 +822,42 @@ def _get_workspace_metrics(
 
 @inventory_group.command(name="download-all")
 @click.option(
-    "--output-dir", help="Directory to save all inventory files (default: ./full_inventory_<account_id>_<timestamp>)"
+    "--output-dir",
+    help="Directory to save all inventory files (default: ./full_inventory_<account_id>_<timestamp>)",
 )
-@click.option("--services", help="Comma-separated list of services to include (default: all supported services)")
-@click.option("--regions", help="Comma-separated list of regions to scan (default: all regions)")
-@click.option("--format", type=click.Choice(["json", "yaml"]), default="json", help="Output format for saved files")
 @click.option(
-    "--include-tags", is_flag=True, help="Include resource tags where available (slower but more comprehensive)"
+    "--services",
+    help="Comma-separated list of services to include (default: all supported services)",
 )
-@click.option("--include-cloudformation", is_flag=True, help="Include CloudFormation stack backups")
-@click.option("--include-workspaces-metrics", is_flag=True, help="Include WorkSpaces CloudWatch metrics")
-@click.option("--parallel-regions", type=int, help="Number of regions to process in parallel (default: from config)")
+@click.option(
+    "--regions", help="Comma-separated list of regions to scan (default: all regions)"
+)
+@click.option(
+    "--format",
+    type=click.Choice(["json", "yaml"]),
+    default="json",
+    help="Output format for saved files",
+)
+@click.option(
+    "--include-tags",
+    is_flag=True,
+    help="Include resource tags where available (slower but more comprehensive)",
+)
+@click.option(
+    "--include-cloudformation",
+    is_flag=True,
+    help="Include CloudFormation stack backups",
+)
+@click.option(
+    "--include-workspaces-metrics",
+    is_flag=True,
+    help="Include WorkSpaces CloudWatch metrics",
+)
+@click.option(
+    "--parallel-regions",
+    type=int,
+    help="Number of regions to process in parallel (default: from config)",
+)
 @click.pass_context
 def download_all(
     ctx: click.Context,
@@ -730,7 +885,9 @@ def download_all(
         output_path = Path(output_dir)
         ensure_directory(output_path)
 
-        console.print(f"[blue]Starting comprehensive AWS inventory download for account {account_id}[/blue]")
+        console.print(
+            f"[blue]Starting comprehensive AWS inventory download for account {account_id}[/blue]"
+        )
         console.print(f"[dim]Output directory: {output_path.absolute()}[/dim]")
 
         # Determine regions to scan
@@ -744,10 +901,16 @@ def download_all(
             target_services = [s.strip() for s in services.split(",")]
             # Validate services
             supported_services = _get_supported_services()
-            invalid_services = [s for s in target_services if s not in supported_services]
+            invalid_services = [
+                s for s in target_services if s not in supported_services
+            ]
             if invalid_services:
-                console.print(f"[yellow]Warning: Unsupported services will be skipped: {invalid_services}[/yellow]")
-                target_services = [s for s in target_services if s in supported_services]
+                console.print(
+                    f"[yellow]Warning: Unsupported services will be skipped: {invalid_services}[/yellow]"
+                )
+                target_services = [
+                    s for s in target_services if s in supported_services
+                ]
         else:
             target_services = list(_get_supported_services().keys())
 
@@ -791,28 +954,49 @@ def download_all(
 
         # Execute CloudFormation backup if requested
         if include_cloudformation:
-            console.print("[yellow]Phase 2: Backing up CloudFormation stacks...[/yellow]")
-            cfn_summary = _execute_cloudformation_download(
-                aws_auth, target_regions, output_path / "cloudformation", max_workers, format, download_summary
+            console.print(
+                "[yellow]Phase 2: Backing up CloudFormation stacks...[/yellow]"
             )
-            download_summary["cloudformation_stacks"] = cfn_summary.get("total_stacks", 0)
+            cfn_summary = _execute_cloudformation_download(
+                aws_auth,
+                target_regions,
+                output_path / "cloudformation",
+                max_workers,
+                format,
+                download_summary,
+            )
+            download_summary["cloudformation_stacks"] = cfn_summary.get(
+                "total_stacks", 0
+            )
 
         # Execute WorkSpaces inventory with metrics if requested
         if include_workspaces_metrics:
-            console.print("[yellow]Phase 3: Collecting WorkSpaces with metrics...[/yellow]")
-            workspaces_summary = _execute_workspaces_download(
-                aws_auth, target_regions, output_path / "workspaces", format, download_summary
+            console.print(
+                "[yellow]Phase 3: Collecting WorkSpaces with metrics...[/yellow]"
             )
-            download_summary["workspaces_processed"] = workspaces_summary.get("total_workspaces", 0)
+            workspaces_summary = _execute_workspaces_download(
+                aws_auth,
+                target_regions,
+                output_path / "workspaces",
+                format,
+                download_summary,
+            )
+            download_summary["workspaces_processed"] = workspaces_summary.get(
+                "total_workspaces", 0
+            )
 
         # Save comprehensive download summary
-        summary_file = output_path / f"full_inventory_summary_{account_id}_{timestamp}.json"
+        summary_file = (
+            output_path / f"full_inventory_summary_{account_id}_{timestamp}.json"
+        )
         save_to_file(download_summary, summary_file, "json")
 
         # Display comprehensive summary
         _display_comprehensive_download_summary(config, download_summary, output_path)
 
-        console.print(f"\n[green]✅ Comprehensive AWS inventory download completed successfully![/green]")
+        console.print(
+            f"\n[green]✅ Comprehensive AWS inventory download completed successfully![/green]"
+        )
         console.print(f"[dim]Files saved to: {output_path.absolute()}[/dim]")
 
     except Exception as e:
@@ -874,19 +1058,27 @@ def _execute_cloudformation_backup(
 
                     # Check if backup already exists
                     parameters = stack.get("Parameters", [])
-                    if template_file.exists() and (not parameters or params_file.exists()):
-                        logger.debug(f"Stack {stack_name} in region {region} already backed up")
+                    if template_file.exists() and (
+                        not parameters or params_file.exists()
+                    ):
+                        logger.debug(
+                            f"Stack {stack_name} in region {region} already backed up"
+                        )
                         return True, bool(parameters)
 
                     # Get stack template
                     try:
-                        template_response = cfn_client.get_template(StackName=stack_name)
+                        template_response = cfn_client.get_template(
+                            StackName=stack_name
+                        )
                         template_body = template_response.get("TemplateBody", "")
 
                         if template_body:
                             # Ensure template is properly formatted JSON
                             if isinstance(template_body, dict):
-                                template_str = json.dumps(template_body, indent=2, default=str)
+                                template_str = json.dumps(
+                                    template_body, indent=2, default=str
+                                )
                             else:
                                 template_str = template_body
 
@@ -903,7 +1095,8 @@ def _execute_cloudformation_backup(
                     if parameters:
                         try:
                             params_dict = {
-                                param.get("ParameterKey"): param.get("ParameterValue") for param in parameters
+                                param.get("ParameterKey"): param.get("ParameterValue")
+                                for param in parameters
                             }
 
                             with open(params_file, "w", encoding="utf-8") as f:
@@ -912,7 +1105,9 @@ def _execute_cloudformation_backup(
                             logger.debug(f"Parameters saved for stack {stack_name}")
 
                         except Exception as e:
-                            region_errors.append(f"Parameters for {stack_name}: {str(e)}")
+                            region_errors.append(
+                                f"Parameters for {stack_name}: {str(e)}"
+                            )
 
                     return template_saved, parameters_saved
 
@@ -922,7 +1117,10 @@ def _execute_cloudformation_backup(
 
             # Execute stack backups in parallel
             stack_results = parallel_execute(
-                backup_single_stack, stacks, max_workers=parallel_stacks, show_progress=False
+                backup_single_stack,
+                stacks,
+                max_workers=parallel_stacks,
+                show_progress=False,
             )
 
             # Count results
@@ -938,7 +1136,9 @@ def _execute_cloudformation_backup(
         return region, stacks_count, templates_count, parameters_count, region_errors
 
     # Execute region backups in parallel
-    console.print(f"[dim]Processing {len(regions)} regions with {max_workers} workers[/dim]")
+    console.print(
+        f"[dim]Processing {len(regions)} regions with {max_workers} workers[/dim]"
+    )
 
     region_results = parallel_execute(
         backup_region,
@@ -949,7 +1149,13 @@ def _execute_cloudformation_backup(
     )
 
     # Process results
-    for region, stacks_count, templates_count, parameters_count, region_errors in region_results:
+    for (
+        region,
+        stacks_count,
+        templates_count,
+        parameters_count,
+        region_errors,
+    ) in region_results:
         backup_summary["regions_summary"][region] = {
             "stacks": stacks_count,
             "templates": templates_count,
@@ -962,7 +1168,9 @@ def _execute_cloudformation_backup(
         backup_summary["errors"].extend(region_errors)
 
 
-def _display_cloudformation_summary(config: Config, backup_summary: Dict[str, Any], output_path: Path) -> None:
+def _display_cloudformation_summary(
+    config: Config, backup_summary: Dict[str, Any], output_path: Path
+) -> None:
     """Display CloudFormation backup summary."""
 
     # Main summary
@@ -978,7 +1186,11 @@ def _display_cloudformation_summary(config: Config, backup_summary: Dict[str, An
         "Errors": len(backup_summary["errors"]),
     }
 
-    print_output(summary_display, output_format=config.aws_output_format, title="CloudFormation Backup Summary")
+    print_output(
+        summary_display,
+        output_format=config.aws_output_format,
+        title="CloudFormation Backup Summary",
+    )
 
     # Regions summary
     if backup_summary["regions_summary"]:
@@ -995,15 +1207,23 @@ def _display_cloudformation_summary(config: Config, backup_summary: Dict[str, An
                 )
 
         if regions_data:
-            print_output(regions_data, output_format=config.aws_output_format, title="Backup by Region")
+            print_output(
+                regions_data,
+                output_format=config.aws_output_format,
+                title="Backup by Region",
+            )
 
     # Show errors if any
     if download_summary["errors"]:
-        console.print(f"\n[yellow]Errors encountered ({len(download_summary['errors'])}):[/yellow]")
+        console.print(
+            f"\n[yellow]Errors encountered ({len(download_summary['errors'])}):[/yellow]"
+        )
         for error in download_summary["errors"][:10]:  # Show first 10 errors
             console.print(f"  [dim]• {error}[/dim]")
         if len(download_summary["errors"]) > 10:
-            console.print(f"  [dim]... and {len(download_summary['errors']) - 10} more errors[/dim]")
+            console.print(
+                f"  [dim]... and {len(download_summary['errors']) - 10} more errors[/dim]"
+            )
 
 
 def _execute_cloudformation_download(
@@ -1020,7 +1240,12 @@ def _execute_cloudformation_download(
     # Use the CloudFormation backup logic but with simplified status filtering
     stack_statuses = ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]
 
-    cfn_summary = {"total_stacks": 0, "total_templates": 0, "total_parameters": 0, "regions_summary": {}}
+    cfn_summary = {
+        "total_stacks": 0,
+        "total_templates": 0,
+        "total_parameters": 0,
+        "regions_summary": {},
+    }
 
     def backup_region(region: str) -> Tuple[str, int, int, int]:
         """Backup CloudFormation stacks in a region."""
@@ -1057,7 +1282,9 @@ def _execute_cloudformation_download(
                     # Save template
                     template_file = region_dir / f"{stack_name}.{format}"
                     if not template_file.exists():
-                        template_response = cfn_client.get_template(StackName=stack_name)
+                        template_response = cfn_client.get_template(
+                            StackName=stack_name
+                        )
                         template_body = template_response.get("TemplateBody", "")
 
                         if template_body:
@@ -1070,16 +1297,21 @@ def _execute_cloudformation_download(
                         params_file = region_dir / f"{stack_name}-parameters.{format}"
                         if not params_file.exists():
                             params_dict = {
-                                param.get("ParameterKey"): param.get("ParameterValue") for param in parameters
+                                param.get("ParameterKey"): param.get("ParameterValue")
+                                for param in parameters
                             }
                             save_to_file(params_dict, params_file, format)
                             parameters_count += 1
 
                 except Exception as e:
-                    download_summary["errors"].append(f"CloudFormation {stack_name} in {region}: {str(e)}")
+                    download_summary["errors"].append(
+                        f"CloudFormation {stack_name} in {region}: {str(e)}"
+                    )
 
         except Exception as e:
-            download_summary["errors"].append(f"CloudFormation region {region}: {str(e)}")
+            download_summary["errors"].append(
+                f"CloudFormation region {region}: {str(e)}"
+            )
 
         return region, stacks_count, templates_count, parameters_count
 
@@ -1108,7 +1340,11 @@ def _execute_cloudformation_download(
 
 
 def _execute_workspaces_download(
-    aws_auth: AWSAuth, regions: List[str], output_path: Path, format: str, download_summary: Dict[str, Any]
+    aws_auth: AWSAuth,
+    regions: List[str],
+    output_path: Path,
+    format: str,
+    download_summary: Dict[str, Any],
 ) -> Dict[str, Any]:
     """Execute WorkSpaces inventory with metrics as part of comprehensive download."""
     ensure_directory(output_path)
@@ -1144,7 +1380,9 @@ def _execute_workspaces_download(
 
                 # Get basic metrics (last 7 days)
                 try:
-                    metrics = _get_workspace_metrics(aws_auth, region, workspace_id, ["Available"], 7)
+                    metrics = _get_workspace_metrics(
+                        aws_auth, region, workspace_id, ["Available"], 7
+                    )
                     ws["Metrics"] = metrics
                 except Exception:
                     ws["Metrics"] = {}
@@ -1192,34 +1430,52 @@ def _display_comprehensive_download_summary(
         "Services Scanned": len(download_summary["services_scanned"]),
         "Regions Scanned": len(download_summary["regions_scanned"]),
         "Include Tags": "Yes" if download_summary["include_tags"] else "No",
-        "Include CloudFormation": "Yes" if download_summary["include_cloudformation"] else "No",
-        "Include WorkSpaces Metrics": "Yes" if download_summary["include_workspaces_metrics"] else "No",
+        "Include CloudFormation": (
+            "Yes" if download_summary["include_cloudformation"] else "No"
+        ),
+        "Include WorkSpaces Metrics": (
+            "Yes" if download_summary["include_workspaces_metrics"] else "No"
+        ),
         "Output Format": download_summary["output_format"].upper(),
         "Output Directory": str(output_path.absolute()),
         "Errors": len(download_summary["errors"]),
     }
 
     print_output(
-        summary_display, output_format=config.aws_output_format, title="Comprehensive AWS Inventory Download Summary"
+        summary_display,
+        output_format=config.aws_output_format,
+        title="Comprehensive AWS Inventory Download Summary",
     )
 
     # Services summary (top 10)
     if download_summary["services_summary"]:
         services_data = [
             {"Service": service, "Resources": count}
-            for service, count in sorted(download_summary["services_summary"].items(), key=lambda x: x[1], reverse=True)
+            for service, count in sorted(
+                download_summary["services_summary"].items(),
+                key=lambda x: x[1],
+                reverse=True,
+            )
             if count > 0
         ][
             :10
         ]  # Top 10 services
 
         if services_data:
-            print_output(services_data, output_format=config.aws_output_format, title="Top Resources by Service")
+            print_output(
+                services_data,
+                output_format=config.aws_output_format,
+                title="Top Resources by Service",
+            )
 
     # Show errors if any
     if download_summary["errors"]:
-        console.print(f"\n[yellow]Errors encountered ({len(download_summary['errors'])}):[/yellow]")
+        console.print(
+            f"\n[yellow]Errors encountered ({len(download_summary['errors'])}):[/yellow]"
+        )
         for error in download_summary["errors"][:10]:  # Show first 10 errors
             console.print(f"  [dim]• {error}[/dim]")
         if len(download_summary["errors"]) > 10:
-            console.print(f"  [dim]... and {len(download_summary['errors']) - 10} more errors[/dim]")
+            console.print(
+                f"  [dim]... and {len(download_summary['errors']) - 10} more errors[/dim]"
+            )

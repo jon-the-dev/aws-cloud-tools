@@ -22,18 +22,29 @@ def bedrock_group():
 
 
 @bedrock_group.command(name="list-models")
-@click.option("--region", help="Specific region to list models from (default: all regions)")
-@click.option("--output-file", help="Save results to file (supports .json, .csv, .yaml)")
+@click.option(
+    "--region", help="Specific region to list models from (default: all regions)"
+)
+@click.option(
+    "--output-file", help="Save results to file (supports .json, .csv, .yaml)"
+)
 @click.option(
     "--model-type",
     type=click.Choice(["foundation", "custom", "all"]),
     default="foundation",
     help="Type of models to list",
 )
-@click.option("--provider", help="Filter by model provider (e.g., amazon, anthropic, ai21, cohere)")
+@click.option(
+    "--provider",
+    help="Filter by model provider (e.g., amazon, anthropic, ai21, cohere)",
+)
 @click.pass_context
 def list_models(
-    ctx: click.Context, region: Optional[str], output_file: Optional[str], model_type: str, provider: Optional[str]
+    ctx: click.Context,
+    region: Optional[str],
+    output_file: Optional[str],
+    model_type: str,
+    provider: Optional[str],
 ) -> None:
     """List Amazon Bedrock foundation models across regions."""
     config: Config = ctx.obj["config"]
@@ -44,10 +55,14 @@ def list_models(
         if region:
             regions = [region]
             if not aws_auth.validate_region(region, "bedrock"):
-                console.print(f"[yellow]Warning: Region {region} may not support Bedrock[/yellow]")
+                console.print(
+                    f"[yellow]Warning: Region {region} may not support Bedrock[/yellow]"
+                )
         else:
             regions = aws_auth.get_available_regions("bedrock")
-            console.print(f"[blue]Scanning {len(regions)} regions for Bedrock models...[/blue]")
+            console.print(
+                f"[blue]Scanning {len(regions)} regions for Bedrock models...[/blue]"
+            )
 
         # Function to list models in a region
         def list_models_in_region(region_name: str) -> List[Dict[str, Any]]:
@@ -67,14 +82,29 @@ def list_models(
                                 "Model Name": model.get("modelName", ""),
                                 "Provider": model.get("providerName", ""),
                                 "Type": "Foundation",
-                                "Input Modalities": ", ".join(model.get("inputModalities", [])),
-                                "Output Modalities": ", ".join(model.get("outputModalities", [])),
-                                "Response Streaming": "Yes" if model.get("responseStreamingSupported") else "No",
-                                "Customization": ", ".join(model.get("customizationsSupported", [])) or "None",
+                                "Input Modalities": ", ".join(
+                                    model.get("inputModalities", [])
+                                ),
+                                "Output Modalities": ", ".join(
+                                    model.get("outputModalities", [])
+                                ),
+                                "Response Streaming": (
+                                    "Yes"
+                                    if model.get("responseStreamingSupported")
+                                    else "No"
+                                ),
+                                "Customization": ", ".join(
+                                    model.get("customizationsSupported", [])
+                                )
+                                or "None",
                             }
 
                             # Apply provider filter if specified
-                            if provider and provider.lower() not in model_info["Provider"].lower():
+                            if (
+                                provider
+                                and provider.lower()
+                                not in model_info["Provider"].lower()
+                            ):
                                 continue
 
                             models_list.append(model_info)
@@ -99,7 +129,9 @@ def list_models(
                                     ),
                                     "Status": model.get("status", ""),
                                     "Created": (
-                                        model.get("creationTime", "").strftime("%Y-%m-%d")
+                                        model.get("creationTime", "").strftime(
+                                            "%Y-%m-%d"
+                                        )
                                         if model.get("creationTime")
                                         else ""
                                     ),
@@ -108,7 +140,9 @@ def list_models(
                                 models_list.append(model_info)
 
                     except Exception as e:
-                        logger.debug(f"Could not list custom models in {region_name}: {e}")
+                        logger.debug(
+                            f"Could not list custom models in {region_name}: {e}"
+                        )
 
                 logger.debug(f"Found {len(models_list)} models in region {region_name}")
                 return models_list
@@ -133,7 +167,9 @@ def list_models(
                 all_models.extend(region_models)
 
         if not all_models:
-            console.print("[yellow]No Bedrock models found in the specified regions[/yellow]")
+            console.print(
+                "[yellow]No Bedrock models found in the specified regions[/yellow]"
+            )
             return
 
         # Sort by region and model name
@@ -141,7 +177,9 @@ def list_models(
 
         # Display results
         print_output(
-            all_models, output_format=config.aws_output_format, title=f"Amazon Bedrock Models ({len(all_models)} found)"
+            all_models,
+            output_format=config.aws_output_format,
+            title=f"Amazon Bedrock Models ({len(all_models)} found)",
         )
 
         # Save to file if requested
@@ -166,7 +204,9 @@ def list_models(
 
 @bedrock_group.command(name="model-details")
 @click.argument("model_id")
-@click.option("--region", help="Region where the model is available (default: current region)")
+@click.option(
+    "--region", help="Region where the model is available (default: current region)"
+)
 @click.pass_context
 def model_details(ctx: click.Context, model_id: str, region: Optional[str]) -> None:
     """Get detailed information about a specific Bedrock model."""
@@ -188,17 +228,32 @@ def model_details(ctx: click.Context, model_id: str, region: Optional[str]) -> N
                 "Provider": model_details.get("providerName", ""),
                 "Model ARN": model_details.get("modelArn", ""),
                 "Input Modalities": ", ".join(model_details.get("inputModalities", [])),
-                "Output Modalities": ", ".join(model_details.get("outputModalities", [])),
-                "Response Streaming": "Yes" if model_details.get("responseStreamingSupported") else "No",
-                "Customization Supported": ", ".join(model_details.get("customizationsSupported", [])) or "None",
-                "Inference Types": ", ".join(model_details.get("inferenceTypesSupported", [])),
+                "Output Modalities": ", ".join(
+                    model_details.get("outputModalities", [])
+                ),
+                "Response Streaming": (
+                    "Yes" if model_details.get("responseStreamingSupported") else "No"
+                ),
+                "Customization Supported": ", ".join(
+                    model_details.get("customizationsSupported", [])
+                )
+                or "None",
+                "Inference Types": ", ".join(
+                    model_details.get("inferenceTypesSupported", [])
+                ),
                 "Region": target_region,
             }
 
-            print_output(model_info, output_format=config.aws_output_format, title=f"Bedrock Model Details: {model_id}")
+            print_output(
+                model_info,
+                output_format=config.aws_output_format,
+                title=f"Bedrock Model Details: {model_id}",
+            )
 
         except bedrock_client.exceptions.ResourceNotFoundException:
-            console.print(f"[red]Model '{model_id}' not found in region {target_region}[/red]")
+            console.print(
+                f"[red]Model '{model_id}' not found in region {target_region}[/red]"
+            )
             console.print("[dim]Try using 'list-models' to see available models[/dim]")
             raise click.Abort()
 
@@ -208,14 +263,19 @@ def model_details(ctx: click.Context, model_id: str, region: Optional[str]) -> N
 
 
 @bedrock_group.command(name="list-custom-models")
-@click.option("--region", help="Specific region to list custom models from (default: current region)")
+@click.option(
+    "--region",
+    help="Specific region to list custom models from (default: current region)",
+)
 @click.option(
     "--status",
     type=click.Choice(["InProgress", "Completed", "Failed", "Stopping", "Stopped"]),
     help="Filter by model status",
 )
 @click.pass_context
-def list_custom_models(ctx: click.Context, region: Optional[str], status: Optional[str]) -> None:
+def list_custom_models(
+    ctx: click.Context, region: Optional[str], status: Optional[str]
+) -> None:
     """List custom Bedrock models."""
     config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
@@ -237,7 +297,11 @@ def list_custom_models(ctx: click.Context, region: Optional[str], status: Option
                     model_info = {
                         "Model Name": model.get("modelName", ""),
                         "Model ARN": model.get("modelArn", ""),
-                        "Base Model": model.get("baseModelArn", "").split("/")[-1] if model.get("baseModelArn") else "",
+                        "Base Model": (
+                            model.get("baseModelArn", "").split("/")[-1]
+                            if model.get("baseModelArn")
+                            else ""
+                        ),
                         "Status": model.get("status", ""),
                         "Created": (
                             model.get("creationTime", "").strftime("%Y-%m-%d %H:%M")
@@ -256,26 +320,35 @@ def list_custom_models(ctx: click.Context, region: Optional[str], status: Option
                     title=f"Custom Bedrock Models in {target_region}",
                 )
             else:
-                console.print(f"[yellow]No custom models found in region {target_region}[/yellow]")
+                console.print(
+                    f"[yellow]No custom models found in region {target_region}[/yellow]"
+                )
 
         except Exception as e:
             console.print(f"[red]Error listing custom models:[/red] {e}")
             raise click.Abort()
 
     except Exception as e:
-        console.print(f"[red]Error accessing Bedrock in region {target_region}:[/red] {e}")
+        console.print(
+            f"[red]Error accessing Bedrock in region {target_region}:[/red] {e}"
+        )
         raise click.Abort()
 
 
 @bedrock_group.command(name="list-model-jobs")
-@click.option("--region", help="Specific region to list model customization jobs from (default: current region)")
+@click.option(
+    "--region",
+    help="Specific region to list model customization jobs from (default: current region)",
+)
 @click.option(
     "--status",
     type=click.Choice(["InProgress", "Completed", "Failed", "Stopping", "Stopped"]),
     help="Filter by job status",
 )
 @click.pass_context
-def list_model_jobs(ctx: click.Context, region: Optional[str], status: Optional[str]) -> None:
+def list_model_jobs(
+    ctx: click.Context, region: Optional[str], status: Optional[str]
+) -> None:
     """List Bedrock model customization jobs."""
     config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
@@ -297,12 +370,22 @@ def list_model_jobs(ctx: click.Context, region: Optional[str], status: Optional[
                     job_info = {
                         "Job Name": job.get("jobName", ""),
                         "Job ARN": job.get("jobArn", ""),
-                        "Base Model": job.get("baseModelArn", "").split("/")[-1] if job.get("baseModelArn") else "",
+                        "Base Model": (
+                            job.get("baseModelArn", "").split("/")[-1]
+                            if job.get("baseModelArn")
+                            else ""
+                        ),
                         "Status": job.get("status", ""),
                         "Created": (
-                            job.get("creationTime", "").strftime("%Y-%m-%d %H:%M") if job.get("creationTime") else ""
+                            job.get("creationTime", "").strftime("%Y-%m-%d %H:%M")
+                            if job.get("creationTime")
+                            else ""
                         ),
-                        "Ended": job.get("endTime", "").strftime("%Y-%m-%d %H:%M") if job.get("endTime") else "N/A",
+                        "Ended": (
+                            job.get("endTime", "").strftime("%Y-%m-%d %H:%M")
+                            if job.get("endTime")
+                            else "N/A"
+                        ),
                         "Custom Model Name": job.get("customModelName", ""),
                         "Custom Model ARN": job.get("customModelArn", ""),
                     }
@@ -315,14 +398,18 @@ def list_model_jobs(ctx: click.Context, region: Optional[str], status: Optional[
                     title=f"Bedrock Model Customization Jobs in {target_region}",
                 )
             else:
-                console.print(f"[yellow]No model customization jobs found in region {target_region}[/yellow]")
+                console.print(
+                    f"[yellow]No model customization jobs found in region {target_region}[/yellow]"
+                )
 
         except Exception as e:
             console.print(f"[red]Error listing model customization jobs:[/red] {e}")
             raise click.Abort()
 
     except Exception as e:
-        console.print(f"[red]Error accessing Bedrock in region {target_region}:[/red] {e}")
+        console.print(
+            f"[red]Error accessing Bedrock in region {target_region}:[/red] {e}"
+        )
         raise click.Abort()
 
 
@@ -341,7 +428,11 @@ def regions(ctx: click.Context) -> None:
             for region in sorted(bedrock_regions)
         ]
 
-        print_output(regions_data, output_format=config.aws_output_format, title="Amazon Bedrock Available Regions")
+        print_output(
+            regions_data,
+            output_format=config.aws_output_format,
+            title="Amazon Bedrock Available Regions",
+        )
 
     except Exception as e:
         console.print(f"[red]Error listing Bedrock regions:[/red] {e}")

@@ -73,7 +73,11 @@ def info(ctx: click.Context) -> None:
                 }
             )
 
-        print_output(account_info, output_format=config.aws_output_format, title="AWS Account Information")
+        print_output(
+            account_info,
+            output_format=config.aws_output_format,
+            title="AWS Account Information",
+        )
 
     except AWSError as e:
         console.print(f"[red]AWS Error:[/red] {e}")
@@ -112,11 +116,15 @@ def contact_info(ctx: click.Context) -> None:
             }
 
             print_output(
-                primary_contact, output_format=config.aws_output_format, title="Primary Account Contact Information"
+                primary_contact,
+                output_format=config.aws_output_format,
+                title="Primary Account Contact Information",
             )
 
         except Exception as e:
-            console.print(f"[yellow]Could not retrieve primary contact information: {e}[/yellow]")
+            console.print(
+                f"[yellow]Could not retrieve primary contact information: {e}[/yellow]"
+            )
 
         # Get alternate contacts
         try:
@@ -125,7 +133,9 @@ def contact_info(ctx: click.Context) -> None:
 
             for contact_type in alternate_types:
                 try:
-                    response = account_client.get_alternate_contact(AlternateContactType=contact_type)
+                    response = account_client.get_alternate_contact(
+                        AlternateContactType=contact_type
+                    )
 
                     alternate_contact = response.get("AlternateContact", {})
                     alternate_contacts.append(
@@ -152,11 +162,15 @@ def contact_info(ctx: click.Context) -> None:
 
             if alternate_contacts:
                 print_output(
-                    alternate_contacts, output_format=config.aws_output_format, title="Alternate Account Contacts"
+                    alternate_contacts,
+                    output_format=config.aws_output_format,
+                    title="Alternate Account Contacts",
                 )
 
         except Exception as e:
-            console.print(f"[yellow]Could not retrieve alternate contact information: {e}[/yellow]")
+            console.print(
+                f"[yellow]Could not retrieve alternate contact information: {e}[/yellow]"
+            )
 
     except Exception as e:
         console.print(f"[red]Error getting contact information:[/red] {e}")
@@ -164,7 +178,11 @@ def contact_info(ctx: click.Context) -> None:
 
 
 @account_group.command()
-@click.option("--verbose", is_flag=True, help="Enable verbose output showing region-by-region progress")
+@click.option(
+    "--verbose",
+    is_flag=True,
+    help="Enable verbose output showing region-by-region progress",
+)
 @click.pass_context
 def detect_control_tower(ctx: click.Context, verbose: bool) -> None:
     """Detect AWS Control Tower or Landing Zone deployments."""
@@ -176,13 +194,17 @@ def detect_control_tower(ctx: click.Context, verbose: bool) -> None:
         caller_identity = aws_auth.get_caller_identity()
         account_id = caller_identity.get("Account", "Unknown")
 
-        console.print(f"[blue]Scanning account {account_id} for Control Tower/Landing Zone deployments...[/blue]")
+        console.print(
+            f"[blue]Scanning account {account_id} for Control Tower/Landing Zone deployments...[/blue]"
+        )
 
         # Get all regions
         regions = aws_auth.get_available_regions("cloudformation")
 
         if verbose:
-            console.print(f"[dim]Checking {len(regions)} regions for CloudFormation stacks...[/dim]")
+            console.print(
+                f"[dim]Checking {len(regions)} regions for CloudFormation stacks...[/dim]"
+            )
 
         # Function to list stacks in a region
         def list_stacks_in_region(region: str) -> tuple[str, List[Dict[str, Any]]]:
@@ -205,7 +227,9 @@ def detect_control_tower(ctx: click.Context, verbose: bool) -> None:
                     stacks.extend(page.get("StackSummaries", []))
 
                 if verbose:
-                    console.print(f"[dim]Region {region}: {len(stacks)} stacks found[/dim]")
+                    console.print(
+                        f"[dim]Region {region}: {len(stacks)} stacks found[/dim]"
+                    )
 
                 return region, stacks
 
@@ -231,10 +255,14 @@ def detect_control_tower(ctx: click.Context, verbose: bool) -> None:
                 all_stacks.extend(stacks)
                 total_stacks += len(stacks)
 
-        console.print(f"[dim]Total stacks found across all regions: {total_stacks}[/dim]")
+        console.print(
+            f"[dim]Total stacks found across all regions: {total_stacks}[/dim]"
+        )
 
         # Detect Control Tower and Landing Zone patterns
-        controltower_detected, landingzone_detected, detected_stacks = _detect_controltower_landingzone(all_stacks)
+        controltower_detected, landingzone_detected, detected_stacks = (
+            _detect_controltower_landingzone(all_stacks)
+        )
 
         # Prepare results
         detection_results = {
@@ -293,10 +321,15 @@ def regions(ctx: click.Context) -> None:
 
         # Format as list of dictionaries for better table output
         regions_data = [
-            {"Region": region, "Current": "✓" if region == config.aws_region else ""} for region in sorted(regions_list)
+            {"Region": region, "Current": "✓" if region == config.aws_region else ""}
+            for region in sorted(regions_list)
         ]
 
-        print_output(regions_data, output_format=config.aws_output_format, title="Available AWS Regions")
+        print_output(
+            regions_data,
+            output_format=config.aws_output_format,
+            title="Available AWS Regions",
+        )
 
     except Exception as e:
         console.print(f"[red]Error listing regions:[/red] {e}")
@@ -317,12 +350,18 @@ def service_regions(ctx: click.Context, service: str) -> None:
 
         # Format as list of dictionaries
         regions_data = [
-            {"Region": region, "Service": service, "Current": "✓" if region == config.aws_region else ""}
+            {
+                "Region": region,
+                "Service": service,
+                "Current": "✓" if region == config.aws_region else "",
+            }
             for region in sorted(regions_list)
         ]
 
         print_output(
-            regions_data, output_format=config.aws_output_format, title=f"Available Regions for {service.upper()}"
+            regions_data,
+            output_format=config.aws_output_format,
+            title=f"Available Regions for {service.upper()}",
         )
 
     except Exception as e:
@@ -349,7 +388,9 @@ def limits(ctx: click.Context) -> None:
 
             for service in common_services:
                 try:
-                    response = quotas_client.list_service_quotas(ServiceCode=service, MaxResults=10)
+                    response = quotas_client.list_service_quotas(
+                        ServiceCode=service, MaxResults=10
+                    )
 
                     for quota in response.get("Quotas", []):
                         limits_data.append(
@@ -358,7 +399,9 @@ def limits(ctx: click.Context) -> None:
                                 "Quota Name": quota.get("QuotaName", "Unknown"),
                                 "Value": quota.get("Value", "Unknown"),
                                 "Unit": quota.get("Unit", ""),
-                                "Adjustable": "Yes" if quota.get("Adjustable") else "No",
+                                "Adjustable": (
+                                    "Yes" if quota.get("Adjustable") else "No"
+                                ),
                             }
                         )
 
@@ -367,13 +410,19 @@ def limits(ctx: click.Context) -> None:
                     continue
 
             if limits_data:
-                print_output(limits_data, output_format=config.aws_output_format, title="AWS Service Limits")
+                print_output(
+                    limits_data,
+                    output_format=config.aws_output_format,
+                    title="AWS Service Limits",
+                )
             else:
                 console.print("[yellow]No service quota information available[/yellow]")
 
         except Exception as e:
             logger.debug(f"Service Quotas API not available: {e}")
-            console.print("[yellow]Service Quotas API not available in this region[/yellow]")
+            console.print(
+                "[yellow]Service Quotas API not available in this region[/yellow]"
+            )
 
     except Exception as e:
         console.print(f"[red]Error getting service limits:[/red] {e}")
@@ -403,7 +452,12 @@ def validate(ctx: click.Context) -> None:
             )
         except Exception as e:
             validation_results.append(
-                {"Service": "STS", "Test": "GetCallerIdentity", "Status": "✗ FAIL", "Details": str(e)}
+                {
+                    "Service": "STS",
+                    "Test": "GetCallerIdentity",
+                    "Status": "✗ FAIL",
+                    "Details": str(e),
+                }
             )
 
         # Test common service access
@@ -436,7 +490,12 @@ def validate(ctx: click.Context) -> None:
                     details = "Access confirmed"
 
                 validation_results.append(
-                    {"Service": service_name, "Test": test_method, "Status": status, "Details": details}
+                    {
+                        "Service": service_name,
+                        "Test": test_method,
+                        "Status": status,
+                        "Details": details,
+                    }
                 )
 
             except Exception as e:
@@ -449,14 +508,20 @@ def validate(ctx: click.Context) -> None:
                     }
                 )
 
-        print_output(validation_results, output_format=config.aws_output_format, title="AWS Credentials Validation")
+        print_output(
+            validation_results,
+            output_format=config.aws_output_format,
+            title="AWS Credentials Validation",
+        )
 
     except Exception as e:
         console.print(f"[red]Error validating credentials:[/red] {e}")
         raise click.Abort()
 
 
-def _detect_controltower_landingzone(stacks: List[Dict[str, Any]]) -> tuple[bool, bool, List[Dict[str, Any]]]:
+def _detect_controltower_landingzone(
+    stacks: List[Dict[str, Any]],
+) -> tuple[bool, bool, List[Dict[str, Any]]]:
     """Detect Control Tower and Landing Zone deployments from CloudFormation stacks."""
 
     # Patterns that suggest Control Tower deployment

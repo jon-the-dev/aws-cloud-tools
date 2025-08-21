@@ -58,10 +58,16 @@ class Config(BaseModel):
         return v.lower()
 
     @classmethod
-    def load_config(cls, config_file: Optional[str] = None, **overrides: Any) -> "Config":
+    def load_config(
+        cls, config_file: Optional[str] = None, **overrides: Any
+    ) -> "Config":
         """Load configuration from environment and files."""
         # Load from .env files
-        env_files = [".env", Path.home() / ".aws-cloud-utilities.env", Path.home() / ".env"]
+        env_files = [
+            ".env",
+            Path.home() / ".aws-cloud-utilities.env",
+            Path.home() / ".env",
+        ]
 
         if config_file:
             env_files.insert(0, config_file)

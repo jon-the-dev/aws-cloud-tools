@@ -10,11 +10,23 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 import click
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TaskProgressColumn,
+)
 
 from ..core.config import Config
 from ..core.auth import AWSAuth
-from ..core.utils import print_output, save_to_file, get_timestamp, get_detailed_timestamp, ensure_directory
+from ..core.utils import (
+    print_output,
+    save_to_file,
+    get_timestamp,
+    get_detailed_timestamp,
+    ensure_directory,
+)
 from ..core.exceptions import AWSError
 
 logger = logging.getLogger(__name__)
@@ -30,9 +42,15 @@ def ecr_group():
 @ecr_group.command(name="copy-image")
 @click.argument("source_image")
 @click.argument("ecr_repository")
-@click.option("--tag", default="latest", help="Tag to use for the image in ECR (default: latest)")
-@click.option("--region", help="AWS region for ECR repository (default: current region)")
-@click.option("--create-repo", is_flag=True, help="Create ECR repository if it doesn't exist")
+@click.option(
+    "--tag", default="latest", help="Tag to use for the image in ECR (default: latest)"
+)
+@click.option(
+    "--region", help="AWS region for ECR repository (default: current region)"
+)
+@click.option(
+    "--create-repo", is_flag=True, help="Create ECR repository if it doesn't exist"
+)
 @click.option("--force", is_flag=True, help="Force overwrite if image already exists")
 @click.pass_context
 def copy_image(
@@ -56,7 +74,9 @@ def copy_image(
             console.print("[red]Docker is not installed or not available in PATH[/red]")
             raise click.Abort()
 
-        console.print(f"[blue]Copying image from {source_image} to ECR repository {ecr_repository}[/blue]")
+        console.print(
+            f"[blue]Copying image from {source_image} to ECR repository {ecr_repository}[/blue]"
+        )
         console.print(f"[dim]Region: {target_region}, Tag: {tag}[/dim]")
 
         # Get ECR client
@@ -67,7 +87,9 @@ def copy_image(
 
         # Construct full ECR repository URI
         if not ecr_repository.startswith(f"{account_id}.dkr.ecr."):
-            ecr_repo_uri = f"{account_id}.dkr.ecr.{target_region}.amazonaws.com/{ecr_repository}"
+            ecr_repo_uri = (
+                f"{account_id}.dkr.ecr.{target_region}.amazonaws.com/{ecr_repository}"
+            )
         else:
             ecr_repo_uri = ecr_repository
 
@@ -85,7 +107,9 @@ def copy_image(
 
         # Execute the image copy process
         with Progress(
-            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
         ) as progress:
 
             # Step 1: Pull source image
@@ -109,26 +133,38 @@ def copy_image(
             _push_docker_image(target_image)
             progress.update(task4, description="✓ Image pushed to ECR")
 
-        console.print(f"[green]✅ Successfully copied {source_image} to {target_image}[/green]")
+        console.print(
+            f"[green]✅ Successfully copied {source_image} to {target_image}[/green]"
+        )
 
         # Display image details
         try:
-            image_details = _get_image_details(ecr_client, ecr_repository.split("/")[-1], tag)
+            image_details = _get_image_details(
+                ecr_client, ecr_repository.split("/")[-1], tag
+            )
             if image_details:
                 details_display = {
                     "Repository": ecr_repository,
                     "Tag": tag,
                     "Image Digest": image_details.get("imageDigest", ""),
-                    "Size (MB)": round(image_details.get("imageSizeInBytes", 0) / 1024 / 1024, 2),
+                    "Size (MB)": round(
+                        image_details.get("imageSizeInBytes", 0) / 1024 / 1024, 2
+                    ),
                     "Pushed At": (
-                        image_details.get("imagePushedAt", "").strftime("%Y-%m-%d %H:%M:%S")
+                        image_details.get("imagePushedAt", "").strftime(
+                            "%Y-%m-%d %H:%M:%S"
+                        )
                         if image_details.get("imagePushedAt")
                         else ""
                     ),
                     "Registry URI": ecr_repo_uri,
                 }
 
-                print_output(details_display, output_format=config.aws_output_format, title="ECR Image Details")
+                print_output(
+                    details_display,
+                    output_format=config.aws_output_format,
+                    title="ECR Image Details",
+                )
         except Exception as e:
             logger.debug(f"Could not retrieve image details: {e}")
 
@@ -138,11 +174,21 @@ def copy_image(
 
 
 @ecr_group.command(name="list-repositories")
-@click.option("--region", help="AWS region to list repositories from (default: current region)")
+@click.option(
+    "--region", help="AWS region to list repositories from (default: current region)"
+)
 @click.option("--all-regions", is_flag=True, help="List repositories from all regions")
-@click.option("--output-file", help="Output file for repositories list (supports .json, .yaml, .csv)")
+@click.option(
+    "--output-file",
+    help="Output file for repositories list (supports .json, .yaml, .csv)",
+)
 @click.pass_context
-def list_repositories(ctx: click.Context, region: Optional[str], all_regions: bool, output_file: Optional[str]) -> None:
+def list_repositories(
+    ctx: click.Context,
+    region: Optional[str],
+    all_regions: bool,
+    output_file: Optional[str],
+) -> None:
     """List ECR repositories with details."""
     config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
@@ -178,15 +224,21 @@ def list_repositories(ctx: click.Context, region: Optional[str], all_regions: bo
                                 "Image Count": repo.get("imageTagMutability", ""),
                                 "Scan on Push": (
                                     "Enabled"
-                                    if repo.get("imageScanningConfiguration", {}).get("scanOnPush")
+                                    if repo.get("imageScanningConfiguration", {}).get(
+                                        "scanOnPush"
+                                    )
                                     else "Disabled"
                                 ),
-                                "Encryption": repo.get("encryptionConfiguration", {}).get("encryptionType", "AES256"),
+                                "Encryption": repo.get(
+                                    "encryptionConfiguration", {}
+                                ).get("encryptionType", "AES256"),
                             }
                         )
 
             except Exception as e:
-                logger.warning(f"Error listing repositories in region {target_region}: {e}")
+                logger.warning(
+                    f"Error listing repositories in region {target_region}: {e}"
+                )
 
         if all_repositories:
             print_output(
@@ -207,7 +259,9 @@ def list_repositories(ctx: click.Context, region: Optional[str], all_regions: bo
                 output_path = output_path.parent / new_filename
 
                 save_to_file(all_repositories, output_path, file_format)
-                console.print(f"[green]Repositories list saved to:[/green] {output_path}")
+                console.print(
+                    f"[green]Repositories list saved to:[/green] {output_path}"
+                )
         else:
             console.print("[yellow]No ECR repositories found[/yellow]")
 
@@ -218,12 +272,26 @@ def list_repositories(ctx: click.Context, region: Optional[str], all_regions: bo
 
 @ecr_group.command(name="list-images")
 @click.argument("repository_name")
-@click.option("--region", help="AWS region where the repository is located (default: current region)")
-@click.option("--max-results", type=int, default=100, help="Maximum number of images to list (default: 100)")
-@click.option("--output-file", help="Output file for images list (supports .json, .yaml, .csv)")
+@click.option(
+    "--region",
+    help="AWS region where the repository is located (default: current region)",
+)
+@click.option(
+    "--max-results",
+    type=int,
+    default=100,
+    help="Maximum number of images to list (default: 100)",
+)
+@click.option(
+    "--output-file", help="Output file for images list (supports .json, .yaml, .csv)"
+)
 @click.pass_context
 def list_images(
-    ctx: click.Context, repository_name: str, region: Optional[str], max_results: int, output_file: Optional[str]
+    ctx: click.Context,
+    repository_name: str,
+    region: Optional[str],
+    max_results: int,
+    output_file: Optional[str],
 ) -> None:
     """List images in an ECR repository."""
     config: Config = ctx.obj["config"]
@@ -241,7 +309,10 @@ def list_images(
             paginator = ecr_client.get_paginator("describe_images")
 
             all_images = []
-            for page in paginator.paginate(repositoryName=repository_name, PaginationConfig={"MaxItems": max_results}):
+            for page in paginator.paginate(
+                repositoryName=repository_name,
+                PaginationConfig={"MaxItems": max_results},
+            ):
                 for image in page.get("imageDetails", []):
                     # Handle images with and without tags
                     tags = image.get("imageTags", ["<untagged>"])
@@ -250,10 +321,15 @@ def list_images(
                             {
                                 "Repository": repository_name,
                                 "Tag": tag,
-                                "Image Digest": image.get("imageDigest", "")[:12] + "...",  # Truncate for display
-                                "Size (MB)": round(image.get("imageSizeInBytes", 0) / 1024 / 1024, 2),
+                                "Image Digest": image.get("imageDigest", "")[:12]
+                                + "...",  # Truncate for display
+                                "Size (MB)": round(
+                                    image.get("imageSizeInBytes", 0) / 1024 / 1024, 2
+                                ),
                                 "Pushed": (
-                                    image.get("imagePushedAt", "").strftime("%Y-%m-%d %H:%M")
+                                    image.get("imagePushedAt", "").strftime(
+                                        "%Y-%m-%d %H:%M"
+                                    )
                                     if image.get("imagePushedAt")
                                     else ""
                                 ),
@@ -289,10 +365,14 @@ def list_images(
                     save_to_file(all_images, output_path, file_format)
                     console.print(f"[green]Images list saved to:[/green] {output_path}")
             else:
-                console.print(f"[yellow]No images found in repository {repository_name}[/yellow]")
+                console.print(
+                    f"[yellow]No images found in repository {repository_name}[/yellow]"
+                )
 
         except ecr_client.exceptions.RepositoryNotFoundException:
-            console.print(f"[red]Repository '{repository_name}' not found in region {target_region}[/red]")
+            console.print(
+                f"[red]Repository '{repository_name}' not found in region {target_region}[/red]"
+            )
             raise click.Abort()
 
     except Exception as e:
@@ -302,7 +382,9 @@ def list_images(
 
 @ecr_group.command(name="create-repository")
 @click.argument("repository_name")
-@click.option("--region", help="AWS region to create repository in (default: current region)")
+@click.option(
+    "--region", help="AWS region to create repository in (default: current region)"
+)
 @click.option("--scan-on-push", is_flag=True, help="Enable image scanning on push")
 @click.option(
     "--image-tag-mutability",
@@ -357,17 +439,25 @@ def create_repository(
                 "Registry ID": repository.get("registryId", ""),
                 "Region": target_region,
                 "Created": (
-                    repository.get("createdAt", "").strftime("%Y-%m-%d %H:%M:%S") if repository.get("createdAt") else ""
+                    repository.get("createdAt", "").strftime("%Y-%m-%d %H:%M:%S")
+                    if repository.get("createdAt")
+                    else ""
                 ),
                 "Scan on Push": "Enabled" if scan_on_push else "Disabled",
                 "Tag Mutability": image_tag_mutability,
                 "Encryption": encryption_type,
             }
 
-            print_output(repo_details, output_format=config.aws_output_format, title="ECR Repository Details")
+            print_output(
+                repo_details,
+                output_format=config.aws_output_format,
+                title="ECR Repository Details",
+            )
 
         except ecr_client.exceptions.RepositoryAlreadyExistsException:
-            console.print(f"[yellow]Repository '{repository_name}' already exists in region {target_region}[/yellow]")
+            console.print(
+                f"[yellow]Repository '{repository_name}' already exists in region {target_region}[/yellow]"
+            )
 
     except Exception as e:
         console.print(f"[red]Error creating ECR repository:[/red] {e}")
@@ -376,12 +466,21 @@ def create_repository(
 
 @ecr_group.command(name="delete-repository")
 @click.argument("repository_name")
-@click.option("--region", help="AWS region where the repository is located (default: current region)")
-@click.option("--force", is_flag=True, help="Force delete repository even if it contains images")
+@click.option(
+    "--region",
+    help="AWS region where the repository is located (default: current region)",
+)
+@click.option(
+    "--force", is_flag=True, help="Force delete repository even if it contains images"
+)
 @click.option("--confirm", is_flag=True, help="Skip confirmation prompt")
 @click.pass_context
 def delete_repository(
-    ctx: click.Context, repository_name: str, region: Optional[str], force: bool, confirm: bool
+    ctx: click.Context,
+    repository_name: str,
+    region: Optional[str],
+    force: bool,
+    confirm: bool,
 ) -> None:
     """Delete an ECR repository."""
     config: Config = ctx.obj["config"]
@@ -393,10 +492,14 @@ def delete_repository(
 
         # Check if repository exists and get details
         try:
-            response = ecr_client.describe_repositories(repositoryNames=[repository_name])
+            response = ecr_client.describe_repositories(
+                repositoryNames=[repository_name]
+            )
             repository = response["repositories"][0]
         except ecr_client.exceptions.RepositoryNotFoundException:
-            console.print(f"[red]Repository '{repository_name}' not found in region {target_region}[/red]")
+            console.print(
+                f"[red]Repository '{repository_name}' not found in region {target_region}[/red]"
+            )
             raise click.Abort()
 
         # Show repository details
@@ -410,7 +513,9 @@ def delete_repository(
 
         # Confirmation
         if not confirm:
-            if not click.confirm(f"\nAre you sure you want to delete repository '{repository_name}'?"):
+            if not click.confirm(
+                f"\nAre you sure you want to delete repository '{repository_name}'?"
+            ):
                 console.print("[yellow]Operation cancelled[/yellow]")
                 return
 
@@ -418,10 +523,14 @@ def delete_repository(
         try:
             ecr_client.delete_repository(repositoryName=repository_name, force=force)
 
-            console.print(f"[green]✅ Repository '{repository_name}' deleted successfully[/green]")
+            console.print(
+                f"[green]✅ Repository '{repository_name}' deleted successfully[/green]"
+            )
 
         except ecr_client.exceptions.RepositoryNotEmptyException:
-            console.print(f"[red]Repository '{repository_name}' contains images. Use --force to delete anyway.[/red]")
+            console.print(
+                f"[red]Repository '{repository_name}' contains images. Use --force to delete anyway.[/red]"
+            )
             raise click.Abort()
 
     except Exception as e:
@@ -431,7 +540,11 @@ def delete_repository(
 
 @ecr_group.command(name="get-login")
 @click.option("--region", help="AWS region for ECR login (default: current region)")
-@click.option("--print-command", is_flag=True, help="Print the docker login command instead of executing it")
+@click.option(
+    "--print-command",
+    is_flag=True,
+    help="Print the docker login command instead of executing it",
+)
 @click.pass_context
 def get_login(ctx: click.Context, region: Optional[str], print_command: bool) -> None:
     """Get Docker login command for ECR or execute login directly."""
@@ -453,14 +566,18 @@ def get_login(ctx: click.Context, region: Optional[str], print_command: bool) ->
         decoded_token = base64.b64decode(token).decode("utf-8")
         username, password = decoded_token.split(":", 1)
 
-        login_command = f"docker login --username {username} --password-stdin {proxy_endpoint}"
+        login_command = (
+            f"docker login --username {username} --password-stdin {proxy_endpoint}"
+        )
 
         if print_command:
             console.print(f"[blue]Docker login command:[/blue]")
             console.print(f"echo '{password}' | {login_command}")
         else:
             if not shutil.which("docker"):
-                console.print("[red]Docker is not installed or not available in PATH[/red]")
+                console.print(
+                    "[red]Docker is not installed or not available in PATH[/red]"
+                )
                 console.print(f"[blue]Manual login command:[/blue]")
                 console.print(f"echo '{password}' | {login_command}")
                 return
@@ -468,7 +585,14 @@ def get_login(ctx: click.Context, region: Optional[str], print_command: bool) ->
             # Execute docker login
             try:
                 process = subprocess.Popen(
-                    ["docker", "login", "--username", username, "--password-stdin", proxy_endpoint],
+                    [
+                        "docker",
+                        "login",
+                        "--username",
+                        username,
+                        "--password-stdin",
+                        proxy_endpoint,
+                    ],
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
@@ -478,7 +602,9 @@ def get_login(ctx: click.Context, region: Optional[str], print_command: bool) ->
                 stdout, stderr = process.communicate(input=password)
 
                 if process.returncode == 0:
-                    console.print(f"[green]✅ Docker login successful for {proxy_endpoint}[/green]")
+                    console.print(
+                        f"[green]✅ Docker login successful for {proxy_endpoint}[/green]"
+                    )
                 else:
                     console.print(f"[red]Docker login failed:[/red] {stderr}")
                     raise click.Abort()
@@ -495,7 +621,9 @@ def get_login(ctx: click.Context, region: Optional[str], print_command: bool) ->
 def _pull_docker_image(image: str) -> None:
     """Pull a Docker image."""
     try:
-        result = subprocess.run(["docker", "pull", image], check=True, capture_output=True, text=True)
+        result = subprocess.run(
+            ["docker", "pull", image], check=True, capture_output=True, text=True
+        )
         logger.debug(f"Docker pull output: {result.stdout}")
     except subprocess.CalledProcessError as e:
         raise Exception(f"Failed to pull image {image}: {e.stderr}")
@@ -504,7 +632,12 @@ def _pull_docker_image(image: str) -> None:
 def _tag_docker_image(source_image: str, target_image: str) -> None:
     """Tag a Docker image."""
     try:
-        subprocess.run(["docker", "tag", source_image, target_image], check=True, capture_output=True, text=True)
+        subprocess.run(
+            ["docker", "tag", source_image, target_image],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
     except subprocess.CalledProcessError as e:
         raise Exception(f"Failed to tag image: {e.stderr}")
 
@@ -512,7 +645,9 @@ def _tag_docker_image(source_image: str, target_image: str) -> None:
 def _push_docker_image(target_image: str) -> None:
     """Push a Docker image."""
     try:
-        subprocess.run(["docker", "push", target_image], check=True, capture_output=True, text=True)
+        subprocess.run(
+            ["docker", "push", target_image], check=True, capture_output=True, text=True
+        )
     except subprocess.CalledProcessError as e:
         raise Exception(f"Failed to push image: {e.stderr}")
 
@@ -528,7 +663,14 @@ def _ecr_docker_login(ecr_client, region: str) -> None:
 
         # Execute docker login
         process = subprocess.Popen(
-            ["docker", "login", "--username", "AWS", "--password-stdin", proxy_endpoint],
+            [
+                "docker",
+                "login",
+                "--username",
+                "AWS",
+                "--password-stdin",
+                proxy_endpoint,
+            ],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -559,7 +701,9 @@ def _create_repository_if_not_exists(ecr_client, repository_name: str) -> None:
 def _image_exists_in_ecr(ecr_client, repository_name: str, tag: str) -> bool:
     """Check if an image with specific tag exists in ECR repository."""
     try:
-        response = ecr_client.describe_images(repositoryName=repository_name, imageIds=[{"imageTag": tag}])
+        response = ecr_client.describe_images(
+            repositoryName=repository_name, imageIds=[{"imageTag": tag}]
+        )
         return len(response.get("imageDetails", [])) > 0
     except ecr_client.exceptions.ImageNotFoundException:
         return False
@@ -569,10 +713,14 @@ def _image_exists_in_ecr(ecr_client, repository_name: str, tag: str) -> bool:
         return False
 
 
-def _get_image_details(ecr_client, repository_name: str, tag: str) -> Optional[Dict[str, Any]]:
+def _get_image_details(
+    ecr_client, repository_name: str, tag: str
+) -> Optional[Dict[str, Any]]:
     """Get details for a specific image in ECR."""
     try:
-        response = ecr_client.describe_images(repositoryName=repository_name, imageIds=[{"imageTag": tag}])
+        response = ecr_client.describe_images(
+            repositoryName=repository_name, imageIds=[{"imageTag": tag}]
+        )
 
         image_details = response.get("imageDetails", [])
         return image_details[0] if image_details else None
