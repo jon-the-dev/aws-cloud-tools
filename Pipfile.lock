@@ -71,20 +71,20 @@
         },
         "boto3": {
             "hashes": [
-                "sha256:5b145752d20f29908e3cb8c823bee31c77e6bcf18787e570f36bbc545cc779ed",
-                "sha256:e8d794dc1f01729d93dc188c90cf63cd0d32df8818a82ac46e641f6ffcea615e"
+                "sha256:62901bc616c64236700001f530fc66b659ecd1acb4f541ddac6fcae3a1d37ea6",
+                "sha256:ae34363e8f34a49ab130d10c507a611926c1101d5d14d70be5598ca308e13266"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.9'",
-            "version": "==1.40.45"
+            "version": "==1.40.50"
         },
         "botocore": {
             "hashes": [
-                "sha256:9abf473d8372ade8442c0d4634a9decb89c854d7862ffd5500574eb63ab8f240",
-                "sha256:cf8b743527a2a7e108702d24d2f617e93c6dc7ae5eb09aadbe866f15481059df"
+                "sha256:1d3d5b5759c9cb30202cd5ad231ec8afb1abe5be0c088a1707195c2cbae0e742",
+                "sha256:53126c153fae0670dc54f03d01c89b1af144acedb1020199b133dedb309e434d"
             ],
             "markers": "python_version >= '3.9'",
-            "version": "==1.40.45"
+            "version": "==1.40.50"
         },
         "build": {
             "hashes": [
@@ -1215,11 +1215,12 @@
         },
         "rich": {
             "hashes": [
-                "sha256:536f5f1785986d6dbdea3c75205c473f970777b4a0d6c6dd1b696aa05a3fa04f",
-                "sha256:e497a48b844b0320d45007cdebfeaeed8db2a4f4bcf49f15e455cfc4af11eaa8"
+                "sha256:73ff50c7c0c1c77c8243079283f4edb376f0f6442433aecb8ce7e6d0b92d1fe4",
+                "sha256:76bc51fe2e57d2b1be1f96c524b890b816e334ab4c1e45888799bfaab0021edd"
             ],
+            "index": "pypi",
             "markers": "python_full_version >= '3.8.0'",
-            "version": "==14.1.0"
+            "version": "==14.2.0"
         },
         "rpds-py": {
             "hashes": [
