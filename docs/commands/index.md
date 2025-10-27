@@ -27,29 +27,29 @@ These options work with all commands:
 
 | Service | Description | Key Commands |
 |---------|-------------|--------------|
-| [**account**](account.md) | Account information and management | `info`, `contact-info`, `regions`, `limits` |
-| [**billing**](billing.md) | Billing and cost analysis | `costs`, `usage`, `budgets`, `reports` |
-| [**inventory**](inventory.md) | Resource discovery and inventory | `resources`, `unused-resources`, `health-check` |
-| [**security**](security.md) | Security auditing and tools | `audit`, `blue-team-audit`, `public-resources` |
-| [**costops**](costops.md) | Cost optimization and pricing | `pricing`, `analyze`, `recommendations`, `gpu-spots` |
+| [**account**](account.md) | Account information and management | `info`, `contact-info`, `detect-control-tower`, `regions`, `limits` |
+| [**billing**](billing.md) | Billing and cost analysis | `cur-list`, `cur-create`, `cur-details`, `cur-validate-bucket` |
+| [**inventory**](inventory.md) | Resource discovery and inventory | `scan`, `workspaces`, `services`, `download-all` |
+| [**security**](security.md) | Security auditing and tools | `metrics`, `create-certificate`, `list-certificates` |
+| [**costops**](costops.md) | Cost optimization and pricing | `pricing`, `cost-analysis`, `spot-pricing`, `ebs-optimization` |
 
 ### AWS Services
 
 | Service | Description | Key Commands |
 |---------|-------------|--------------|
-| [**awsconfig**](awsconfig.md) | AWS Config service operations | `download`, `show-rules`, `compliance-status` |
-| [**bedrock**](bedrock.md) | Amazon Bedrock AI/ML operations | `list-models`, `model-details`, `list-custom-models` |
+| [**awsconfig**](awsconfig.md) | AWS Config service operations | `download`, `show-rules`, `list-rules`, `compliance-status` |
+| [**bedrock**](bedrock.md) | Amazon Bedrock AI/ML operations | `list-models`, `model-details`, `list-custom-models`, `regions` |
 | [**cloudformation**](cloudformation.md) | CloudFormation stack management | `backup`, `list-stacks`, `stack-details` |
-| [**cloudfront**](cloudfront.md) | CloudFront distribution management | `list-distributions`, `distribution-details`, `update-logging` |
-| [**ecr**](ecr.md) | Elastic Container Registry operations | `list-repositories`, `list-images`, `copy-image` |
-| [**iam**](iam.md) | IAM management and auditing | `analyze`, `unused-permissions`, `policy-simulator` |
-| [**logs**](logs.md) | CloudWatch logs management | `groups`, `aggregate`, `search`, `export` |
+| [**cloudfront**](cloudfront.md) | CloudFront distribution management | `update-logging`, `list-distributions`, `distribution-details`, `invalidate` |
+| [**ecr**](ecr.md) | Elastic Container Registry operations | `copy-image`, `list-repositories`, `list-images`, `create-repository` |
+| [**iam**](iam.md) | IAM management and auditing | `audit`, `list-roles`, `list-policies`, `role-details`, `policy-details` |
+| [**logs**](logs.md) | CloudWatch logs management | `list-groups`, `download`, `set-retention`, `aggregate`, `combine` |
 | [**networking**](networking.md) | Network utilities and analysis | `ip-ranges`, `ip-summary` |
-| [**rds**](rds.md) | RDS database management | `instances`, `troubleshoot`, `performance` |
-| [**s3**](s3.md) | S3 bucket operations | `list-buckets`, `bucket-details`, `download`, `nuke-bucket` |
-| [**stepfunctions**](stepfunctions.md) | Step Functions workflow management | `list`, `describe`, `execute`, `list-executions` |
-| [**support**](support.md) | AWS support tools | `check-level`, `cases`, `services` |
-| [**waf**](waf.md) | Web Application Firewall management | `rules`, `analysis`, `security` |
+| [**rds**](rds.md) | RDS database management | `troubleshoot-mysql`, `list-instances` |
+| [**s3**](s3.md) | S3 bucket operations | `list-buckets`, `create-bucket`, `download`, `nuke-bucket`, `bucket-details` |
+| [**stepfunctions**](stepfunctions.md) | Step Functions workflow management | `list`, `describe`, `execute`, `list-executions`, `logs` |
+| [**support**](support.md) | AWS support tools | `check-level`, `cases`, `services`, `cost-savings` |
+| [**waf**](waf.md) | Web Application Firewall management | `list`, `stats`, `troubleshoot` |
 
 ## Common Usage Patterns
 
@@ -117,42 +117,42 @@ aws-cloud-utilities --verbose --debug logs aggregate --log-group /aws/lambda/my-
 aws-cloud-utilities account info
 
 # Resource inventory
-aws-cloud-utilities inventory resources
+aws-cloud-utilities inventory scan --all-regions
 
-# Security audit
-aws-cloud-utilities security audit
+# Security metrics
+aws-cloud-utilities security metrics
 
 # Cost analysis
-aws-cloud-utilities costops analyze
+aws-cloud-utilities costops cost-analysis
 
-# Log analysis
-aws-cloud-utilities logs groups
+# Log management
+aws-cloud-utilities logs list-groups
 ```
 
 ### Multi-Region Operations
 
 ```bash
 # All regions
-aws-cloud-utilities inventory resources --all-regions
+aws-cloud-utilities inventory scan --all-regions
 
 # Specific regions
-aws-cloud-utilities inventory resources --regions us-east-1,us-west-2,eu-west-1
+aws-cloud-utilities inventory scan --regions us-east-1,us-west-2,eu-west-1
 
 # Region-specific analysis
-aws-cloud-utilities --region us-east-1 security audit
+aws-cloud-utilities --region us-east-1 security metrics
 ```
 
 ### Filtering and Searching
 
 ```bash
 # Filter by service
-aws-cloud-utilities inventory resources --service ec2
+aws-cloud-utilities inventory scan --services ec2
 
 # Filter by tag
-aws-cloud-utilities inventory resources --tag Environment=Production
+aws-cloud-utilities inventory scan --include-tags
 
-# Search logs
-aws-cloud-utilities logs search --log-group /aws/lambda/my-function --query "ERROR"
+# Download logs
+aws-cloud-utilities logs download /aws/lambda/my-function --filter-pattern "ERROR"
 ```
 
 ## Command Categories
@@ -161,36 +161,36 @@ aws-cloud-utilities logs search --log-group /aws/lambda/my-function --query "ERR
 
 - `account info` - Basic account information
 - `account contact-info` - Contact details
-- `inventory resources` - Resource inventory
+- `inventory scan` - Resource inventory
 - `support check-level` - Support plan information
 
 ### Security & Compliance
 
-- `security audit` - Basic security audit
-- `security blue-team-audit` - Comprehensive security assessment
-- `iam analyze` - IAM analysis
-- `waf rules` - WAF rule analysis
+- `security metrics` - Collect security metrics
+- `security create-certificate` - Create SSL/TLS certificates
+- `iam audit` - IAM audit and backup
+- `waf list` - List WAF Web ACLs
 
 ### Cost Management
 
 - `costops pricing` - Service pricing information
-- `costops analyze` - Cost analysis
-- `costops recommendations` - Cost optimization suggestions
-- `inventory unused-resources` - Find unused resources
+- `costops cost-analysis` - Cost analysis
+- `costops spot-analysis` - Spot instance savings
+- `billing cur-list` - Cost and Usage Reports
 
 ### Operational Tasks
 
-- `logs aggregate` - Log aggregation
-- `logs search` - Log searching
-- `rds instances` - RDS management
-- `security audit` - Security review
+- `logs aggregate` - Aggregate S3 logs
+- `logs download` - Download CloudWatch logs
+- `rds list-instances` - RDS management
+- `stepfunctions list` - List state machines
 
 ### Troubleshooting
 
-- `logs search` - Error log analysis
+- `logs download` - Download and analyze logs
 - `support cases` - Support case management
-- `inventory health-check` - Resource health status
-- `rds troubleshoot` - Database troubleshooting
+- `rds troubleshoot-mysql` - Database troubleshooting
+- `waf troubleshoot` - WAF troubleshooting
 
 ## Best Practices
 
@@ -208,10 +208,10 @@ aws-cloud-utilities --profile prod security audit
 
 ```bash
 # Save inventory for analysis
-aws-cloud-utilities inventory resources --output json > inventory.json
+aws-cloud-utilities inventory scan --output-file inventory.json
 
-# Save security audit results
-aws-cloud-utilities security audit --output yaml > security-audit.yaml
+# Save IAM audit results
+aws-cloud-utilities iam audit --output-dir ./iam-audit-$(date +%Y%m%d)
 ```
 
 ### 3. Use Verbose Mode for Troubleshooting
@@ -221,17 +221,17 @@ aws-cloud-utilities security audit --output yaml > security-audit.yaml
 aws-cloud-utilities --verbose --debug account info
 
 # Understand what's happening
-aws-cloud-utilities --verbose inventory resources
+aws-cloud-utilities --verbose inventory scan --all-regions
 ```
 
 ### 4. Combine Commands for Workflows
 
 ```bash
 #!/bin/bash
-# Daily security check
-aws-cloud-utilities security audit --output json > daily-security-$(date +%Y%m%d).json
-aws-cloud-utilities iam analyze --output json > daily-iam-$(date +%Y%m%d).json
-aws-cloud-utilities inventory unused-resources --output json > unused-resources-$(date +%Y%m%d).json
+# Daily security and compliance check
+aws-cloud-utilities security metrics --output json > daily-security-$(date +%Y%m%d).json
+aws-cloud-utilities iam audit --output-dir ./iam-audit-$(date +%Y%m%d)
+aws-cloud-utilities inventory scan --all-regions --output-file inventory-$(date +%Y%m%d).json
 ```
 
 ## Error Handling
@@ -240,13 +240,13 @@ All commands provide clear error messages and suggestions:
 
 ```bash
 # Permission errors show required permissions
-aws-cloud-utilities security audit
+aws-cloud-utilities security metrics
 
 # Configuration errors show how to fix
 aws-cloud-utilities --profile nonexistent account info
 
 # Service errors provide context
-aws-cloud-utilities logs aggregate --log-group /nonexistent/group
+aws-cloud-utilities logs download /nonexistent/group
 ```
 
 ## Next Steps
