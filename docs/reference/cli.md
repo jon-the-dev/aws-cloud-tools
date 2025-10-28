@@ -43,12 +43,13 @@ aws-cloud-utilities account <command> [options]
 
 | Command | Description |
 |---------|-------------|
-| `info` | Get AWS account information |
-| `contact-info` | Get account contact information |
-| `regions` | List available AWS regions |
-| `detect-control-tower` | Detect Control Tower deployment |
-| `limits` | Show service limits |
-| `validate` | Validate account configuration |
+| `info` | Get AWS account information and summary |
+| `contact-info` | Get AWS account contact information |
+| `detect-control-tower` | Detect AWS Control Tower or Landing Zone |
+| `regions` | List all available AWS regions |
+| `service-regions` | List regions for a specific AWS service |
+| `limits` | Get AWS service limits and usage quotas |
+| `validate` | Validate AWS credentials and permissions |
 
 ### awsconfig
 AWS Config service operations
@@ -59,9 +60,11 @@ aws-cloud-utilities awsconfig <command> [options]
 
 | Command | Description |
 |---------|-------------|
-| `rules` | List Config rules |
-| `compliance` | Check compliance status |
-| `remediation` | Manage remediation actions |
+| `download` | Download AWS Config files from S3 and convert |
+| `show-rules` | Show AWS Config rules with details |
+| `list-rules` | List AWS Config rules |
+| `compliance-status` | Show compliance status of resources |
+| `compliance-checker` | Check compliance against rules |
 
 ### bedrock
 Amazon Bedrock AI/ML operations
@@ -72,9 +75,26 @@ aws-cloud-utilities bedrock <command> [options]
 
 | Command | Description |
 |---------|-------------|
-| `models` | List available models |
-| `inference` | Run inference |
-| `fine-tuning` | Manage fine-tuning jobs |
+| `list-models` | List Amazon Bedrock foundation models |
+| `model-details` | Get detailed information about a model |
+| `list-custom-models` | List custom/fine-tuned models |
+| `list-model-jobs` | List model training and customization jobs |
+| `regions` | List regions where Bedrock is available |
+
+### billing
+AWS Billing & Cost Management
+
+```bash
+aws-cloud-utilities billing <command> [options]
+```
+
+| Command | Description |
+|---------|-------------|
+| `cur-list` | List existing Cost and Usage Reports |
+| `cur-details` | Get detailed information about a CUR report |
+| `cur-create` | Create a new Cost and Usage Report |
+| `cur-delete` | Delete an existing Cost and Usage Report |
+| `cur-validate-bucket` | Validate S3 bucket for CUR delivery |
 
 ### cloudformation
 CloudFormation stack management
@@ -85,9 +105,9 @@ aws-cloud-utilities cloudformation <command> [options]
 
 | Command | Description |
 |---------|-------------|
-| `stacks` | List CloudFormation stacks |
-| `drift-detection` | Detect stack drift |
-| `template-analysis` | Analyze templates |
+| `backup` | Backup stacks and templates across regions |
+| `list-stacks` | List CloudFormation stacks with status |
+| `stack-details` | Get detailed information about a stack |
 
 ### cloudfront
 CloudFront distribution management
@@ -98,9 +118,10 @@ aws-cloud-utilities cloudfront <command> [options]
 
 | Command | Description |
 |---------|-------------|
-| `distributions` | List distributions |
-| `cache-analysis` | Analyze cache performance |
-| `security` | Security configuration audit |
+| `update-logging` | Enable logging and setup CloudWatch alarms |
+| `list-distributions` | List CloudFront distributions |
+| `distribution-details` | Get detailed distribution information |
+| `invalidate` | Create cache invalidation |
 
 ### costops
 Cost optimization and pricing tools
@@ -111,13 +132,12 @@ aws-cloud-utilities costops <command> [options]
 
 | Command | Description |
 |---------|-------------|
-| `pricing` | Get service pricing |
-| `gpu-spots` | Find GPU spot prices |
-| `analyze` | Analyze current costs |
-| `recommendations` | Get optimization recommendations |
-| `savings-plans` | Analyze Savings Plans |
-| `rightsizing` | Get rightsizing recommendations |
-| `reserved-instances` | Analyze Reserved Instances |
+| `pricing` | Get AWS pricing information for services |
+| `cost-analysis` | Analyze costs using Cost Explorer |
+| `ebs-optimization` | Analyze EBS volume optimization |
+| `usage-metrics` | Collect usage metrics from CloudWatch |
+| `spot-pricing` | Get EC2 Spot instance pricing |
+| `spot-analysis` | Analyze Spot instance savings |
 
 ### ecr
 Elastic Container Registry operations
@@ -128,9 +148,12 @@ aws-cloud-utilities ecr <command> [options]
 
 | Command | Description |
 |---------|-------------|
-| `repositories` | List ECR repositories |
-| `images` | Manage container images |
-| `security-scan` | Security vulnerability scanning |
+| `copy-image` | Copy Docker image to AWS ECR |
+| `list-repositories` | List all ECR repositories |
+| `list-images` | List images in an ECR repository |
+| `create-repository` | Create a new ECR repository |
+| `delete-repository` | Delete an ECR repository |
+| `get-login` | Get ECR login credentials |
 
 ### iam
 IAM management and auditing
@@ -141,9 +164,11 @@ aws-cloud-utilities iam <command> [options]
 
 | Command | Description |
 |---------|-------------|
-| `analyze` | Analyze IAM configuration |
-| `unused-permissions` | Find unused permissions |
-| `policy-simulator` | Simulate IAM policies |
+| `audit` | Audit IAM roles and policies, save locally |
+| `list-roles` | List all IAM roles with details |
+| `list-policies` | List IAM policies |
+| `role-details` | Get detailed information about a role |
+| `policy-details` | Get detailed information about a policy |
 
 ### inventory
 Resource discovery and inventory
@@ -154,13 +179,10 @@ aws-cloud-utilities inventory <command> [options]
 
 | Command | Description |
 |---------|-------------|
-| `resources` | List all resources |
-| `unused-resources` | Find unused resources |
-| `health-check` | Check resource health |
-| `tagging-audit` | Audit resource tagging |
-| `cost-analysis` | Analyze resource costs |
-| `compliance-check` | Check compliance |
-| `resource-map` | Generate resource map |
+| `scan` | Comprehensive resource inventory scan |
+| `workspaces` | List WorkSpaces instances and configs |
+| `services` | Discover available AWS services |
+| `download-all` | Download all resource data in bulk |
 
 ### logs
 CloudWatch logs management
@@ -171,10 +193,12 @@ aws-cloud-utilities logs <command> [options]
 
 | Command | Description |
 |---------|-------------|
-| `groups` | List log groups |
-| `aggregate` | Aggregate log data |
-| `search` | Search log entries |
-| `export` | Export log data |
+| `list-groups` | List CloudWatch log groups with details |
+| `download` | Download logs from CloudWatch |
+| `set-retention` | Set or update log retention policies |
+| `delete-group` | Delete log groups (with confirmation) |
+| `combine` | Combine logs from multiple sources |
+| `aggregate` | Aggregate logs from S3 (CloudTrail, etc.) |
 
 ### networking
 Network utilities and analysis
@@ -185,9 +209,20 @@ aws-cloud-utilities networking <command> [options]
 
 | Command | Description |
 |---------|-------------|
-| `security-groups` | Analyze security groups |
-| `vpc-analysis` | VPC configuration analysis |
-| `connectivity` | Test network connectivity |
+| `ip-ranges` | Download and analyze AWS IP ranges |
+| `ip-summary` | Show summary statistics of IP ranges |
+
+### rds
+RDS database management
+
+```bash
+aws-cloud-utilities rds <command> [options]
+```
+
+| Command | Description |
+|---------|-------------|
+| `troubleshoot-mysql` | Troubleshoot MySQL RDS connections |
+| `list-instances` | List RDS instances with details |
 
 ### s3
 S3 bucket operations
@@ -198,9 +233,13 @@ aws-cloud-utilities s3 <command> [options]
 
 | Command | Description |
 |---------|-------------|
-| `list-buckets` | List S3 buckets |
-| `analyze-costs` | Analyze S3 costs |
-| `security-audit` | S3 security audit |
+| `list-buckets` | List S3 buckets with details |
+| `create-bucket` | Create a new S3 bucket |
+| `download` | Download objects from S3 buckets |
+| `nuke-bucket` | Delete all objects and versions from bucket |
+| `bucket-details` | Get detailed bucket configuration |
+| `delete-versions` | Delete specific object versions |
+| `restore-objects` | Restore objects from Glacier/Deep Archive |
 
 ### security
 Security auditing and tools
@@ -211,13 +250,9 @@ aws-cloud-utilities security <command> [options]
 
 | Command | Description |
 |---------|-------------|
-| `audit` | Basic security audit |
-| `blue-team-audit` | Comprehensive security audit |
-| `public-resources` | Find public resources |
-| `compliance` | Compliance checking |
-| `encryption-status` | Check encryption status |
-| `network-analysis` | Network security analysis |
-| `secrets-scan` | Scan for exposed secrets |
+| `metrics` | Collect security metrics (WAF, GuardDuty, etc.) |
+| `create-certificate` | Create SSL/TLS certificates in ACM |
+| `list-certificates` | List SSL/TLS certificates |
 
 ### stepfunctions
 Step Functions workflow management
@@ -228,9 +263,11 @@ aws-cloud-utilities stepfunctions <command> [options]
 
 | Command | Description |
 |---------|-------------|
-| `state-machines` | List state machines |
-| `executions` | Manage executions |
-| `analysis` | Analyze workflows |
+| `list` | List all Step Functions state machines |
+| `describe` | Get detailed information about state machine |
+| `execute` | Execute a state machine |
+| `list-executions` | List executions of a state machine |
+| `logs` | View logs for state machine executions |
 
 ### support
 AWS support tools
@@ -241,10 +278,29 @@ aws-cloud-utilities support <command> [options]
 
 | Command | Description |
 |---------|-------------|
-| `check-level` | Check support level |
-| `cases` | Manage support cases |
-| `services` | List support services |
-| `severity-levels` | List severity levels |
+| `check-level` | Check AWS support level |
+| `severity-levels` | List available support severity levels |
+| `cases` | List support cases |
+| `services` | List services covered by support plan |
+
+**Trusted Advisor Commands:**
+
+| Command | Description |
+|---------|-------------|
+| `cost-savings` | Get Trusted Advisor cost optimization recommendations |
+
+### waf
+Web Application Firewall management
+
+```bash
+aws-cloud-utilities waf <command> [options]
+```
+
+| Command | Description |
+|---------|-------------|
+| `list` | List all Web ACLs (REGIONAL or CLOUDFRONT) |
+| `stats` | Get CloudWatch metrics for Web ACLs |
+| `troubleshoot` | Troubleshoot WAF blocks and issues |
 
 ## Common Option Patterns
 

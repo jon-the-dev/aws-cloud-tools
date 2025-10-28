@@ -4,231 +4,187 @@ Resource discovery and inventory commands for comprehensive AWS resource managem
 
 ## Commands
 
-### `resources`
+### `scan`
 
-List all AWS resources across services and regions.
+Perform a comprehensive AWS resource inventory scan across services and regions.
 
 ```bash
-aws-cloud-utilities inventory resources
+aws-cloud-utilities inventory scan [OPTIONS]
 ```
 
+**Features:**
+- Scans multiple AWS services across regions
+- Discovers and catalogs all resources
+- Collects resource metadata and tags
+- Generates comprehensive inventory reports
+- Supports parallel region scanning for performance
+
 **Options:**
-- `--service SERVICE` - Filter by AWS service (ec2, s3, rds, etc.)
-- `--region REGION` - Specific region
-- `--all-regions` - Scan all regions
-- `--tag KEY=VALUE` - Filter by tag
-- `--resource-type TYPE` - Filter by resource type
+- `--services SERVICES` - Comma-separated list of services to scan (default: all)
+- `--regions REGIONS` - Comma-separated list of regions (default: all enabled regions)
+- `--all-regions` - Scan all AWS regions
+- `--include-tags` - Include resource tags in output
+- `--output-file FILE` - Save results to file (json, yaml, csv)
+- `--parallel-regions NUM` - Number of regions to scan in parallel
+- `--resource-types TYPES` - Filter by specific resource types
+
+**Supported Services:**
+- EC2 (instances, volumes, security groups, VPCs)
+- S3 (buckets)
+- RDS (database instances)
+- Lambda (functions)
+- DynamoDB (tables)
+- ECS (clusters, services, tasks)
+- And many more...
 
 **Examples:**
 ```bash
-# All resources
-aws-cloud-utilities inventory resources
+# Complete inventory scan
+aws-cloud-utilities inventory scan
 
-# EC2 resources only
-aws-cloud-utilities inventory resources --service ec2
+# Scan all regions
+aws-cloud-utilities inventory scan --all-regions
 
-# All regions
-aws-cloud-utilities inventory resources --all-regions
+# Scan specific services
+aws-cloud-utilities inventory scan --services ec2,s3,rds
 
-# Tagged resources
-aws-cloud-utilities inventory resources --tag Environment=Production
+# Scan specific regions
+aws-cloud-utilities inventory scan --regions us-east-1,us-west-2
 
-# Specific resource type
-aws-cloud-utilities inventory resources --resource-type instance
+# Include resource tags
+aws-cloud-utilities inventory scan --include-tags
+
+# Parallel scanning for performance
+aws-cloud-utilities inventory scan --all-regions --parallel-regions 4
+
+# Save to file
+aws-cloud-utilities inventory scan --output-file inventory.json
 ```
 
-### `unused-resources`
+### `workspaces`
 
-Find potentially unused or idle AWS resources.
+List Amazon WorkSpaces instances and configurations.
 
 ```bash
-aws-cloud-utilities inventory unused-resources
+aws-cloud-utilities inventory workspaces [OPTIONS]
 ```
 
-**Detects:**
-- Stopped EC2 instances
-- Unattached EBS volumes
-- Unused Elastic IPs
-- Empty S3 buckets
-- Idle load balancers
-- Unused security groups
+**Output includes:**
+- WorkSpace ID and directory ID
+- User name
+- WorkSpace state and running mode
+- Compute type and bundle ID
+- IP address
+- Volume encryption status
+- Root and user volume sizes
 
 **Options:**
-- `--service SERVICE` - Check specific service
-- `--age-threshold DAYS` - Minimum age for unused resources
-- `--include-recent` - Include recently created resources
+- `--directory-id DIR_ID` - Filter by directory ID
+- `--user-name USER` - Filter by user name
+- `--region REGION` - Specific region (default: current region)
+- `--all-regions` - List WorkSpaces from all regions
+- `--output-file FILE` - Save results to file
 
 **Examples:**
 ```bash
-# All unused resources
-aws-cloud-utilities inventory unused-resources
+# List all WorkSpaces
+aws-cloud-utilities inventory workspaces
 
-# EC2 unused resources
-aws-cloud-utilities inventory unused-resources --service ec2
+# WorkSpaces in all regions
+aws-cloud-utilities inventory workspaces --all-regions
 
-# Resources unused for 30+ days
-aws-cloud-utilities inventory unused-resources --age-threshold 30
+# Filter by directory
+aws-cloud-utilities inventory workspaces --directory-id d-12345abcde
+
+# Filter by user
+aws-cloud-utilities inventory workspaces --user-name john.doe
+
+# Export to CSV
+aws-cloud-utilities inventory workspaces --output-file workspaces.csv
 ```
 
-### `health-check`
+### `services`
 
-Check health status of AWS resources.
+Discover and list available AWS services in your account.
 
 ```bash
-aws-cloud-utilities inventory health-check
+aws-cloud-utilities inventory services [OPTIONS]
 ```
 
-**Checks:**
-- EC2 instance status
-- RDS database status
-- Load balancer health
-- Auto Scaling group health
-- ECS service health
+**Features:**
+- Lists all AWS services available in your account
+- Shows service availability by region
+- Identifies enabled and available services
+- Helps with service discovery and planning
 
 **Options:**
-- `--service SERVICE` - Check specific service
-- `--unhealthy-only` - Show only unhealthy resources
-- `--include-warnings` - Include warning states
+- `--region REGION` - Check service availability in specific region
+- `--all-regions` - Check service availability across all regions
+- `--service-category CATEGORY` - Filter by service category
+- `--output-file FILE` - Save results to file
 
 **Examples:**
 ```bash
-# All resource health
-aws-cloud-utilities inventory health-check
+# List available services
+aws-cloud-utilities inventory services
 
-# Unhealthy resources only
-aws-cloud-utilities inventory health-check --unhealthy-only
+# Services in specific region
+aws-cloud-utilities inventory services --region us-east-1
 
-# EC2 health check
-aws-cloud-utilities inventory health-check --service ec2
+# Services across all regions
+aws-cloud-utilities inventory services --all-regions
+
+# Export to JSON
+aws-cloud-utilities inventory services --output-file services.json
 ```
 
-### `tagging-audit`
+### `download-all`
 
-Audit resource tagging compliance.
+Download all resource data in bulk for offline analysis.
 
 ```bash
-aws-cloud-utilities inventory tagging-audit
+aws-cloud-utilities inventory download-all [OPTIONS]
 ```
 
-**Checks:**
-- Missing required tags
-- Tag value compliance
-- Tagging consistency
-- Cost allocation tags
+**Features:**
+- Downloads comprehensive resource inventory
+- Saves data locally for offline analysis
+- Includes metadata, configurations, and tags
+- Organizes data by service and region
+- Creates timestamped backups
 
 **Options:**
-- `--required-tags TAGS` - Comma-separated required tags
-- `--tag-policy FILE` - Tag policy file
-- `--untagged-only` - Show only untagged resources
+- `--output-dir DIR` - Directory to save inventory data (default: ./inventory-data)
+- `--services SERVICES` - Comma-separated list of services to download
+- `--regions REGIONS` - Comma-separated list of regions
+- `--all-regions` - Download from all regions
+- `--format FORMAT` - Output format (json, yaml) [default: json]
+- `--compress` - Compress output files
 
 **Examples:**
 ```bash
-# Basic tagging audit
-aws-cloud-utilities inventory tagging-audit
+# Download all inventory data
+aws-cloud-utilities inventory download-all
 
-# Check required tags
-aws-cloud-utilities inventory tagging-audit --required-tags Environment,Owner,Project
+# Download to specific directory
+aws-cloud-utilities inventory download-all --output-dir ./backup
 
-# Untagged resources only
-aws-cloud-utilities inventory tagging-audit --untagged-only
-```
+# Download specific services
+aws-cloud-utilities inventory download-all --services ec2,s3,rds
 
-### `cost-analysis`
+# Download from all regions
+aws-cloud-utilities inventory download-all --all-regions
 
-Analyze resource costs and usage patterns.
+# Compress output
+aws-cloud-utilities inventory download-all --compress
 
-```bash
-aws-cloud-utilities inventory cost-analysis
-```
-
-**Analysis includes:**
-- Resource cost breakdown
-- Usage patterns
-- Cost trends
-- Optimization opportunities
-
-**Options:**
-- `--service SERVICE` - Analyze specific service
-- `--time-period PERIOD` - Analysis time period
-- `--group-by DIMENSION` - Group by tag, service, or region
-
-**Examples:**
-```bash
-# All resource costs
-aws-cloud-utilities inventory cost-analysis
-
-# EC2 cost analysis
-aws-cloud-utilities inventory cost-analysis --service ec2
-
-# Group by environment tag
-aws-cloud-utilities inventory cost-analysis --group-by tag:Environment
-```
-
-### `compliance-check`
-
-Check resource compliance against policies.
-
-```bash
-aws-cloud-utilities inventory compliance-check
-```
-
-**Checks:**
-- Resource configuration compliance
-- Security compliance
-- Tagging compliance
-- Naming convention compliance
-
-**Options:**
-- `--policy-file FILE` - Compliance policy file
-- `--framework FRAMEWORK` - Compliance framework
-- `--non-compliant-only` - Show only non-compliant resources
-
-**Examples:**
-```bash
-# Basic compliance check
-aws-cloud-utilities inventory compliance-check
-
-# Custom policy
-aws-cloud-utilities inventory compliance-check --policy-file compliance.yaml
-
-# Non-compliant resources only
-aws-cloud-utilities inventory compliance-check --non-compliant-only
-```
-
-### `resource-map`
-
-Generate resource relationship map.
-
-```bash
-aws-cloud-utilities inventory resource-map
-```
-
-**Maps:**
-- Resource dependencies
-- Network relationships
-- Security group associations
-- IAM role assignments
-
-**Options:**
-- `--resource-id ID` - Map specific resource
-- `--depth LEVEL` - Relationship depth
-- `--format FORMAT` - Output format (json, dot, svg)
-
-**Examples:**
-```bash
-# Full resource map
-aws-cloud-utilities inventory resource-map
-
-# Specific instance map
-aws-cloud-utilities inventory resource-map --resource-id i-1234567890abcdef0
-
-# DOT format for visualization
-aws-cloud-utilities inventory resource-map --format dot > resources.dot
+# YAML format
+aws-cloud-utilities inventory download-all --format yaml --output-dir ./inventory-yaml
 ```
 
 ## Global Options
 
-All inventory commands support:
+All inventory commands support these global options:
 
 - `--profile PROFILE` - AWS profile to use
 - `--region REGION` - AWS region
@@ -242,128 +198,177 @@ All inventory commands support:
 
 ```bash
 #!/bin/bash
-# Complete resource inventory
-echo "=== All Resources ==="
-aws-cloud-utilities inventory resources --all-regions --output json > complete-inventory.json
+# Complete resource inventory across all regions
+echo "=== Comprehensive Inventory Scan ==="
+aws-cloud-utilities inventory scan --all-regions --include-tags --output-file complete-inventory.json
 
-echo "=== Resource Health ==="
-aws-cloud-utilities inventory health-check --output json > health-status.json
+echo "=== WorkSpaces Inventory ==="
+aws-cloud-utilities inventory workspaces --all-regions --output-file workspaces.json
 
-echo "=== Tagging Audit ==="
-aws-cloud-utilities inventory tagging-audit --output json > tagging-audit.json
+echo "=== Available Services ==="
+aws-cloud-utilities inventory services --output-file services.json
 ```
 
-### Cost Optimization Discovery
+### Bulk Data Download for Analysis
 
 ```bash
 #!/bin/bash
-# Find cost optimization opportunities
-echo "=== Unused Resources ==="
-aws-cloud-utilities inventory unused-resources --output json > unused-resources.json
+# Download all inventory data for offline analysis
+BACKUP_DIR="./inventory-backup-$(date +%Y%m%d)"
 
-echo "=== Cost Analysis ==="
-aws-cloud-utilities inventory cost-analysis --output json > cost-analysis.json
+echo "=== Downloading All Inventory Data ==="
+aws-cloud-utilities inventory download-all --output-dir "$BACKUP_DIR" --all-regions --compress
 
-echo "=== Resource Utilization ==="
-aws-cloud-utilities inventory health-check --include-warnings
+echo "=== Download Complete ==="
+echo "Data saved to: $BACKUP_DIR"
 ```
 
-### Compliance Reporting
+### Multi-Service Inventory
 
 ```bash
 #!/bin/bash
-# Generate compliance report
-echo "=== Resource Inventory ==="
-aws-cloud-utilities inventory resources --output csv > resources.csv
+# Scan specific services across multiple regions
+echo "=== Scanning Core Services ==="
+aws-cloud-utilities inventory scan \
+  --services ec2,s3,rds,lambda \
+  --regions us-east-1,us-west-2,eu-west-1 \
+  --include-tags \
+  --output-file core-services-inventory.json
 
-echo "=== Tagging Compliance ==="
-aws-cloud-utilities inventory tagging-audit --required-tags Environment,Owner,CostCenter
-
-echo "=== Security Compliance ==="
-aws-cloud-utilities inventory compliance-check --framework cis
+echo "=== Parallel Region Scanning ==="
+aws-cloud-utilities inventory scan \
+  --all-regions \
+  --parallel-regions 8 \
+  --output-file parallel-scan.json
 ```
 
-### Multi-Region Analysis
+### WorkSpaces Management
 
 ```bash
 #!/bin/bash
-# Multi-region resource analysis
-for region in us-east-1 us-west-2 eu-west-1; do
-    echo "=== $region Resources ==="
-    aws-cloud-utilities --region $region inventory resources --output json > ${region}-resources.json
-    
-    echo "=== $region Unused Resources ==="
-    aws-cloud-utilities --region $region inventory unused-resources
-done
+# WorkSpaces inventory and analysis
+echo "=== All WorkSpaces ==="
+aws-cloud-utilities inventory workspaces --all-regions
+
+echo "=== WorkSpaces by Directory ==="
+aws-cloud-utilities inventory workspaces --directory-id d-12345abcde
+
+echo "=== Export WorkSpaces Data ==="
+aws-cloud-utilities inventory workspaces --all-regions --output-file workspaces-report.csv
 ```
 
 ## Common Use Cases
 
 1. **Resource Discovery**
    ```bash
-   aws-cloud-utilities inventory resources --all-regions
-   aws-cloud-utilities inventory resource-map
+   # Discover all resources across account
+   aws-cloud-utilities inventory scan --all-regions --include-tags
+
+   # List available services
+   aws-cloud-utilities inventory services
    ```
 
-2. **Cost Optimization**
+2. **Service-Specific Inventory**
    ```bash
-   aws-cloud-utilities inventory unused-resources
-   aws-cloud-utilities inventory cost-analysis
+   # EC2 and S3 only
+   aws-cloud-utilities inventory scan --services ec2,s3
+
+   # WorkSpaces inventory
+   aws-cloud-utilities inventory workspaces --all-regions
    ```
 
-3. **Compliance Auditing**
+3. **Data Backup and Export**
    ```bash
-   aws-cloud-utilities inventory tagging-audit --required-tags Environment,Owner
-   aws-cloud-utilities inventory compliance-check
+   # Download all inventory data
+   aws-cloud-utilities inventory download-all --all-regions --compress
+
+   # Export to CSV for spreadsheet analysis
+   aws-cloud-utilities inventory scan --output-file inventory.csv
    ```
 
-4. **Health Monitoring**
+4. **Multi-Region Analysis**
    ```bash
-   aws-cloud-utilities inventory health-check --unhealthy-only
+   # Scan all regions with parallel processing
+   aws-cloud-utilities inventory scan --all-regions --parallel-regions 4
    ```
 
 ## Output Formats
 
 ### Table Format (Default)
-Human-readable tables with resource information.
+Human-readable tables with resource information displayed in the terminal.
 
 ### JSON Format
-Structured data for automation and integration:
+Structured data perfect for automation and integration:
 ```bash
-aws-cloud-utilities inventory resources --output json
+aws-cloud-utilities inventory scan --output-file inventory.json
 ```
 
 ### CSV Format
-Spreadsheet-compatible format:
+Spreadsheet-compatible format for analysis in Excel or Google Sheets:
 ```bash
-aws-cloud-utilities inventory resources --output csv > resources.csv
+aws-cloud-utilities inventory scan --output-file inventory.csv
 ```
 
 ### YAML Format
-Configuration-friendly format:
+Configuration-friendly format for documentation:
 ```bash
-aws-cloud-utilities inventory resources --output yaml
+aws-cloud-utilities inventory download-all --format yaml
 ```
 
 ## Integration Examples
 
-### With Cost Optimization
+### With Automation Scripts
 ```bash
-# Find unused resources and analyze costs
-aws-cloud-utilities inventory unused-resources --output json | \
-  jq '.[] | select(.estimated_monthly_cost > 100)'
+#!/bin/bash
+# Daily automated inventory
+DATE=$(date +%Y%m%d)
+aws-cloud-utilities inventory scan --all-regions --output-file "inventory-${DATE}.json"
+aws-cloud-utilities inventory workspaces --all-regions --output-file "workspaces-${DATE}.csv"
 ```
 
-### With Security Tools
+### With Data Analysis Tools
 ```bash
-# Find untagged resources for security review
-aws-cloud-utilities inventory tagging-audit --untagged-only --output json | \
-  jq '.[] | select(.resource_type == "security-group")'
+# Export for analysis with jq
+aws-cloud-utilities inventory scan --output-file inventory.json
+cat inventory.json | jq '.resources[] | select(.service == "ec2")'
 ```
 
-### With Automation
+### Multi-Account Inventory
 ```bash
-# Daily inventory report
-aws-cloud-utilities inventory resources --output json > daily-inventory-$(date +%Y%m%d).json
-aws-cloud-utilities inventory unused-resources --output json > unused-$(date +%Y%m%d).json
+#!/bin/bash
+# Multi-account inventory collection
+for profile in dev staging prod; do
+    echo "=== Scanning $profile account ==="
+    aws-cloud-utilities --profile $profile inventory scan \
+      --all-regions \
+      --output-file "inventory-${profile}.json"
+
+    aws-cloud-utilities --profile $profile inventory download-all \
+      --output-dir "./backup-${profile}" \
+      --all-regions
+done
 ```
+
+## Performance Tips
+
+1. **Use Parallel Scanning**: Speed up multi-region scans with `--parallel-regions`
+   ```bash
+   aws-cloud-utilities inventory scan --all-regions --parallel-regions 8
+   ```
+
+2. **Filter Services**: Only scan needed services to reduce time
+   ```bash
+   aws-cloud-utilities inventory scan --services ec2,s3,rds
+   ```
+
+3. **Regional Scoping**: Limit to specific regions if global scan isn't needed
+   ```bash
+   aws-cloud-utilities inventory scan --regions us-east-1,us-west-2
+   ```
+
+## Best Practices
+
+1. **Regular Inventory Scans**: Schedule periodic scans to track resource changes
+2. **Tag Inclusion**: Always use `--include-tags` for comprehensive data
+3. **Data Backup**: Use `download-all` for compliance and audit records
+4. **Multi-Format Export**: Keep both JSON (for automation) and CSV (for analysis)
