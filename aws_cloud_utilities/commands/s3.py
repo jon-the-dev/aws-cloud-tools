@@ -31,6 +31,7 @@ from ..core.utils import (
     parallel_execute,
 )
 from ..core.exceptions import AWSError
+from ..core.tag_filter import TagFilter
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -61,6 +62,14 @@ def s3_group():
 @click.option(
     "--output-file", help="Output file for bucket list (supports .json, .yaml, .csv)"
 )
+@click.option(
+    "--tag-key",
+    help="Filter S3 buckets by tag key (e.g., Environment)",
+)
+@click.option(
+    "--tag-value",
+    help="Filter S3 buckets by tag value (requires --tag-key)",
+)
 @click.pass_context
 def list_buckets(
     ctx: click.Context,
@@ -68,15 +77,27 @@ def list_buckets(
     all_regions: bool,
     include_size: bool,
     output_file: Optional[str],
+    tag_key: Optional[str],
+    tag_value: Optional[str],
 ) -> None:
     """List S3 buckets with details including region and optional size information."""
     config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
 
     try:
+        # Validate tag filter options
+        if tag_value and not tag_key:
+            console.print("[red]Error: --tag-value requires --tag-key to be specified[/red]")
+            raise click.Abort()
+
+        # Create tag filter
+        tag_filter = TagFilter(tag_key=tag_key, tag_value=tag_value, aws_auth=aws_auth)
+
         console.print("[blue]Listing S3 buckets[/blue]")
         if region:
             console.print(f"[dim]Filtering by region: {region}[/dim]")
+        if tag_filter.enabled:
+            console.print(f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]")
         if include_size:
             console.print(
                 "[dim]Including size information from CloudWatch metrics[/dim]"
@@ -87,7 +108,7 @@ def list_buckets(
 
         # Get bucket data
         buckets_data = _get_all_buckets(
-            aws_auth, s3_client, region, include_size, config.workers
+            aws_auth, s3_client, region, include_size, config.workers, tag_filter
         )
 
         if buckets_data:
@@ -695,8 +716,13 @@ def _get_all_buckets(
     region_filter: Optional[str],
     include_size: bool,
     max_workers: int,
+    tag_filter: Optional[TagFilter] = None,
 ) -> List[Dict[str, Any]]:
     """Get all S3 buckets with their details."""
+
+    # Initialize tag filter if not provided
+    if tag_filter is None:
+        tag_filter = TagFilter()
 
     try:
         # List all buckets
@@ -705,6 +731,8 @@ def _get_all_buckets(
 
         if not buckets:
             return []
+
+        buckets_before_filter = len(buckets)
 
         def process_bucket(bucket: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             """Process a single bucket to get its details."""
@@ -720,6 +748,22 @@ def _get_all_buckets(
                 # Filter by region if specified
                 if region_filter and bucket_region != region_filter:
                     return None
+
+                # Get and apply tag filter if enabled
+                if tag_filter.enabled:
+                    try:
+                        tags_response = s3_client.get_bucket_tagging(Bucket=bucket_name)
+                        tag_set = tags_response.get("TagSet", [])
+                        # Convert to Tags format for tag filter
+                        bucket_with_tags = {"Tags": tag_set}
+                        if not tag_filter.matches(bucket_with_tags):
+                            return None
+                    except s3_client.exceptions.NoSuchTagSet:
+                        # Bucket has no tags, doesn't match filter
+                        return None
+                    except Exception as e:
+                        logger.debug(f"Error fetching tags for bucket {bucket_name}: {e}")
+                        return None
 
                 bucket_data = {
                     "Bucket Name": bucket_name,
