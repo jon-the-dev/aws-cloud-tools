@@ -30,17 +30,20 @@ pip install -e .
 # Get account information
 aws-cloud-utilities account info
 
-# List all resources in your account
-aws-cloud-utilities inventory resources
+# Scan all resources in your account
+aws-cloud-utilities inventory scan --all-regions
 
-# Find cheapest GPU spot instances
-aws-cloud-utilities costops gpu-spots --instance-type p3.2xlarge
+# Analyze EBS volumes for cost savings
+aws-cloud-utilities costops ebs-optimization --all-regions
 
-# Aggregate CloudWatch logs
-aws-cloud-utilities logs aggregate --log-group /aws/lambda/my-function
+# Collect spot pricing data
+aws-cloud-utilities costops spot-pricing --all-regions
 
-# Security audit
-aws-cloud-utilities security blue-team-audit
+# Download CloudWatch logs
+aws-cloud-utilities logs download /aws/lambda/my-function
+
+# Get security metrics
+aws-cloud-utilities security metrics
 ```
 
 ## 🏗️ Command Structure
@@ -53,26 +56,28 @@ aws-cloud-utilities [GLOBAL-OPTIONS] <service> <operation> [OPTIONS]
 
 ### Available Services
 
-| Service | Description |
-|---------|-------------|
-| **account** | Account information and management |
-| **awsconfig** | AWS Config service operations |
-| **bedrock** | Amazon Bedrock AI/ML operations |
-| **billing** | Billing and cost analysis |
-| **cloudformation** | CloudFormation stack management |
-| **cloudfront** | CloudFront distribution management |
-| **costops** | Cost optimization and pricing tools |
-| **ecr** | Elastic Container Registry operations |
-| **iam** | IAM management and auditing |
-| **inventory** | Resource discovery and inventory |
-| **logs** | CloudWatch logs management |
-| **networking** | Network utilities and analysis |
-| **rds** | RDS database management and troubleshooting |
-| **s3** | S3 bucket operations |
-| **security** | Security auditing and tools |
-| **stepfunctions** | Step Functions workflow management |
-| **support** | AWS support tools |
-| **waf** | Web Application Firewall management |
+Click on any service name to see full documentation for all subcommands.
+
+| Service | Description | Subcommands |
+|---------|-------------|-------------|
+| [**account**](commands/account.md) | Account information and management | `info`, `contact-info`, `detect-control-tower`, `regions`, `service-regions`, `limits`, `validate` |
+| [**awsconfig**](commands/awsconfig.md) | AWS Config service operations | `download`, `show-rules`, `list-rules`, `compliance-status`, `compliance-checker` |
+| [**bedrock**](commands/bedrock.md) | Amazon Bedrock AI/ML operations | `list-models`, `model-details`, `list-custom-models`, `list-model-jobs`, `regions` |
+| [**billing**](commands/billing.md) | Billing and cost analysis | `cur-list`, `cur-details`, `cur-create`, `cur-delete`, `cur-validate-bucket` |
+| [**cloudformation**](commands/cloudformation.md) | CloudFormation stack management | `backup`, `list-stacks`, `stack-details` |
+| [**cloudfront**](commands/cloudfront.md) | CloudFront distribution management | `update-logging`, `list-distributions`, `distribution-details`, `invalidate` |
+| [**costops**](commands/costops.md) | Cost optimization and pricing tools | `pricing`, `cost-analysis`, `ebs-optimization`, `usage-metrics`, `spot-pricing`, `spot-analysis` |
+| [**ecr**](commands/ecr.md) | Elastic Container Registry operations | `copy-image`, `list-repositories`, `list-images`, `create-repository`, `delete-repository`, `get-login` |
+| [**iam**](commands/iam.md) | IAM management and auditing | `audit`, `list-roles`, `list-policies`, `role-details`, `policy-details` |
+| [**inventory**](commands/inventory.md) | Resource discovery and inventory | `scan`, `workspaces`, `services`, `download-all` |
+| [**logs**](commands/logs.md) | CloudWatch logs management | `list-groups`, `download`, `set-retention`, `delete-group`, `combine`, `aggregate` |
+| [**networking**](commands/networking.md) | Network utilities and analysis | `ip-ranges`, `ip-summary` |
+| [**rds**](commands/rds.md) | RDS database management | `troubleshoot-mysql`, `list-instances` |
+| [**s3**](commands/s3.md) | S3 bucket operations | `list-buckets`, `create-bucket`, `download`, `nuke-bucket`, `bucket-details`, `delete-versions`, `restore-objects` |
+| [**security**](commands/security.md) | Security auditing and tools | `metrics`, `create-certificate`, `list-certificates` |
+| [**stepfunctions**](commands/stepfunctions.md) | Step Functions workflow management | `list`, `describe`, `execute`, `list-executions`, `logs` |
+| [**support**](commands/support.md) | AWS support tools | `check-level`, `severity-levels`, `cases`, `services`, `cost-savings` |
+| [**waf**](commands/waf.md) | Web Application Firewall management | `list`, `stats`, `troubleshoot` |
 
 ### Global Options
 

@@ -58,26 +58,42 @@ aws-cloud-utilities account contact-info --output yaml
 
 ### `regions`
 
-List available AWS regions and their status.
+List all available AWS regions.
 
 ```bash
 aws-cloud-utilities account regions
 ```
 
+**Examples:**
+```bash
+# List all available AWS regions
+aws-cloud-utilities account regions
+
+# JSON output
+aws-cloud-utilities account regions --output json
+```
+
+### `service-regions`
+
+List available regions for a specific AWS service.
+
+```bash
+aws-cloud-utilities account service-regions [OPTIONS]
+```
+
 **Options:**
-- `--service SERVICE` - Filter regions by service availability
-- `--enabled-only` - Show only enabled regions
+- `--service SERVICE` - AWS service to check regions for (default: ec2)
 
 **Examples:**
 ```bash
-# All regions
-aws-cloud-utilities account regions
+# Regions where Lambda is available
+aws-cloud-utilities account service-regions --service lambda
 
-# Regions with Lambda
-aws-cloud-utilities account regions --service lambda
+# Regions where RDS is available
+aws-cloud-utilities account service-regions --service rds
 
-# Only enabled regions
-aws-cloud-utilities account regions --enabled-only
+# EC2 regions (default)
+aws-cloud-utilities account service-regions
 ```
 
 ### `detect-control-tower`
