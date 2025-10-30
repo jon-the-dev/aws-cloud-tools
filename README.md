@@ -96,6 +96,35 @@ AWS_OUTPUT_FORMAT=table
 WORKERS=4
 ```
 
+## CI/CD Integration
+
+### Slack Notifications
+
+The repository includes a `slack-notify.sh` script for sending notifications to Slack channels from CI/CD pipelines.
+
+**Quick Start:**
+```bash
+# Set your Slack webhook URL
+export SLACK_WEBHOOK="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+
+# Send a simple message
+./slack-notify.sh "Build completed successfully"
+
+# Send with styling
+./slack-notify.sh "Deployment finished!" \
+    --emoji ":rocket:" \
+    --color "good" \
+    --title "Production Deployment"
+```
+
+**Features:**
+- Simple command-line interface
+- Customizable emojis, colors, and formatting
+- Support for success/warning/error color schemes
+- Works with all major CI/CD platforms (GitHub Actions, GitLab CI, Jenkins, CircleCI)
+
+For complete documentation, see [slack-notify.md](slack-notify.md).
+
 ## Development
 
 ### Setup Development Environment
