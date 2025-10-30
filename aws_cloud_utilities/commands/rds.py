@@ -13,6 +13,7 @@ from rich.text import Text
 from ..core.config import Config
 from ..core.auth import AWSAuth
 from ..core.exceptions import AWSCloudUtilitiesError
+from ..core.tag_filter import TagFilter
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -526,9 +527,17 @@ def troubleshoot_mysql(
 @rds_group.command(name="list-instances")
 @click.option("--engine", help="Filter by database engine (e.g., mysql, postgres)")
 @click.option("--status", help="Filter by instance status (e.g., available, stopped)")
+@click.option(
+    "--tag-key",
+    help="Filter RDS instances by tag key (e.g., Environment)",
+)
+@click.option(
+    "--tag-value",
+    help="Filter RDS instances by tag value (requires --tag-key)",
+)
 @click.pass_context
 def list_instances(
-    ctx: click.Context, engine: Optional[str], status: Optional[str]
+    ctx: click.Context, engine: Optional[str], status: Optional[str], tag_key: Optional[str], tag_value: Optional[str]
 ) -> None:
     """List RDS instances in the current region.
 
@@ -536,10 +545,23 @@ def list_instances(
         aws-cloud-utilities rds list-instances
         aws-cloud-utilities rds list-instances --engine mysql
         aws-cloud-utilities rds list-instances --status available
+        aws-cloud-utilities rds list-instances --tag-key Environment --tag-value Production
     """
     try:
         config: Config = ctx.obj["config"]
         aws_auth: AWSAuth = ctx.obj["aws_auth"]
+
+        # Validate tag filter options
+        if tag_value and not tag_key:
+            console.print("[red]Error: --tag-value requires --tag-key to be specified[/red]")
+            return
+
+        # Create tag filter
+        tag_filter = TagFilter(tag_key=tag_key, tag_value=tag_value, aws_auth=aws_auth)
+
+        # Display tag filter if enabled
+        if tag_filter.enabled:
+            console.print(f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]")
 
         session = aws_auth.session
         rds_client = session.client("rds")
@@ -548,6 +570,7 @@ def list_instances(
             response = rds_client.describe_db_instances()
 
         instances = response.get("DBInstances", [])
+        instances_before_filter = len(instances)
 
         # Apply filters
         if engine:
@@ -561,6 +584,32 @@ def list_instances(
                 for i in instances
                 if i.get("DBInstanceStatus", "").lower() == status.lower()
             ]
+
+        # Apply tag filter (requires fetching tags for each instance)
+        if tag_filter.enabled:
+            filtered_instances = []
+            with console.status(f"[bold green]Filtering {len(instances)} instances by tags..."):
+                for instance in instances:
+                    try:
+                        # Get instance ARN
+                        instance_arn = instance.get("DBInstanceArn")
+                        if instance_arn:
+                            # Fetch tags
+                            tags_response = rds_client.list_tags_for_resource(ResourceName=instance_arn)
+                            tag_list = tags_response.get("TagList", [])
+                            # Convert to dict format for tag filter
+                            instance["Tags"] = tag_list
+
+                        # Apply filter
+                        if tag_filter.matches(instance):
+                            filtered_instances.append(instance)
+                    except Exception as e:
+                        logger.warning(f"Error fetching tags for instance {instance.get('DBInstanceIdentifier')}: {e}")
+                        # If we can't fetch tags, exclude the instance from filtered results
+                        pass
+
+            instances = filtered_instances
+            console.print(f"[dim]Tag filter reduced instances from {instances_before_filter} to {len(instances)}[/dim]")
 
         if not instances:
             console.print(
