@@ -26,6 +26,7 @@ from ..core.utils import (
     parallel_execute,
 )
 from ..core.exceptions import AWSError
+from ..core.tag_filter import TagFilter
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -65,6 +66,14 @@ def inventory_group():
     type=int,
     help="Number of regions to process in parallel (default: from config)",
 )
+@click.option(
+    "--tag-key",
+    help="Filter resources by tag key (e.g., Environment). Requires --include-tags.",
+)
+@click.option(
+    "--tag-value",
+    help="Filter resources by tag value (requires --tag-key and --include-tags)",
+)
 @click.pass_context
 def scan(
     ctx: click.Context,
@@ -74,12 +83,28 @@ def scan(
     format: str,
     include_tags: bool,
     parallel_regions: Optional[int],
+    tag_key: Optional[str],
+    tag_value: Optional[str],
 ) -> None:
     """Comprehensive AWS resource inventory scan across services and regions."""
     config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
 
     try:
+        # Validate tag filter options
+        if tag_key and not include_tags:
+            console.print(
+                "[yellow]Warning: --tag-key requires --include-tags to be enabled. Enabling --include-tags automatically.[/yellow]"
+            )
+            include_tags = True
+
+        if tag_value and not tag_key:
+            console.print("[red]Error: --tag-value requires --tag-key to be specified[/red]")
+            raise click.Abort()
+
+        # Create tag filter
+        tag_filter = TagFilter(tag_key=tag_key, tag_value=tag_value, aws_auth=aws_auth)
+
         account_id = aws_auth.get_account_id()
         timestamp = get_detailed_timestamp()
 
@@ -94,6 +119,10 @@ def scan(
             f"[blue]Starting comprehensive AWS inventory scan for account {account_id}[/blue]"
         )
         console.print(f"[dim]Output directory: {output_path.absolute()}[/dim]")
+
+        # Display tag filter if enabled
+        if tag_filter.enabled:
+            console.print(f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]")
 
         # Determine regions to scan
         if regions:
@@ -133,8 +162,10 @@ def scan(
             "regions_scanned": target_regions,
             "services_scanned": target_services,
             "include_tags": include_tags,
+            "tag_filter": tag_filter.create_filter_display() if tag_filter.enabled else None,
             "output_format": format,
             "total_resources": 0,
+            "total_resources_before_filter": 0,
             "services_summary": {},
             "regions_summary": {},
             "errors": [],
@@ -150,6 +181,7 @@ def scan(
             include_tags,
             max_workers,
             scan_summary,
+            tag_filter,
         )
 
         # Save scan summary
@@ -191,6 +223,14 @@ def scan(
     default="Available",
     help="Comma-separated list of CloudWatch metrics to collect",
 )
+@click.option(
+    "--tag-key",
+    help="Filter WorkSpaces by tag key (e.g., Environment)",
+)
+@click.option(
+    "--tag-value",
+    help="Filter WorkSpaces by tag value (requires --tag-key)",
+)
 @click.pass_context
 def workspaces(
     ctx: click.Context,
@@ -199,17 +239,31 @@ def workspaces(
     include_metrics: bool,
     lookback_days: int,
     metric_names: str,
+    tag_key: Optional[str],
+    tag_value: Optional[str],
 ) -> None:
     """Generate comprehensive WorkSpaces inventory report with optional metrics."""
     config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
 
     try:
+        # Validate tag filter options
+        if tag_value and not tag_key:
+            console.print("[red]Error: --tag-value requires --tag-key to be specified[/red]")
+            raise click.Abort()
+
+        # Create tag filter
+        tag_filter = TagFilter(tag_key=tag_key, tag_value=tag_value, aws_auth=aws_auth)
+
         target_region = region or config.aws_region or "us-east-1"
         account_id = aws_auth.get_account_id()
         timestamp = get_timestamp()
 
         console.print(f"[blue]Scanning WorkSpaces in region {target_region}[/blue]")
+
+        # Display tag filter if enabled
+        if tag_filter.enabled:
+            console.print(f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]")
 
         # Get WorkSpaces client
         workspaces_client = aws_auth.get_client("workspaces", region_name=target_region)
@@ -224,10 +278,11 @@ def workspaces(
             )
             return
 
-        console.print(f"[dim]Found {len(workspaces_data)} WorkSpaces[/dim]")
+        console.print(f"[dim]Found {len(workspaces_data)} WorkSpaces (before filtering)[/dim]")
 
         # Enrich with tags and metrics if requested
         enriched_workspaces = []
+        workspaces_before_filter = len(workspaces_data)
 
         with Progress(
             SpinnerColumn(),
@@ -270,10 +325,25 @@ def workspaces(
                         )
                         ws["Metrics"] = {}
 
-                enriched_workspaces.append(ws)
+                # Apply tag filter
+                if tag_filter.matches(ws):
+                    enriched_workspaces.append(ws)
+
                 progress.update(
                     task, advance=1, description=f"Processing: {workspace_id}"
                 )
+
+        # Log filtering results
+        if tag_filter.enabled:
+            console.print(
+                f"[dim]Tag filter reduced WorkSpaces from {workspaces_before_filter} to {len(enriched_workspaces)}[/dim]"
+            )
+        else:
+            console.print(f"[dim]Processed {len(enriched_workspaces)} WorkSpaces[/dim]")
+
+        if not enriched_workspaces:
+            console.print("[yellow]No WorkSpaces match the specified filters[/yellow]")
+            return
 
         # Format for output
         formatted_workspaces = []
@@ -514,11 +584,16 @@ def _execute_comprehensive_scan(
     include_tags: bool,
     max_workers: int,
     scan_summary: Dict[str, Any],
+    tag_filter: Optional[TagFilter] = None,
 ) -> Dict[str, List[Dict[str, Any]]]:
     """Execute comprehensive inventory scan across services and regions."""
 
     supported_services = _get_supported_services()
     all_resources = {}
+
+    # Initialize tag filter if not provided
+    if tag_filter is None:
+        tag_filter = TagFilter()
 
     # Create tasks for parallel execution
     scan_tasks = []
@@ -561,6 +636,16 @@ def _execute_comprehensive_scan(
             # Enrich with tags if requested and supported
             if include_tags and resources:
                 resources = _enrich_with_tags(client, resources, service)
+
+            # Track resources before filtering
+            resources_before_filter = len(resources)
+
+            # Apply tag filter
+            if tag_filter and tag_filter.enabled and resources:
+                resources = tag_filter.filter_resources(resources)
+                logger.info(
+                    f"Tag filter reduced {service}/{region} from {resources_before_filter} to {len(resources)} resources"
+                )
 
             # Save individual service/region file
             if resources:
@@ -682,6 +767,7 @@ def _display_scan_summary(
         "Services Scanned": len(scan_summary["services_scanned"]),
         "Regions Scanned": len(scan_summary["regions_scanned"]),
         "Include Tags": "Yes" if scan_summary["include_tags"] else "No",
+        "Tag Filter": scan_summary.get("tag_filter") or "None",
         "Output Format": scan_summary["output_format"].upper(),
         "Output Directory": str(output_path.absolute()),
         "Errors": len(scan_summary["errors"]),
@@ -858,6 +944,14 @@ def _get_workspace_metrics(
     type=int,
     help="Number of regions to process in parallel (default: from config)",
 )
+@click.option(
+    "--tag-key",
+    help="Filter resources by tag key (e.g., Environment). Requires --include-tags.",
+)
+@click.option(
+    "--tag-value",
+    help="Filter resources by tag value (requires --tag-key and --include-tags)",
+)
 @click.pass_context
 def download_all(
     ctx: click.Context,
@@ -869,12 +963,28 @@ def download_all(
     include_cloudformation: bool,
     include_workspaces_metrics: bool,
     parallel_regions: Optional[int],
+    tag_key: Optional[str],
+    tag_value: Optional[str],
 ) -> None:
     """Download comprehensive inventory of all AWS resources including optional CloudFormation backups."""
     config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
 
     try:
+        # Validate tag filter options
+        if tag_key and not include_tags:
+            console.print(
+                "[yellow]Warning: --tag-key requires --include-tags to be enabled. Enabling --include-tags automatically.[/yellow]"
+            )
+            include_tags = True
+
+        if tag_value and not tag_key:
+            console.print("[red]Error: --tag-value requires --tag-key to be specified[/red]")
+            raise click.Abort()
+
+        # Create tag filter
+        tag_filter = TagFilter(tag_key=tag_key, tag_value=tag_value, aws_auth=aws_auth)
+
         account_id = aws_auth.get_account_id()
         timestamp = get_detailed_timestamp()
 
@@ -889,6 +999,10 @@ def download_all(
             f"[blue]Starting comprehensive AWS inventory download for account {account_id}[/blue]"
         )
         console.print(f"[dim]Output directory: {output_path.absolute()}[/dim]")
+
+        # Display tag filter if enabled
+        if tag_filter.enabled:
+            console.print(f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]")
 
         # Determine regions to scan
         if regions:
@@ -928,6 +1042,7 @@ def download_all(
             "regions_scanned": target_regions,
             "services_scanned": target_services,
             "include_tags": include_tags,
+            "tag_filter": tag_filter.create_filter_display() if tag_filter.enabled else None,
             "include_cloudformation": include_cloudformation,
             "include_workspaces_metrics": include_workspaces_metrics,
             "output_format": format,
@@ -950,6 +1065,7 @@ def download_all(
             include_tags,
             max_workers,
             download_summary,
+            tag_filter,
         )
 
         # Execute CloudFormation backup if requested
@@ -1430,6 +1546,7 @@ def _display_comprehensive_download_summary(
         "Services Scanned": len(download_summary["services_scanned"]),
         "Regions Scanned": len(download_summary["regions_scanned"]),
         "Include Tags": "Yes" if download_summary["include_tags"] else "No",
+        "Tag Filter": download_summary.get("tag_filter") or "None",
         "Include CloudFormation": (
             "Yes" if download_summary["include_cloudformation"] else "No"
         ),

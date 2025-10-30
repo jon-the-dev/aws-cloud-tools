@@ -32,6 +32,7 @@ from ..core.utils import (
     parallel_execute,
 )
 from ..core.exceptions import AWSError
+from ..core.tag_filter import TagFilter
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -235,6 +236,14 @@ def cost_analysis(
 @click.option(
     "--output-file", help="Output file for EBS analysis (supports .json, .yaml, .csv)"
 )
+@click.option(
+    "--tag-key",
+    help="Filter EBS volumes by tag key (e.g., Environment)",
+)
+@click.option(
+    "--tag-value",
+    help="Filter EBS volumes by tag value (requires --tag-key)",
+)
 @click.pass_context
 def ebs_optimization(
     ctx: click.Context,
@@ -244,12 +253,22 @@ def ebs_optimization(
     show_recommendations: bool,
     include_cost_estimates: bool,
     output_file: Optional[str],
+    tag_key: Optional[str],
+    tag_value: Optional[str],
 ) -> None:
     """Analyze EBS volumes for cost optimization opportunities."""
     config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
 
     try:
+        # Validate tag filter options
+        if tag_value and not tag_key:
+            console.print("[red]Error: --tag-value requires --tag-key to be specified[/red]")
+            raise click.Abort()
+
+        # Create tag filter
+        tag_filter = TagFilter(tag_key=tag_key, tag_value=tag_value, aws_auth=aws_auth)
+
         # Determine regions to analyze
         if all_regions:
             target_regions = aws_auth.get_available_regions("ec2")
@@ -263,6 +282,8 @@ def ebs_optimization(
             console.print(
                 f"[dim]Volume type filter: {volume_type} ({EBS_VOLUME_TYPES[volume_type]['name']})[/dim]"
             )
+        if tag_filter.enabled:
+            console.print(f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]")
         if include_cost_estimates:
             console.print("[dim]Including cost savings estimates[/dim]")
 
@@ -274,6 +295,7 @@ def ebs_optimization(
             show_recommendations,
             include_cost_estimates,
             config.workers,
+            tag_filter,
         )
 
         # Display results
@@ -979,13 +1001,20 @@ def _analyze_ebs_volumes(
     show_recommendations: bool,
     include_cost_estimates: bool,
     max_workers: int,
+    tag_filter: Optional[TagFilter] = None,
 ) -> Dict[str, Any]:
     """Analyze EBS volumes across regions for optimization opportunities."""
+
+    # Initialize tag filter if not provided
+    if tag_filter is None:
+        tag_filter = TagFilter()
 
     result = {
         "regions_analyzed": len(regions),
         "volume_type_filter": volume_type_filter,
+        "tag_filter": tag_filter.create_filter_display() if tag_filter.enabled else None,
         "total_volumes": 0,
+        "volumes_before_filter": 0,
         "optimizable_volumes": 0,
         "potential_savings": 0.0,
         "volumes_by_type": {},
@@ -1017,6 +1046,14 @@ def _analyze_ebs_volumes(
 
             for page in paginator.paginate(Filters=filters):
                 for volume in page.get("Volumes", []):
+                    # Track volumes before filtering
+                    region_result["volumes_before_filter"] = region_result.get("volumes_before_filter", 0) + 1
+
+                    # Apply tag filter
+                    if tag_filter and tag_filter.enabled:
+                        if not tag_filter.matches(volume):
+                            continue
+
                     volume_info = _process_ebs_volume(
                         ec2_client, volume, show_recommendations
                     )
@@ -1046,6 +1083,7 @@ def _analyze_ebs_volumes(
     for region, region_data in region_results:
         result["volumes_by_region"][region] = region_data
         result["total_volumes"] += region_data["volume_count"]
+        result["volumes_before_filter"] += region_data.get("volumes_before_filter", region_data["volume_count"])
         result["optimizable_volumes"] += region_data["optimizable_count"]
         result["errors"].extend(region_data["errors"])
 
