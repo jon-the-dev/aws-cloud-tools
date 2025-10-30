@@ -7,6 +7,8 @@
 # It can be used in CI/CD pipelines to send notifications about build status,
 # deployment results, or any other important events.
 #
+# NOTE: All messages automatically tag @jon
+#
 # Usage:
 #   ./slack-notify.sh "Your message here"
 #   ./slack-notify.sh "Build completed successfully" --emoji ":white_check_mark:"
@@ -29,7 +31,7 @@
 #   2 - Failed to send message to Slack
 #
 # Examples:
-#   # Simple message
+#   # Simple message (will appear as "@jon Build completed")
 #   SLACK_WEBHOOK="https://hooks.slack.com/..." ./slack-notify.sh "Build completed"
 #
 #   # Success notification with emoji
@@ -61,6 +63,8 @@ show_help() {
     cat << EOF
 Slack Notification Script for CI/CD Pipelines
 
+NOTE: All messages automatically tag @jon
+
 Usage: $0 "message" [OPTIONS]
 
 Options:
@@ -75,7 +79,7 @@ Environment Variables:
     SLACK_WEBHOOK         (required) The Slack webhook URL
 
 Examples:
-    # Simple message
+    # Simple message (will appear as "@jon Build completed successfully")
     $0 "Build completed successfully"
 
     # Success notification
@@ -160,6 +164,9 @@ if [[ -z "$MESSAGE" ]]; then
     show_help
     exit 1
 fi
+
+# Prepend @jon to all messages
+MESSAGE="<@jon> $MESSAGE"
 
 # Build JSON payload
 log_info "Preparing Slack message..."

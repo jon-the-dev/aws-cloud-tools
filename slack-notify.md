@@ -6,6 +6,8 @@ A simple, robust script for sending notifications to Slack from CI/CD pipelines.
 
 `slack-notify.sh` is a bash script that sends messages to Slack channels via webhook URLs. It's designed to be used in CI/CD pipelines (GitHub Actions, GitLab CI, Jenkins, etc.) to notify teams about build status, deployments, test results, and other important events.
 
+**Note:** All messages automatically include `@jon` at the beginning to ensure notifications are seen.
+
 ## Prerequisites
 
 - Bash shell
@@ -39,6 +41,8 @@ For CI/CD systems, add this as a secret environment variable in your pipeline co
 ```bash
 ./slack-notify.sh "Your message here"
 ```
+
+This will send a message that appears as: `@jon Your message here`
 
 ### With Options
 
