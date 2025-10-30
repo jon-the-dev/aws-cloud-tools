@@ -23,33 +23,37 @@ These options work with all commands:
 
 ## Available Services
 
+All 18 command groups with their complete subcommand list. Click any service name to see full documentation with examples and options.
+
 ### Core Services
 
-| Service | Description | Key Commands |
-|---------|-------------|--------------|
-| [**account**](account.md) | Account information and management | `info`, `contact-info`, `detect-control-tower`, `regions`, `limits` |
-| [**billing**](billing.md) | Billing and cost analysis | `cur-list`, `cur-create`, `cur-details`, `cur-validate-bucket` |
-| [**inventory**](inventory.md) | Resource discovery and inventory | `scan`, `workspaces`, `services`, `download-all` |
-| [**security**](security.md) | Security auditing and tools | `metrics`, `create-certificate`, `list-certificates` |
-| [**costops**](costops.md) | Cost optimization and pricing | `pricing`, `cost-analysis`, `spot-pricing`, `ebs-optimization` |
+| Service | Description | All Subcommands |
+|---------|-------------|-----------------|
+| [**account**](account.md) | Account information and management | `info`, `contact-info`, `detect-control-tower`, `regions`, `service-regions`, `limits`, `validate` (7 commands) |
+| [**billing**](billing.md) | Billing and Cost & Usage Reports | `cur-list`, `cur-details`, `cur-create`, `cur-delete`, `cur-validate-bucket` (5 commands) |
+| [**inventory**](inventory.md) | Resource discovery and inventory | `scan`, `workspaces`, `services`, `download-all` (4 commands) |
+| [**security**](security.md) | Security auditing and tools | `metrics`, `create-certificate`, `list-certificates` (3 commands) |
+| [**costops**](costops.md) | Cost optimization and pricing | `pricing`, `cost-analysis`, `ebs-optimization`, `usage-metrics`, `spot-pricing`, `spot-analysis` (6 commands) |
 
-### AWS Services
+### AWS Service Management
 
-| Service | Description | Key Commands |
-|---------|-------------|--------------|
-| [**awsconfig**](awsconfig.md) | AWS Config service operations | `download`, `show-rules`, `list-rules`, `compliance-status` |
-| [**bedrock**](bedrock.md) | Amazon Bedrock AI/ML operations | `list-models`, `model-details`, `list-custom-models`, `regions` |
-| [**cloudformation**](cloudformation.md) | CloudFormation stack management | `backup`, `list-stacks`, `stack-details` |
-| [**cloudfront**](cloudfront.md) | CloudFront distribution management | `update-logging`, `list-distributions`, `distribution-details`, `invalidate` |
-| [**ecr**](ecr.md) | Elastic Container Registry operations | `copy-image`, `list-repositories`, `list-images`, `create-repository` |
-| [**iam**](iam.md) | IAM management and auditing | `audit`, `list-roles`, `list-policies`, `role-details`, `policy-details` |
-| [**logs**](logs.md) | CloudWatch logs management | `list-groups`, `download`, `set-retention`, `aggregate`, `combine` |
-| [**networking**](networking.md) | Network utilities and analysis | `ip-ranges`, `ip-summary` |
-| [**rds**](rds.md) | RDS database management | `troubleshoot-mysql`, `list-instances` |
-| [**s3**](s3.md) | S3 bucket operations | `list-buckets`, `create-bucket`, `download`, `nuke-bucket`, `bucket-details` |
-| [**stepfunctions**](stepfunctions.md) | Step Functions workflow management | `list`, `describe`, `execute`, `list-executions`, `logs` |
-| [**support**](support.md) | AWS support tools | `check-level`, `cases`, `services`, `cost-savings` |
-| [**waf**](waf.md) | Web Application Firewall management | `list`, `stats`, `troubleshoot` |
+| Service | Description | All Subcommands |
+|---------|-------------|-----------------|
+| [**awsconfig**](awsconfig.md) | AWS Config service operations | `download`, `show-rules`, `list-rules`, `compliance-status`, `compliance-checker` (5 commands) |
+| [**bedrock**](bedrock.md) | Amazon Bedrock AI/ML operations | `list-models`, `model-details`, `list-custom-models`, `list-model-jobs`, `regions` (5 commands) |
+| [**cloudformation**](cloudformation.md) | CloudFormation stack management | `backup`, `list-stacks`, `stack-details` (3 commands) |
+| [**cloudfront**](cloudfront.md) | CloudFront distribution management | `update-logging`, `list-distributions`, `distribution-details`, `invalidate` (4 commands) |
+| [**ecr**](ecr.md) | Elastic Container Registry operations | `copy-image`, `list-repositories`, `list-images`, `create-repository`, `delete-repository`, `get-login` (6 commands) |
+| [**iam**](iam.md) | IAM management and auditing | `audit`, `list-roles`, `list-policies`, `role-details`, `policy-details` (5 commands) |
+| [**logs**](logs.md) | CloudWatch logs management | `list-groups`, `download`, `set-retention`, `delete-group`, `combine`, `aggregate` (6 commands) |
+| [**networking**](networking.md) | Network utilities and analysis | `ip-ranges`, `ip-summary` (2 commands) |
+| [**rds**](rds.md) | RDS database management | `troubleshoot-mysql`, `list-instances` (2 commands) |
+| [**s3**](s3.md) | S3 bucket operations | `list-buckets`, `create-bucket`, `download`, `nuke-bucket`, `bucket-details`, `delete-versions`, `restore-objects` (7 commands) |
+| [**stepfunctions**](stepfunctions.md) | Step Functions workflow management | `list`, `describe`, `execute`, `list-executions`, `logs` (5 commands) |
+| [**support**](support.md) | AWS support tools | `check-level`, `severity-levels`, `cases`, `services`, `cost-savings` (5 commands) |
+| [**waf**](waf.md) | Web Application Firewall management | `list`, `stats`, `troubleshoot` (3 commands) |
+
+**Total: 18 services, 80+ commands**
 
 ## Common Usage Patterns
 
@@ -146,12 +150,12 @@ aws-cloud-utilities --region us-east-1 security metrics
 
 ```bash
 # Filter by service
-aws-cloud-utilities inventory scan --services ec2
+aws-cloud-utilities inventory scan --services ec2,s3,rds
 
 # Filter by tag
-aws-cloud-utilities inventory scan --include-tags
+aws-cloud-utilities costops ebs-optimization --tag-key Environment --tag-value production
 
-# Download logs
+# Download logs with filter
 aws-cloud-utilities logs download /aws/lambda/my-function --filter-pattern "ERROR"
 ```
 
@@ -229,9 +233,19 @@ aws-cloud-utilities --verbose inventory scan --all-regions
 ```bash
 #!/bin/bash
 # Daily security and compliance check
-aws-cloud-utilities security metrics --output json > daily-security-$(date +%Y%m%d).json
-aws-cloud-utilities iam audit --output-dir ./iam-audit-$(date +%Y%m%d)
-aws-cloud-utilities inventory scan --all-regions --output-file inventory-$(date +%Y%m%d).json
+TIMESTAMP=$(date +%Y%m%d)
+
+# Security metrics
+aws-cloud-utilities security metrics --output json > daily-security-${TIMESTAMP}.json
+
+# IAM audit
+aws-cloud-utilities iam audit --output-dir ./iam-audit-${TIMESTAMP}
+
+# Resource inventory
+aws-cloud-utilities inventory scan --all-regions --output-file inventory-${TIMESTAMP}.json
+
+# Cost analysis
+aws-cloud-utilities costops cost-analysis --output-file costs-${TIMESTAMP}.json
 ```
 
 ## Error Handling
