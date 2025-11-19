@@ -19,6 +19,7 @@ A unified command-line toolkit for AWS operations with enhanced functionality. T
 - **Unified CLI**: Single command interface for all AWS operations
 - **Parallel Processing**: Multi-threaded operations for improved performance
 - **Rich Output**: Beautiful, formatted output with tables and colors
+- **HTML Report Generation**: Create comprehensive, responsive HTML reports for analysis and auditing
 - **Flexible Configuration**: Support for AWS profiles, regions, and custom settings
 - **Comprehensive Coverage**: Tools for cost optimization, inventory, security, logs, and more
 
@@ -54,6 +55,9 @@ aws-cloud-utilities logs aggregate --log-group /aws/lambda/my-function
 
 # Security audit
 aws-cloud-utilities security blue-team-audit
+
+# Analyze S3 encryption (generates HTML report)
+aws-cloud-utilities s3 analyze-encryption --workers 20
 ```
 
 ## Command Structure

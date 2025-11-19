@@ -32,6 +32,13 @@ from ..core.utils import (
 )
 from ..core.exceptions import AWSError
 from ..core.tag_filter import TagFilter
+from ..core.html_report import (
+    HTMLReportGenerator,
+    ReportMetadata,
+    create_table_html,
+    create_stats_grid_html,
+    create_badge,
+)
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -1847,3 +1854,558 @@ def _get_bucket_details(
             bucket_details["Logging"] = "Error"
 
     return bucket_details
+
+
+@s3_group.command(name="analyze-encryption")
+@click.option(
+    "--region", help="Filter buckets by region (default: analyze all regions)"
+)
+@click.option(
+    "--output-file",
+    help="Output HTML file for encryption analysis report (default: s3_encryption_report_<timestamp>.html)",
+)
+@click.option(
+    "--workers",
+    type=int,
+    help="Number of parallel workers for bucket analysis (default: from config)",
+)
+@click.option(
+    "--tag-key",
+    help="Filter S3 buckets by tag key (e.g., Environment)",
+)
+@click.option(
+    "--tag-value",
+    help="Filter S3 buckets by tag value (requires --tag-key)",
+)
+@click.pass_context
+def analyze_encryption(
+    ctx: click.Context,
+    region: Optional[str],
+    output_file: Optional[str],
+    workers: Optional[int],
+    tag_key: Optional[str],
+    tag_value: Optional[str],
+) -> None:
+    """Analyze S3 bucket encryption configurations with parallel processing.
+
+    This command scans all S3 buckets in your AWS account and generates a
+    comprehensive HTML report showing:
+
+    - Encryption status for each bucket (SSE-S3, SSE-KMS, Unencrypted)
+    - KMS key details for SSE-KMS encrypted buckets
+    - Summary statistics of encryption usage
+    - Buckets requiring security attention
+
+    The analysis runs in parallel for maximum performance.
+    """
+    config: Config = ctx.obj["config"]
+    aws_auth: AWSAuth = ctx.obj["aws_auth"]
+
+    try:
+        # Validate tag filter options
+        if tag_value and not tag_key:
+            console.print(
+                "[red]Error: --tag-value requires --tag-key to be specified[/red]"
+            )
+            raise click.Abort()
+
+        # Create tag filter
+        tag_filter = TagFilter(tag_key=tag_key, tag_value=tag_value, aws_auth=aws_auth)
+
+        # Determine number of workers
+        num_workers = workers or config.workers
+
+        console.print("[blue]Analyzing S3 bucket encryption configurations[/blue]")
+        if region:
+            console.print(f"[dim]Filtering by region: {region}[/dim]")
+        if tag_filter.enabled:
+            console.print(f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]")
+        console.print(f"[dim]Parallel workers: {num_workers}[/dim]")
+
+        # Get S3 client
+        s3_client = aws_auth.get_client("s3")
+
+        # Get all buckets
+        console.print("[dim]Fetching bucket list...[/dim]")
+        all_buckets = _get_bucket_list_for_encryption_analysis(
+            s3_client, region, tag_filter
+        )
+
+        if not all_buckets:
+            console.print("[yellow]No S3 buckets found[/yellow]")
+            return
+
+        console.print(f"[green]Found {len(all_buckets)} buckets to analyze[/green]")
+
+        # Analyze encryption configurations in parallel
+        console.print(
+            f"[blue]Analyzing encryption configurations (using {num_workers} workers)...[/blue]"
+        )
+        encryption_results = _analyze_bucket_encryption_parallel(
+            aws_auth, all_buckets, num_workers
+        )
+
+        # Categorize results
+        categorized = _categorize_encryption_results(encryption_results)
+
+        # Display summary
+        _display_encryption_summary(categorized)
+
+        # Generate HTML report
+        if output_file:
+            report_path = Path(output_file)
+        else:
+            timestamp = get_detailed_timestamp()
+            report_path = Path(f"s3_encryption_report_{timestamp}.html")
+
+        _generate_encryption_html_report(
+            categorized, report_path, config, tag_filter, region
+        )
+
+        console.print(f"\n[green]✅ HTML report generated:[/green] {report_path}")
+        console.print(
+            f"[dim]Open this file in your browser to view the detailed report[/dim]"
+        )
+
+        # Also save JSON version for programmatic access
+        json_path = report_path.with_suffix(".json")
+        save_to_file(categorized, json_path, "json")
+        console.print(f"[green]📄 JSON data saved:[/green] {json_path}")
+
+    except Exception as e:
+        console.print(f"[red]Error analyzing S3 encryption:[/red] {e}")
+        logger.exception("Error in analyze-encryption command")
+        raise click.Abort()
+
+
+def _get_bucket_list_for_encryption_analysis(
+    s3_client, region_filter: Optional[str], tag_filter: TagFilter
+) -> List[Dict[str, Any]]:
+    """Get list of buckets for encryption analysis.
+
+    Args:
+        s3_client: Boto3 S3 client
+        region_filter: Optional region to filter by
+        tag_filter: Tag filter for bucket selection
+
+    Returns:
+        List of bucket dictionaries with name and region
+    """
+    try:
+        response = s3_client.list_buckets()
+        buckets = response.get("Buckets", [])
+
+        bucket_list = []
+        for bucket in buckets:
+            bucket_name = bucket["Name"]
+
+            try:
+                # Get bucket location
+                location_response = s3_client.get_bucket_location(Bucket=bucket_name)
+                bucket_region = location_response.get("LocationConstraint") or "us-east-1"
+
+                # Apply region filter
+                if region_filter and bucket_region != region_filter:
+                    continue
+
+                # Apply tag filter
+                if tag_filter.enabled and not tag_filter.matches_bucket(bucket_name):
+                    continue
+
+                bucket_list.append(
+                    {
+                        "name": bucket_name,
+                        "region": bucket_region,
+                        "creation_date": bucket["CreationDate"].isoformat(),
+                    }
+                )
+            except Exception as e:
+                logger.debug(
+                    f"Error getting location/tags for bucket {bucket_name}: {e}"
+                )
+                # Include bucket anyway with unknown region
+                bucket_list.append(
+                    {
+                        "name": bucket_name,
+                        "region": "unknown",
+                        "creation_date": bucket["CreationDate"].isoformat(),
+                    }
+                )
+
+        return bucket_list
+
+    except Exception as e:
+        logger.error(f"Error listing buckets: {e}")
+        raise
+
+
+def _analyze_single_bucket_encryption(
+    aws_auth: AWSAuth, bucket_info: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Analyze encryption configuration for a single bucket.
+
+    Args:
+        aws_auth: AWSAuth instance
+        bucket_info: Dictionary with bucket name and region
+
+    Returns:
+        Dictionary with encryption analysis results
+    """
+    bucket_name = bucket_info["name"]
+    bucket_region = bucket_info["region"]
+
+    result = {
+        "bucket_name": bucket_name,
+        "region": bucket_region,
+        "creation_date": bucket_info.get("creation_date"),
+        "encryption_type": "None",
+        "encryption_algorithm": None,
+        "kms_key_id": None,
+        "kms_key_arn": None,
+        "bucket_key_enabled": False,
+        "error": None,
+    }
+
+    try:
+        # Get S3 client for the bucket's region
+        s3_client = aws_auth.get_client("s3", region_name=bucket_region)
+
+        # Get encryption configuration
+        try:
+            encryption_response = s3_client.get_bucket_encryption(Bucket=bucket_name)
+            rules = encryption_response.get("ServerSideEncryptionConfiguration", {}).get(
+                "Rules", []
+            )
+
+            if rules:
+                # Get the first rule's encryption settings
+                rule = rules[0]
+                sse_config = rule.get("ApplyServerSideEncryptionByDefault", {})
+
+                algorithm = sse_config.get("SSEAlgorithm")
+                result["encryption_algorithm"] = algorithm
+
+                if algorithm == "AES256":
+                    result["encryption_type"] = "SSE-S3"
+                elif algorithm == "aws:kms":
+                    result["encryption_type"] = "SSE-KMS"
+                    kms_key_id = sse_config.get("KMSMasterKeyID")
+                    result["kms_key_id"] = kms_key_id
+
+                    # Get KMS key details if available
+                    if kms_key_id:
+                        try:
+                            kms_client = aws_auth.get_client("kms", region_name=bucket_region)
+                            key_response = kms_client.describe_key(KeyId=kms_key_id)
+                            key_metadata = key_response.get("KeyMetadata", {})
+                            result["kms_key_arn"] = key_metadata.get("Arn")
+                        except Exception as e:
+                            logger.debug(f"Error getting KMS key details: {e}")
+
+                # Check if bucket key is enabled
+                result["bucket_key_enabled"] = rule.get("BucketKeyEnabled", False)
+
+        except s3_client.exceptions.ServerSideEncryptionConfigurationNotFoundError:
+            result["encryption_type"] = "None"
+        except Exception as e:
+            result["error"] = str(e)
+            logger.debug(f"Error getting encryption for {bucket_name}: {e}")
+
+    except Exception as e:
+        result["error"] = str(e)
+        logger.debug(f"Error analyzing bucket {bucket_name}: {e}")
+
+    return result
+
+
+def _analyze_bucket_encryption_parallel(
+    aws_auth: AWSAuth, buckets: List[Dict[str, Any]], max_workers: int
+) -> List[Dict[str, Any]]:
+    """Analyze encryption for multiple buckets in parallel.
+
+    Args:
+        aws_auth: AWSAuth instance
+        buckets: List of bucket info dictionaries
+        max_workers: Maximum number of parallel workers
+
+    Returns:
+        List of encryption analysis results
+    """
+    results = []
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        console=console,
+    ) as progress:
+        task = progress.add_task(
+            "Analyzing bucket encryption...", total=len(buckets)
+        )
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all tasks
+            future_to_bucket = {
+                executor.submit(_analyze_single_bucket_encryption, aws_auth, bucket): bucket
+                for bucket in buckets
+            }
+
+            # Collect results as they complete
+            for future in as_completed(future_to_bucket):
+                bucket = future_to_bucket[future]
+                try:
+                    result = future.result()
+                    results.append(result)
+                except Exception as e:
+                    logger.error(f"Failed to analyze bucket {bucket['name']}: {e}")
+                    results.append(
+                        {
+                            "bucket_name": bucket["name"],
+                            "region": bucket.get("region", "unknown"),
+                            "encryption_type": "Error",
+                            "error": str(e),
+                        }
+                    )
+                finally:
+                    progress.advance(task)
+
+    return results
+
+
+def _categorize_encryption_results(
+    results: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """Categorize encryption results by type.
+
+    Args:
+        results: List of encryption analysis results
+
+    Returns:
+        Dictionary with categorized results and statistics
+    """
+    categorized = {
+        "sse_s3": [],
+        "sse_kms": [],
+        "unencrypted": [],
+        "errors": [],
+        "total_buckets": len(results),
+        "statistics": {},
+    }
+
+    for result in results:
+        if result.get("error"):
+            categorized["errors"].append(result)
+        elif result["encryption_type"] == "SSE-S3":
+            categorized["sse_s3"].append(result)
+        elif result["encryption_type"] == "SSE-KMS":
+            categorized["sse_kms"].append(result)
+        elif result["encryption_type"] == "None":
+            categorized["unencrypted"].append(result)
+        else:
+            categorized["errors"].append(result)
+
+    # Calculate statistics
+    categorized["statistics"] = {
+        "total_buckets": categorized["total_buckets"],
+        "sse_s3_count": len(categorized["sse_s3"]),
+        "sse_kms_count": len(categorized["sse_kms"]),
+        "unencrypted_count": len(categorized["unencrypted"]),
+        "error_count": len(categorized["errors"]),
+        "encrypted_count": len(categorized["sse_s3"]) + len(categorized["sse_kms"]),
+    }
+
+    # Calculate percentages
+    if categorized["total_buckets"] > 0:
+        total = categorized["total_buckets"]
+        categorized["statistics"]["sse_s3_percentage"] = round(
+            (len(categorized["sse_s3"]) / total) * 100, 1
+        )
+        categorized["statistics"]["sse_kms_percentage"] = round(
+            (len(categorized["sse_kms"]) / total) * 100, 1
+        )
+        categorized["statistics"]["unencrypted_percentage"] = round(
+            (len(categorized["unencrypted"]) / total) * 100, 1
+        )
+        categorized["statistics"]["encrypted_percentage"] = round(
+            (categorized["statistics"]["encrypted_count"] / total) * 100, 1
+        )
+
+    return categorized
+
+
+def _display_encryption_summary(categorized: Dict[str, Any]) -> None:
+    """Display encryption analysis summary to console.
+
+    Args:
+        categorized: Categorized encryption results
+    """
+    stats = categorized["statistics"]
+
+    console.print("\n[bold cyan]═══ S3 Encryption Analysis Summary ═══[/bold cyan]\n")
+
+    summary_data = {
+        "Total Buckets": stats["total_buckets"],
+        "Encrypted (Total)": f"{stats['encrypted_count']} ({stats.get('encrypted_percentage', 0)}%)",
+        "├─ SSE-S3 (AES256)": f"{stats['sse_s3_count']} ({stats.get('sse_s3_percentage', 0)}%)",
+        "└─ SSE-KMS": f"{stats['sse_kms_count']} ({stats.get('sse_kms_percentage', 0)}%)",
+        "Unencrypted": f"[red]{stats['unencrypted_count']} ({stats.get('unencrypted_percentage', 0)}%)[/red]",
+        "Errors": f"[yellow]{stats['error_count']}[/yellow]",
+    }
+
+    for key, value in summary_data.items():
+        console.print(f"  {key}: {value}")
+
+    # Warning for unencrypted buckets
+    if stats["unencrypted_count"] > 0:
+        console.print(
+            f"\n[yellow]⚠️  Warning: {stats['unencrypted_count']} bucket(s) are unencrypted![/yellow]"
+        )
+        console.print("[dim]Unencrypted buckets:[/dim]")
+        for bucket in categorized["unencrypted"][:10]:  # Show first 10
+            console.print(f"  • {bucket['bucket_name']} ({bucket['region']})")
+        if len(categorized["unencrypted"]) > 10:
+            console.print(f"  ... and {len(categorized['unencrypted']) - 10} more")
+
+
+def _generate_encryption_html_report(
+    categorized: Dict[str, Any],
+    output_path: Path,
+    config: Config,
+    tag_filter: TagFilter,
+    region_filter: Optional[str],
+) -> None:
+    """Generate HTML report for encryption analysis.
+
+    Args:
+        categorized: Categorized encryption results
+        output_path: Path to save the HTML report
+        config: Config instance
+        tag_filter: Tag filter used
+        region_filter: Region filter used
+    """
+    # Create metadata
+    custom_fields = {}
+    if region_filter:
+        custom_fields["Region Filter"] = region_filter
+    if tag_filter.enabled:
+        custom_fields["Tag Filter"] = tag_filter.create_filter_display()
+
+    metadata = ReportMetadata(
+        title="S3 Bucket Encryption Analysis",
+        aws_profile=config.aws_profile or "default",
+        aws_region=config.aws_region or "all regions",
+        description="Comprehensive analysis of S3 bucket encryption configurations",
+        custom_fields=custom_fields,
+    )
+
+    # Create report generator
+    report = HTMLReportGenerator(metadata)
+
+    # Add summary statistics section
+    stats = categorized["statistics"]
+    stats_html = create_stats_grid_html(
+        {
+            "Total Buckets": stats["total_buckets"],
+            "Encrypted": f"{stats['encrypted_count']} ({stats.get('encrypted_percentage', 0)}%)",
+            "SSE-S3": stats["sse_s3_count"],
+            "SSE-KMS": stats["sse_kms_count"],
+            "Unencrypted": stats["unencrypted_count"],
+        }
+    )
+    report.add_section(
+        title="Summary Statistics",
+        content=stats_html,
+        section_type="summary",
+    )
+
+    # Add SSE-KMS buckets section
+    if categorized["sse_kms"]:
+        kms_headers = ["Bucket Name", "Region", "KMS Key ID", "Bucket Key"]
+        kms_rows = []
+        for bucket in categorized["sse_kms"]:
+            kms_rows.append(
+                [
+                    bucket["bucket_name"],
+                    bucket["region"],
+                    bucket.get("kms_key_id", "Unknown"),
+                    create_badge(
+                        "Enabled" if bucket.get("bucket_key_enabled") else "Disabled",
+                        "success" if bucket.get("bucket_key_enabled") else "warning",
+                    ),
+                ]
+            )
+        kms_table = create_table_html(kms_headers, kms_rows)
+        report.add_section(
+            title=f"SSE-KMS Encrypted Buckets ({len(categorized['sse_kms'])})",
+            content=kms_table,
+            section_type="success",
+            collapsible=True,
+            expanded=True,
+        )
+
+    # Add SSE-S3 buckets section
+    if categorized["sse_s3"]:
+        s3_headers = ["Bucket Name", "Region", "Encryption"]
+        s3_rows = []
+        for bucket in categorized["sse_s3"]:
+            s3_rows.append(
+                [
+                    bucket["bucket_name"],
+                    bucket["region"],
+                    create_badge("AES256", "primary"),
+                ]
+            )
+        s3_table = create_table_html(s3_headers, s3_rows)
+        report.add_section(
+            title=f"SSE-S3 Encrypted Buckets ({len(categorized['sse_s3'])})",
+            content=s3_table,
+            section_type="success",
+            collapsible=True,
+            expanded=False,
+        )
+
+    # Add unencrypted buckets section (WARNING)
+    if categorized["unencrypted"]:
+        unenc_headers = ["Bucket Name", "Region", "Status"]
+        unenc_rows = []
+        for bucket in categorized["unencrypted"]:
+            unenc_rows.append(
+                [
+                    bucket["bucket_name"],
+                    bucket["region"],
+                    create_badge("Unencrypted", "error"),
+                ]
+            )
+        unenc_table = create_table_html(unenc_headers, unenc_rows)
+        report.add_section(
+            title=f"⚠️ Unencrypted Buckets ({len(categorized['unencrypted'])})",
+            content=unenc_table,
+            section_type="warning",
+            collapsible=True,
+            expanded=True,
+        )
+
+    # Add errors section if any
+    if categorized["errors"]:
+        error_headers = ["Bucket Name", "Region", "Error"]
+        error_rows = []
+        for bucket in categorized["errors"]:
+            error_rows.append(
+                [
+                    bucket["bucket_name"],
+                    bucket.get("region", "unknown"),
+                    bucket.get("error", "Unknown error"),
+                ]
+            )
+        error_table = create_table_html(error_headers, error_rows)
+        report.add_section(
+            title=f"Errors ({len(categorized['errors'])})",
+            content=error_table,
+            section_type="error",
+            collapsible=True,
+            expanded=False,
+        )
+
+    # Save the report
+    report.save(output_path)
