@@ -76,29 +76,29 @@
         },
         "boto3": {
             "hashes": [
-                "sha256:1885f252d715a5810bb4e0c5bbebfa8e9018b025febf5be3d58540626e7b43d2",
-                "sha256:9b92943d253bc837323079fe88460e741cb2eb80abaebcb558b2446bdb4049d6"
+                "sha256:8128bde4f9d5ffce129c76d1a2efe220e3af967a2ad30bc305ba088bbc96343d",
+                "sha256:ccb5e757dd62698d25766cc54cf5c47bea43287efa59c93cf1df8c8fbc26eeda"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.9'",
-            "version": "==1.42.21"
+            "version": "==1.42.25"
         },
         "botocore": {
             "hashes": [
-                "sha256:6b59973a3ba8c3cfd5123f2656fef2339beee9f6483b8bc12bb00c5453ea2c6d",
-                "sha256:db8f99d186156da42feb4fd2098017383d9b155097290cc53da7258f6e652c39"
+                "sha256:470261966aab1d09a1cd4ba56810098834443602846559ba9504f6613dfa52dc",
+                "sha256:7ae79d1f77d3771e83e4dd46bce43166a1ba85d58a49cffe4c4a721418616054"
             ],
             "markers": "python_version >= '3.9'",
-            "version": "==1.42.21"
+            "version": "==1.42.25"
         },
         "build": {
             "hashes": [
-                "sha256:698edd0ea270bde950f53aed21f3a0135672206f3911e0176261a31e0e07b397",
-                "sha256:7145f0b5061ba90a1500d60bd1b13ca0a8a4cebdd0cc16ed8adf1c0e739f43b4"
+                "sha256:6a07c1b8eb6f2b311b96fcbdbce5dab5fe637ffda0fd83c9cac622e927501596",
+                "sha256:f1b91b925aa322be454f8330c6fb48b465da993d1e7e7e6fa35027ec49f3c936"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.9'",
-            "version": "==1.3.0"
+            "version": "==1.4.0"
         },
         "cachetools": {
             "hashes": [
@@ -1484,7 +1484,6 @@
                 "sha256:1b62b6884944a57dbe321509ab94fd4d3b307075e0c2eae991ac71ee15ad38ed",
                 "sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4"
             ],
-            "index": "pypi",
             "markers": "python_version >= '3.9'",
             "version": "==2.6.3"
         },
