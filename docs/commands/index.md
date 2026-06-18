@@ -43,6 +43,7 @@ All 18 command groups with their complete subcommand list. Click any service nam
 | [**bedrock**](bedrock.md) | Amazon Bedrock AI/ML operations | `list-models`, `model-details`, `list-custom-models`, `list-model-jobs`, `regions` (5 commands) |
 | [**cloudformation**](cloudformation.md) | CloudFormation stack management | `backup`, `list-stacks`, `stack-details` (3 commands) |
 | [**cloudfront**](cloudfront.md) | CloudFront distribution management | `update-logging`, `list-distributions`, `distribution-details`, `invalidate` (4 commands) |
+| [**dynamodb**](dynamodb.md) | DynamoDB cost and capacity analysis | `cost-analysis` (1 command) |
 | [**ecr**](ecr.md) | Elastic Container Registry operations | `copy-image`, `list-repositories`, `list-images`, `create-repository`, `delete-repository`, `get-login` (6 commands) |
 | [**iam**](iam.md) | IAM management and auditing | `audit`, `list-roles`, `list-policies`, `role-details`, `policy-details` (5 commands) |
 | [**logs**](logs.md) | CloudWatch logs management | `list-groups`, `download`, `set-retention`, `delete-group`, `combine`, `aggregate` (6 commands) |
