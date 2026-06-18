@@ -16,6 +16,7 @@ from .commands import (
     cloudformation,
     cloudfront,
     costops,
+    dynamodb,
     ecr,
     iam,
     inventory,
@@ -164,6 +165,7 @@ main.add_command(billing.billing_group)
 main.add_command(cloudformation.cloudformation_group)
 main.add_command(cloudfront.cloudfront_group)
 main.add_command(costops.costops_group)
+main.add_command(dynamodb.dynamodb_group)
 main.add_command(ecr.ecr_group)
 main.add_command(inventory.inventory_group)
 main.add_command(logs.logs_group)
