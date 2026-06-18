@@ -1,15 +1,13 @@
 """Main CLI entry point for AWS Cloud Utilities."""
 
-import sys
 import logging
+import sys
 from typing import Optional
+
 import click
 from rich.console import Console
 from rich.traceback import install
 
-from .core.config import Config
-from .core.auth import AWSAuth
-from .core.exceptions import AWSCloudUtilitiesError, ConfigurationError, AWSError
 from .commands import (
     account,
     awsconfig,
@@ -19,17 +17,20 @@ from .commands import (
     cloudfront,
     costops,
     ecr,
+    iam,
     inventory,
     logs,
+    networking,
     rds,
+    s3,
     security,
     stepfunctions,
-    s3,
-    iam,
-    networking,
     support,
     waf,
 )
+from .core.auth import AWSAuth
+from .core.config import Config
+from .core.exceptions import AWSCloudUtilitiesError, AWSError, ConfigurationError
 
 # Install rich traceback handler
 install(show_locals=True)

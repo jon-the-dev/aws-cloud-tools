@@ -1,17 +1,17 @@
 """RDS command module for AWS Cloud Utilities."""
 
-import logging
 import json
+import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
+
 import click
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
-from rich.text import Text
+from rich.table import Table
 
-from ..core.config import Config
 from ..core.auth import AWSAuth
+from ..core.config import Config
 from ..core.exceptions import AWSCloudUtilitiesError
 from ..core.tag_filter import TagFilter
 
@@ -369,7 +369,7 @@ def display_troubleshooting_results(
 ) -> None:
     """Display troubleshooting results in a formatted way."""
 
-    console.print(f"\n[bold blue]MySQL Connection Troubleshooting Report[/bold blue]")
+    console.print("\n[bold blue]MySQL Connection Troubleshooting Report[/bold blue]")
     console.print(f"[dim]Instance: {db_instance_identifier}[/dim]\n")
 
     # Instance Information
@@ -537,7 +537,11 @@ def troubleshoot_mysql(
 )
 @click.pass_context
 def list_instances(
-    ctx: click.Context, engine: Optional[str], status: Optional[str], tag_key: Optional[str], tag_value: Optional[str]
+    ctx: click.Context,
+    engine: Optional[str],
+    status: Optional[str],
+    tag_key: Optional[str],
+    tag_value: Optional[str],
 ) -> None:
     """List RDS instances in the current region.
 
@@ -548,12 +552,13 @@ def list_instances(
         aws-cloud-utilities rds list-instances --tag-key Environment --tag-value Production
     """
     try:
-        config: Config = ctx.obj["config"]
         aws_auth: AWSAuth = ctx.obj["aws_auth"]
 
         # Validate tag filter options
         if tag_value and not tag_key:
-            console.print("[red]Error: --tag-value requires --tag-key to be specified[/red]")
+            console.print(
+                "[red]Error: --tag-value requires --tag-key to be specified[/red]"
+            )
             return
 
         # Create tag filter
@@ -561,7 +566,9 @@ def list_instances(
 
         # Display tag filter if enabled
         if tag_filter.enabled:
-            console.print(f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]")
+            console.print(
+                f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]"
+            )
 
         session = aws_auth.session
         rds_client = session.client("rds")
@@ -588,14 +595,18 @@ def list_instances(
         # Apply tag filter (requires fetching tags for each instance)
         if tag_filter.enabled:
             filtered_instances = []
-            with console.status(f"[bold green]Filtering {len(instances)} instances by tags..."):
+            with console.status(
+                f"[bold green]Filtering {len(instances)} instances by tags..."
+            ):
                 for instance in instances:
                     try:
                         # Get instance ARN
                         instance_arn = instance.get("DBInstanceArn")
                         if instance_arn:
                             # Fetch tags
-                            tags_response = rds_client.list_tags_for_resource(ResourceName=instance_arn)
+                            tags_response = rds_client.list_tags_for_resource(
+                                ResourceName=instance_arn
+                            )
                             tag_list = tags_response.get("TagList", [])
                             # Convert to dict format for tag filter
                             instance["Tags"] = tag_list
@@ -604,12 +615,16 @@ def list_instances(
                         if tag_filter.matches(instance):
                             filtered_instances.append(instance)
                     except Exception as e:
-                        logger.warning(f"Error fetching tags for instance {instance.get('DBInstanceIdentifier')}: {e}")
+                        logger.warning(
+                            f"Error fetching tags for instance {instance.get('DBInstanceIdentifier')}: {e}"
+                        )
                         # If we can't fetch tags, exclude the instance from filtered results
                         pass
 
             instances = filtered_instances
-            console.print(f"[dim]Tag filter reduced instances from {instances_before_filter} to {len(instances)}[/dim]")
+            console.print(
+                f"[dim]Tag filter reduced instances from {instances_before_filter} to {len(instances)}[/dim]"
+            )
 
         if not instances:
             console.print(

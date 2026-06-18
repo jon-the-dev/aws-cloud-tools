@@ -5,10 +5,10 @@ across different AWS commands to create formatted, responsive HTML reports.
 """
 
 import logging
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Union
-from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -408,47 +408,39 @@ class HTMLReportGenerator:
         metadata_items = []
 
         # Generated timestamp
-        metadata_items.append(
-            f"""
+        metadata_items.append(f"""
             <div class="metadata-item">
                 <div class="metadata-label">Generated At</div>
                 <div class="metadata-value">{self.metadata.generated_at.strftime('%Y-%m-%d %H:%M:%S UTC')}</div>
             </div>
-            """
-        )
+            """)
 
         # AWS Profile
         if self.metadata.aws_profile:
-            metadata_items.append(
-                f"""
+            metadata_items.append(f"""
                 <div class="metadata-item">
                     <div class="metadata-label">AWS Profile</div>
                     <div class="metadata-value">{self.metadata.aws_profile}</div>
                 </div>
-                """
-            )
+                """)
 
         # AWS Region
         if self.metadata.aws_region:
-            metadata_items.append(
-                f"""
+            metadata_items.append(f"""
                 <div class="metadata-item">
                     <div class="metadata-label">AWS Region</div>
                     <div class="metadata-value">{self.metadata.aws_region}</div>
                 </div>
-                """
-            )
+                """)
 
         # Custom fields
         for key, value in self.metadata.custom_fields.items():
-            metadata_items.append(
-                f"""
+            metadata_items.append(f"""
                 <div class="metadata-item">
                     <div class="metadata-label">{key}</div>
                     <div class="metadata-value">{value}</div>
                 </div>
-                """
-            )
+                """)
 
         html = f"""
         <div class="metadata">
@@ -618,14 +610,12 @@ def create_stats_grid_html(stats: Dict[str, Union[str, int, float]]) -> str:
     """
     stat_cards = []
     for label, value in stats.items():
-        stat_cards.append(
-            f"""
+        stat_cards.append(f"""
             <div class="stat-card">
                 <div class="stat-label">{label}</div>
                 <div class="stat-value">{value}</div>
             </div>
-            """
-        )
+            """)
 
     html = f"""
     <div class="stats-grid">

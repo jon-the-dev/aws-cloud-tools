@@ -1,17 +1,17 @@
 """AWS Billing and Cost and Usage Report (CUR) management commands."""
 
-import logging
 import json
+import logging
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
 import click
 from rich.console import Console
-from rich.table import Table
 
-from ..core.config import Config
 from ..core.auth import AWSAuth
-from ..core.utils import print_output, save_to_file, get_timestamp
+from ..core.config import Config
 from ..core.exceptions import AWSError
+from ..core.utils import get_timestamp, print_output, save_to_file
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -208,9 +208,7 @@ class CURManager:
                 )
                 self._create_bucket_policy(s3_bucket, s3_prefix)
 
-            response = self.cur_client.put_report_definition(
-                ReportDefinition=report_definition
-            )
+            self.cur_client.put_report_definition(ReportDefinition=report_definition)
             self.logger.info(f"Successfully created CUR report: {report_name}")
             return True
 
@@ -450,7 +448,6 @@ def cur_create(
     schema_elements: tuple,
 ) -> None:
     """Create a new Cost and Usage Report (CUR 2.0)."""
-    config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
 
     try:
@@ -489,7 +486,6 @@ def cur_create(
 @click.pass_context
 def cur_delete(ctx: click.Context, report_name: str, confirm: bool) -> None:
     """Delete a Cost and Usage Report."""
-    config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
 
     try:
@@ -524,7 +520,6 @@ def cur_delete(ctx: click.Context, report_name: str, confirm: bool) -> None:
 @click.pass_context
 def cur_validate_bucket(ctx: click.Context, bucket_name: str, prefix: str) -> None:
     """Validate S3 bucket permissions for CUR delivery."""
-    config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
 
     try:

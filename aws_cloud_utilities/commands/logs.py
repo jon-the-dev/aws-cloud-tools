@@ -1,37 +1,34 @@
 """AWS CloudWatch Logs management and processing commands."""
 
-import logging
-import json
 import gzip
+import json
+import logging
 import re
-import os
 import shutil
-import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple, Union
-from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Dict, List, Optional, Tuple
+
 import click
 from rich.console import Console
 from rich.progress import (
+    BarColumn,
     Progress,
     SpinnerColumn,
-    TextColumn,
-    BarColumn,
     TaskProgressColumn,
+    TextColumn,
 )
 
-from ..core.config import Config
 from ..core.auth import AWSAuth
+from ..core.config import Config
 from ..core.utils import (
+    ensure_directory,
+    get_timestamp,
+    parallel_execute,
     print_output,
     save_to_file,
-    get_timestamp,
-    get_detailed_timestamp,
-    ensure_directory,
-    parallel_execute,
 )
-from ..core.exceptions import AWSError
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -208,7 +205,7 @@ def download(
         # Display results
         _display_download_results(config, download_results)
 
-        console.print(f"\n[green]✅ Log download completed![/green]")
+        console.print("\n[green]✅ Log download completed![/green]")
         console.print(f"[dim]Logs saved to: {output_path}[/dim]")
 
     except Exception as e:
@@ -338,7 +335,7 @@ def delete_group(
         target_region = region or config.aws_region or "us-east-1"
 
         # Show log group details
-        console.print(f"[yellow]Log group to delete:[/yellow]")
+        console.print("[yellow]Log group to delete:[/yellow]")
         console.print(f"  Name: {log_group}")
         console.print(f"  Region: {target_region}")
 
@@ -426,7 +423,7 @@ def combine(
             title="Log Combine Results",
         )
 
-        console.print(f"\n[green]✅ Log files combined successfully![/green]")
+        console.print("\n[green]✅ Log files combined successfully![/green]")
         console.print(f"[dim]Combined log saved to: {output_file}[/dim]")
 
     except Exception as e:
@@ -497,7 +494,7 @@ def aggregate(
 
         output_path = Path(output_dir).resolve()
 
-        console.print(f"[blue]Aggregating AWS log files[/blue]")
+        console.print("[blue]Aggregating AWS log files[/blue]")
         console.print(f"[dim]Input directory: {input_path}[/dim]")
         console.print(f"[dim]Output directory: {output_path}[/dim]")
         console.print(f"[dim]Target size: {target_size} MB[/dim]")
@@ -533,7 +530,7 @@ def aggregate(
         # Display results
         _display_aggregation_results(config, aggregation_results)
 
-        console.print(f"\n[green]✅ Log aggregation completed![/green]")
+        console.print("\n[green]✅ Log aggregation completed![/green]")
         console.print(f"[dim]Aggregated files saved to: {output_path}[/dim]")
 
     except Exception as e:

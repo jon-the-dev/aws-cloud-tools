@@ -1,31 +1,23 @@
 """AWS CloudFormation management and backup commands."""
 
-import logging
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
 import click
 from rich.console import Console
-from rich.progress import (
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    BarColumn,
-    TaskProgressColumn,
-)
 
-from ..core.config import Config
 from ..core.auth import AWSAuth
+from ..core.config import Config
 from ..core.utils import (
+    ensure_directory,
+    get_detailed_timestamp,
+    parallel_execute,
     print_output,
     save_to_file,
-    get_timestamp,
-    get_detailed_timestamp,
-    ensure_directory,
-    parallel_execute,
 )
-from ..core.exceptions import AWSError
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -145,7 +137,7 @@ def backup(
         _display_cloudformation_summary(config, backup_summary, output_path)
 
         console.print(
-            f"\n[green]✅ CloudFormation backup completed successfully![/green]"
+            "\n[green]✅ CloudFormation backup completed successfully![/green]"
         )
         console.print(f"[dim]Files saved to: {output_path.absolute()}[/dim]")
 

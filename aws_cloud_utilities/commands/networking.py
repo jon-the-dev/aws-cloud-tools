@@ -1,18 +1,16 @@
 """AWS networking and IP management commands."""
 
-import logging
 import json
-import requests
-from datetime import datetime
+import logging
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
 import click
+import requests
 from rich.console import Console
 
 from ..core.config import Config
-from ..core.auth import AWSAuth
-from ..core.utils import print_output, save_to_file, get_timestamp, ensure_directory
-from ..core.exceptions import AWSError
+from ..core.utils import get_timestamp, print_output, save_to_file
 
 logger = logging.getLogger(__name__)
 console = Console()

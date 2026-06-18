@@ -1,30 +1,21 @@
 """AWS Step Functions management and monitoring commands."""
 
-import logging
 import json
-from datetime import datetime, timedelta
+import logging
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, Optional
+
 import click
 from rich.console import Console
-from rich.progress import (
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    BarColumn,
-    TaskProgressColumn,
-)
 
-from ..core.config import Config
 from ..core.auth import AWSAuth
+from ..core.config import Config
 from ..core.utils import (
+    get_timestamp,
     print_output,
     save_to_file,
-    get_timestamp,
-    get_detailed_timestamp,
-    ensure_directory,
 )
-from ..core.exceptions import AWSError
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -253,7 +244,6 @@ def execute_state_machine(
     timeout: int,
 ) -> None:
     """Start an execution of a Step Functions state machine."""
-    config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
 
     try:
@@ -284,7 +274,7 @@ def execute_state_machine(
             )
             execution_arn = response["executionArn"]
 
-            console.print(f"[green]✅ Execution started successfully[/green]")
+            console.print("[green]✅ Execution started successfully[/green]")
             console.print(f"[dim]Execution ARN: {execution_arn}[/dim]")
 
         except Exception as e:
@@ -444,7 +434,6 @@ def show_execution_logs(
     output_file: Optional[str],
 ) -> None:
     """Show CloudWatch logs for a Step Functions execution."""
-    config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
 
     try:

@@ -1,18 +1,18 @@
 """Core utilities and configuration for AWS Cloud Utilities."""
 
-from .config import Config
 from .auth import AWSAuth
-from .utils import get_aws_account_id, get_all_regions
-from .exceptions import AWSCloudUtilitiesError, ConfigurationError, AWSError
+from .config import Config
+from .exceptions import AWSCloudUtilitiesError, AWSError, ConfigurationError
 from .html_report import (
     HTMLReportGenerator,
     ReportMetadata,
     ReportSection,
-    create_table_html,
-    create_stats_grid_html,
     create_badge,
     create_list_html,
+    create_stats_grid_html,
+    create_table_html,
 )
+from .utils import get_all_regions, get_aws_account_id
 
 __all__ = [
     "Config",

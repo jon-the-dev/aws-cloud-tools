@@ -2,16 +2,16 @@
 
 from .aws_resources import (
     AWSResource,
-    EC2Instance,
-    S3Bucket,
-    BedrockModel,
     BedrockCustomModel,
+    BedrockModel,
     BedrockModelCustomizationJob,
-    IAMRole,
-    IAMPolicy,
-    IAMUser,
-    IAMGroup,
     CloudWatchLogGroup,
+    EC2Instance,
+    IAMGroup,
+    IAMPolicy,
+    IAMRole,
+    IAMUser,
+    S3Bucket,
 )
 
 __all__ = [

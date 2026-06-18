@@ -1,33 +1,27 @@
 """AWS ECR (Elastic Container Registry) management commands."""
 
-import logging
-import json
-import subprocess
-import shutil
 import base64
-from datetime import datetime, timedelta
+import logging
+import shutil
+import subprocess
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, Optional
+
 import click
 from rich.console import Console
 from rich.progress import (
     Progress,
     SpinnerColumn,
     TextColumn,
-    BarColumn,
-    TaskProgressColumn,
 )
 
-from ..core.config import Config
 from ..core.auth import AWSAuth
+from ..core.config import Config
 from ..core.utils import (
+    get_timestamp,
     print_output,
     save_to_file,
-    get_timestamp,
-    get_detailed_timestamp,
-    ensure_directory,
 )
-from ..core.exceptions import AWSError
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -430,7 +424,7 @@ def create_repository(
             response = ecr_client.create_repository(**create_params)
             repository = response["repository"]
 
-            console.print(f"[green]✅ Repository created successfully[/green]")
+            console.print("[green]✅ Repository created successfully[/green]")
 
             # Display repository details
             repo_details = {
@@ -503,12 +497,12 @@ def delete_repository(
             raise click.Abort()
 
         # Show repository details
-        console.print(f"[yellow]Repository to delete:[/yellow]")
+        console.print("[yellow]Repository to delete:[/yellow]")
         console.print(f"  Name: {repository_name}")
         console.print(f"  URI: {repository.get('repositoryUri', '')}")
         console.print(f"  Region: {target_region}")
         console.print(
-            f"  Created: {repository.get('createdAt', '').strftime('%Y-%m-%d %H:%M:%S') if repository.get('createdAt') else ''}"
+            f"  Created: {repository.get('createdAt', '').strftime('%Y-%m-%d %H:%M:%S') if repository.get('createdAt') else ''}"  # noqa: E501
         )
 
         # Confirmation
@@ -571,14 +565,14 @@ def get_login(ctx: click.Context, region: Optional[str], print_command: bool) ->
         )
 
         if print_command:
-            console.print(f"[blue]Docker login command:[/blue]")
+            console.print("[blue]Docker login command:[/blue]")
             console.print(f"echo '{password}' | {login_command}")
         else:
             if not shutil.which("docker"):
                 console.print(
                     "[red]Docker is not installed or not available in PATH[/red]"
                 )
-                console.print(f"[blue]Manual login command:[/blue]")
+                console.print("[blue]Manual login command:[/blue]")
                 console.print(f"echo '{password}' | {login_command}")
                 return
 

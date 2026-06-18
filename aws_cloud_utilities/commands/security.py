@@ -1,32 +1,22 @@
 """AWS security monitoring and certificate management commands."""
 
 import logging
-import json
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
-from collections import defaultdict
+from typing import Any, Dict, List, Optional, Tuple
+
 import click
 from rich.console import Console
-from rich.progress import (
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    BarColumn,
-    TaskProgressColumn,
-)
 
-from ..core.config import Config
 from ..core.auth import AWSAuth
+from ..core.config import Config
 from ..core.utils import (
+    get_timestamp,
+    parallel_execute,
     print_output,
     save_to_file,
-    get_timestamp,
-    get_detailed_timestamp,
-    ensure_directory,
-    parallel_execute,
 )
-from ..core.exceptions import AWSError
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -667,7 +657,7 @@ def _display_security_metrics(
 
                         rules = acl_metrics.get("Rules", {})
                         if rules:
-                            console.print(f"    Rules:")
+                            console.print("    Rules:")
                             for rule_name, blocked_count in rules.items():
                                 if blocked_count > 0:
                                     console.print(
