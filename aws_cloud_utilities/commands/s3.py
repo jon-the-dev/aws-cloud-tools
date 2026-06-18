@@ -432,7 +432,7 @@ def nuke_bucket(
 
 
 @s3_group.command(name="bucket-details")
-@click.argument("bucket_name")
+@click.argument("bucket_name", required=False)
 @click.option(
     "--region", help="AWS region where the bucket is located (default: auto-detect)"
 )
@@ -449,12 +449,15 @@ def nuke_bucket(
     "--include-all", is_flag=True, help="Include all available bucket details"
 )
 @click.option(
+    "--all-buckets", is_flag=True, help="Get details for every bucket in the account"
+)
+@click.option(
     "--output-file", help="Output file for bucket details (supports .json, .yaml)"
 )
 @click.pass_context
 def bucket_details(
     ctx: click.Context,
-    bucket_name: str,
+    bucket_name: Optional[str],
     region: Optional[str],
     include_policies: bool,
     include_lifecycle: bool,
@@ -462,45 +465,84 @@ def bucket_details(
     include_website: bool,
     include_logging: bool,
     include_all: bool,
+    all_buckets: bool,
     output_file: Optional[str],
 ) -> None:
-    """Get comprehensive details about an S3 bucket including configuration and settings."""
+    """Get comprehensive details about an S3 bucket including configuration and settings.
+
+    Provide BUCKET_NAME for a single bucket, or use --all-buckets for every bucket
+    in the account (runs per-bucket detail fetches in parallel).
+    """
     config: Config = ctx.obj["config"]
     aws_auth: AWSAuth = ctx.obj["aws_auth"]
 
-    try:
-        console.print(f"[blue]Getting details for S3 bucket: {bucket_name}[/blue]")
+    if not bucket_name and not all_buckets:
+        console.print(
+            "[red]Error: provide BUCKET_NAME or --all-buckets (not neither)[/red]"
+        )
+        raise click.Abort()
+    if bucket_name and all_buckets:
+        console.print(
+            "[red]Error: provide BUCKET_NAME or --all-buckets (not both)[/red]"
+        )
+        raise click.Abort()
 
-        # Get comprehensive bucket details
+    try:
+        inc_policies = include_all or include_policies
+        inc_lifecycle = include_all or include_lifecycle
+        inc_cors = include_all or include_cors
+        inc_website = include_all or include_website
+        inc_logging = include_all or include_logging
+
+        if all_buckets:
+            results = _get_all_bucket_details(
+                aws_auth,
+                config,
+                inc_policies,
+                inc_lifecycle,
+                inc_cors,
+                inc_website,
+                inc_logging,
+            )
+            print_output(
+                results,
+                output_format=config.aws_output_format,
+                title=f"S3 Bucket Details ({len(results)} buckets)",
+            )
+            if output_file:
+                output_path = Path(output_file)
+                file_format = output_path.suffix.lstrip(".") or "json"
+                timestamp = get_timestamp()
+                stem = output_path.stem
+                new_filename = f"{stem}_{timestamp}{output_path.suffix}"
+                output_path = output_path.parent / new_filename
+                save_to_file(results, output_path, file_format)
+                console.print(f"[green]Bucket details saved to:[/green] {output_path}")
+            return
+
+        console.print(f"[blue]Getting details for S3 bucket: {bucket_name}[/blue]")
         bucket_info = _get_bucket_details(
             aws_auth,
-            bucket_name,
+            bucket_name,  # type: ignore[arg-type]
             region,
-            include_all or include_policies,
-            include_all or include_lifecycle,
-            include_all or include_cors,
-            include_all or include_website,
-            include_all or include_logging,
+            inc_policies,
+            inc_lifecycle,
+            inc_cors,
+            inc_website,
+            inc_logging,
         )
-
-        # Display results
         print_output(
             bucket_info,
             output_format=config.aws_output_format,
             title=f"S3 Bucket Details: {bucket_name}",
         )
-
-        # Save to file if requested
         if output_file:
             output_path = Path(output_file)
             file_format = output_path.suffix.lstrip(".") or "json"
-
-            # Add timestamp to filename
             timestamp = get_timestamp()
             stem = output_path.stem
             new_filename = f"{stem}_{timestamp}{output_path.suffix}"
             output_path = output_path.parent / new_filename
-
             save_to_file(bucket_info, output_path, file_format)
             console.print(f"[green]Bucket details saved to:[/green] {output_path}")
 
@@ -1590,6 +1632,63 @@ def _initiate_restore_requests(
     """Initiate restore requests for objects."""
     # Simplified implementation
     return {"restore_requests_made": 0}
+
+
+def _get_all_bucket_details(
+    aws_auth: AWSAuth,
+    config: "Config",
+    include_policies: bool,
+    include_lifecycle: bool,
+    include_cors: bool,
+    include_website: bool,
+    include_logging: bool,
+) -> List[Dict[str, Any]]:
+    """Fetch full bucket details for every bucket in the account in parallel.
+
+    Args:
+        aws_auth: Authenticated AWS session wrapper.
+        config: Application config supplying ``workers`` count.
+        include_policies: Include bucket policies and ACLs.
+        include_lifecycle: Include lifecycle configuration.
+        include_cors: Include CORS configuration.
+        include_website: Include website configuration.
+        include_logging: Include logging configuration.
+
+    Returns:
+        List of per-bucket detail dicts as returned by ``_get_bucket_details``.
+    """
+    s3_client = aws_auth.get_client("s3")
+    response = s3_client.list_buckets()
+    buckets = response.get("Buckets", [])
+
+    if not buckets:
+        return []
+
+    def fetch_one(bucket: Dict[str, Any]) -> Dict[str, Any]:
+        """Fetch details for a single bucket, capturing errors gracefully."""
+        name = bucket["Name"]
+        try:
+            return _get_bucket_details(
+                aws_auth,
+                name,
+                None,
+                include_policies,
+                include_lifecycle,
+                include_cors,
+                include_website,
+                include_logging,
+            )
+        except Exception as exc:
+            logger.debug(f"Error fetching details for bucket {name}: {exc}")
+            return {"Bucket Name": name, "Error": str(exc)}
+
+    results: List[Dict[str, Any]] = []
+    with ThreadPoolExecutor(max_workers=config.workers) as executor:
+        futures = {executor.submit(fetch_one, b): b for b in buckets}
+        for future in as_completed(futures):
+            results.append(future.result())
+
+    return results
 
 
 def _get_bucket_details(
