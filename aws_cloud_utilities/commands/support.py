@@ -4,17 +4,16 @@ import csv
 import datetime
 import logging
 import os
-from typing import Dict, Any, List, Tuple
+from typing import Any, Dict, List, Tuple
+
 import click
-import requests
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.table import Table
 
-from ..core.config import Config
 from ..core.auth import AWSAuth
-from ..core.utils import print_output
+from ..core.config import Config
 from ..core.exceptions import AWSError
+from ..core.utils import print_output
 
 logger = logging.getLogger(__name__)
 console = Console()

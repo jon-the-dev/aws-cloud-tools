@@ -2,10 +2,11 @@
 
 import logging
 from typing import Any, Dict, List, Optional, Set
+
+import click
 from botocore.exceptions import ClientError
 
 from .auth import AWSAuth
-from .exceptions import AWSError
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +126,9 @@ class TagFilter:
         return [resource for resource in resources if self.matches(resource)]
 
     def get_resource_arns_by_tag(
-        self, resource_type_filters: Optional[List[str]] = None, region: Optional[str] = None
+        self,
+        resource_type_filters: Optional[List[str]] = None,
+        region: Optional[str] = None,
     ) -> Set[str]:
         """Get resource ARNs using AWS Resource Groups Tagging API.
 
@@ -145,7 +148,9 @@ class TagFilter:
             return set()
 
         try:
-            client = self.aws_auth.get_client("resourcegroupstaggingapi", region_name=region)
+            client = self.aws_auth.get_client(
+                "resourcegroupstaggingapi", region_name=region
+            )
 
             # Build tag filters
             tag_filters = [{"Key": self.tag_key}]
@@ -210,7 +215,3 @@ def create_tag_filter_options(command_func: callable) -> callable:
     )(command_func)
 
     return command_func
-
-
-# Import click for the decorator
-import click

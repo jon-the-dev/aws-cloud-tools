@@ -1,24 +1,23 @@
 """IAM management and auditing commands."""
 
-import logging
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Optional
+
 import click
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from ..core.config import Config
 from ..core.auth import AWSAuth
+from ..core.config import Config
 from ..core.utils import (
+    ensure_directory,
+    get_detailed_timestamp,
     print_output,
     save_to_file,
-    get_timestamp,
-    get_detailed_timestamp,
-    ensure_directory,
 )
-from ..core.exceptions import AWSError
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -130,7 +129,7 @@ def audit(
             title="IAM Audit Summary",
         )
 
-        console.print(f"\n[green]✅ IAM audit completed successfully![/green]")
+        console.print("\n[green]✅ IAM audit completed successfully![/green]")
         console.print(f"[dim]Files saved to: {output_path.absolute()}[/dim]")
 
     except Exception as e:

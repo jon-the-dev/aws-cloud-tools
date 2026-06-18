@@ -1,33 +1,30 @@
 """AWS CloudFront distribution management and monitoring commands."""
 
-import logging
 import json
+import logging
 import time
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
 import click
 from rich.console import Console
 from rich.progress import (
+    BarColumn,
     Progress,
     SpinnerColumn,
-    TextColumn,
-    BarColumn,
     TaskProgressColumn,
+    TextColumn,
 )
 
-from ..core.config import Config
 from ..core.auth import AWSAuth
+from ..core.config import Config
 from ..core.utils import (
+    get_timestamp,
     print_output,
     save_to_file,
-    get_timestamp,
-    get_detailed_timestamp,
-    ensure_directory,
-    parallel_execute,
 )
-from ..core.exceptions import AWSError
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -110,21 +107,21 @@ def update_logging(
 
         if setup_alarms and not sns_topic:
             console.print(
-                "[yellow]⚠️  Warning: No --sns-topic specified. Alarms will be created without notification actions.[/yellow]"
+                "[yellow]⚠️  Warning: No --sns-topic specified. Alarms will be created without notification actions.[/yellow]"  # noqa: E501
             )
             console.print("[dim]Use --sns-topic to enable alarm notifications[/dim]")
 
-        console.print(f"[blue]Processing CloudFront distributions[/blue]")
+        console.print("[blue]Processing CloudFront distributions[/blue]")
         if log_bucket:
             console.print(f"[dim]Target log bucket: {log_bucket}[/dim]")
         if setup_alarms:
             console.print(
-                f"[dim]Setting up CloudWatch alarms{' with SNS topic: ' + sns_topic if sns_topic else ' (no notifications)'}[/dim]"
+                f"[dim]Setting up CloudWatch alarms{' with SNS topic: ' + sns_topic if sns_topic else ' (no notifications)'}[/dim]"  # noqa: E501
             )
         elif remove_alarms:
-            console.print(f"[dim]Removing CloudWatch alarms[/dim]")
+            console.print("[dim]Removing CloudWatch alarms[/dim]")
         if dry_run:
-            console.print(f"[yellow]DRY RUN MODE: No changes will be made[/yellow]")
+            console.print("[yellow]DRY RUN MODE: No changes will be made[/yellow]")
 
         # Get CloudFront client
         cf_client = aws_auth.get_client("cloudfront")
@@ -175,7 +172,7 @@ def update_logging(
             console.print(f"[green]Update results saved to:[/green] {output_path}")
 
         console.print(
-            f"\n[green]✅ CloudFront distribution processing completed![/green]"
+            "\n[green]✅ CloudFront distribution processing completed![/green]"
         )
 
     except Exception as e:
@@ -425,7 +422,7 @@ def invalidate(
         print_output(
             result_data,
             output_format=config.aws_output_format,
-            title=f"CloudFront Invalidation Created",
+            title="CloudFront Invalidation Created",
         )
 
         # Save to file if requested
@@ -452,10 +449,10 @@ def invalidate(
             )
 
         console.print(
-            f"\n[green]✅ CloudFront invalidation created successfully![/green]"
+            "\n[green]✅ CloudFront invalidation created successfully![/green]"
         )
         console.print(
-            f"[dim]Note: Invalidations typically take 10-15 minutes to complete[/dim]"
+            "[dim]Note: Invalidations typically take 10-15 minutes to complete[/dim]"
         )
 
     except Exception as e:

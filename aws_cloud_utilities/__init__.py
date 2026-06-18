@@ -8,7 +8,7 @@ __description__ = (
 )
 
 from .core.config import Config
-from .core.utils import get_aws_account_id, get_all_regions
+from .core.utils import get_all_regions, get_aws_account_id
 
 __all__ = [
     "Config",

@@ -1,43 +1,39 @@
 """AWS S3 bucket and object management commands."""
 
-import logging
 import json
-import os
-import shutil
-import tempfile
+import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple, Union
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from collections import defaultdict
+from typing import Any, Dict, List, Optional
+
 import click
 from rich.console import Console
 from rich.progress import (
+    BarColumn,
     Progress,
     SpinnerColumn,
-    TextColumn,
-    BarColumn,
     TaskProgressColumn,
+    TextColumn,
 )
 
-from ..core.config import Config
 from ..core.auth import AWSAuth
-from ..core.utils import (
-    print_output,
-    save_to_file,
-    get_timestamp,
-    get_detailed_timestamp,
-    ensure_directory,
-    parallel_execute,
-)
-from ..core.exceptions import AWSError
-from ..core.tag_filter import TagFilter
+from ..core.config import Config
 from ..core.html_report import (
     HTMLReportGenerator,
     ReportMetadata,
-    create_table_html,
-    create_stats_grid_html,
     create_badge,
+    create_stats_grid_html,
+    create_table_html,
+)
+from ..core.tag_filter import TagFilter
+from ..core.utils import (
+    ensure_directory,
+    get_detailed_timestamp,
+    get_timestamp,
+    parallel_execute,
+    print_output,
+    save_to_file,
 )
 
 logger = logging.getLogger(__name__)
@@ -94,7 +90,9 @@ def list_buckets(
     try:
         # Validate tag filter options
         if tag_value and not tag_key:
-            console.print("[red]Error: --tag-value requires --tag-key to be specified[/red]")
+            console.print(
+                "[red]Error: --tag-value requires --tag-key to be specified[/red]"
+            )
             raise click.Abort()
 
         # Create tag filter
@@ -104,7 +102,9 @@ def list_buckets(
         if region:
             console.print(f"[dim]Filtering by region: {region}[/dim]")
         if tag_filter.enabled:
-            console.print(f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]")
+            console.print(
+                f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]"
+            )
         if include_size:
             console.print(
                 "[dim]Including size information from CloudWatch metrics[/dim]"
@@ -193,7 +193,7 @@ def create_bucket(
         s3_client = aws_auth.get_client("s3", region_name=target_region)
 
         # Create bucket
-        create_result = _create_s3_bucket(
+        _create_s3_bucket(
             s3_client,
             bucket_name,
             target_region,
@@ -333,7 +333,7 @@ def download(
         # Display results
         _display_download_results(config, download_results)
 
-        console.print(f"\n[green]✅ S3 download completed![/green]")
+        console.print("\n[green]✅ S3 download completed![/green]")
         console.print(f"[dim]Files saved to: {output_path}[/dim]")
 
     except Exception as e:
@@ -377,7 +377,7 @@ def nuke_bucket(
     try:
         target_region = region or config.aws_region or "us-east-1"
 
-        console.print(f"[red]⚠️  DESTRUCTIVE OPERATION: Nuke S3 bucket[/red]")
+        console.print("[red]⚠️  DESTRUCTIVE OPERATION: Nuke S3 bucket[/red]")
         console.print(f"[yellow]Bucket: {bucket_name}[/yellow]")
         console.print(f"[yellow]Region: {target_region}[/yellow]")
         if download_first:
@@ -739,8 +739,6 @@ def _get_all_buckets(
         if not buckets:
             return []
 
-        buckets_before_filter = len(buckets)
-
         def process_bucket(bucket: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             """Process a single bucket to get its details."""
             bucket_name = bucket["Name"]
@@ -769,7 +767,9 @@ def _get_all_buckets(
                         # Bucket has no tags, doesn't match filter
                         return None
                     except Exception as e:
-                        logger.debug(f"Error fetching tags for bucket {bucket_name}: {e}")
+                        logger.debug(
+                            f"Error fetching tags for bucket {bucket_name}: {e}"
+                        )
                         return None
 
                 bucket_data = {
@@ -1919,7 +1919,9 @@ def analyze_encryption(
         if region:
             console.print(f"[dim]Filtering by region: {region}[/dim]")
         if tag_filter.enabled:
-            console.print(f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]")
+            console.print(
+                f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]"
+            )
         console.print(f"[dim]Parallel workers: {num_workers}[/dim]")
 
         # Get S3 client
@@ -1964,7 +1966,7 @@ def analyze_encryption(
 
         console.print(f"\n[green]✅ HTML report generated:[/green] {report_path}")
         console.print(
-            f"[dim]Open this file in your browser to view the detailed report[/dim]"
+            "[dim]Open this file in your browser to view the detailed report[/dim]"
         )
 
         # Also save JSON version for programmatic access
@@ -2002,7 +2004,9 @@ def _get_bucket_list_for_encryption_analysis(
             try:
                 # Get bucket location
                 location_response = s3_client.get_bucket_location(Bucket=bucket_name)
-                bucket_region = location_response.get("LocationConstraint") or "us-east-1"
+                bucket_region = (
+                    location_response.get("LocationConstraint") or "us-east-1"
+                )
 
                 # Apply region filter
                 if region_filter and bucket_region != region_filter:
@@ -2073,9 +2077,9 @@ def _analyze_single_bucket_encryption(
         # Get encryption configuration
         try:
             encryption_response = s3_client.get_bucket_encryption(Bucket=bucket_name)
-            rules = encryption_response.get("ServerSideEncryptionConfiguration", {}).get(
-                "Rules", []
-            )
+            rules = encryption_response.get(
+                "ServerSideEncryptionConfiguration", {}
+            ).get("Rules", [])
 
             if rules:
                 # Get the first rule's encryption settings
@@ -2095,7 +2099,9 @@ def _analyze_single_bucket_encryption(
                     # Get KMS key details if available
                     if kms_key_id:
                         try:
-                            kms_client = aws_auth.get_client("kms", region_name=bucket_region)
+                            kms_client = aws_auth.get_client(
+                                "kms", region_name=bucket_region
+                            )
                             key_response = kms_client.describe_key(KeyId=kms_key_id)
                             key_metadata = key_response.get("KeyMetadata", {})
                             result["kms_key_arn"] = key_metadata.get("Arn")
@@ -2140,14 +2146,14 @@ def _analyze_bucket_encryption_parallel(
         TaskProgressColumn(),
         console=console,
     ) as progress:
-        task = progress.add_task(
-            "Analyzing bucket encryption...", total=len(buckets)
-        )
+        task = progress.add_task("Analyzing bucket encryption...", total=len(buckets))
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all tasks
             future_to_bucket = {
-                executor.submit(_analyze_single_bucket_encryption, aws_auth, bucket): bucket
+                executor.submit(
+                    _analyze_single_bucket_encryption, aws_auth, bucket
+                ): bucket
                 for bucket in buckets
             }
 
@@ -2173,9 +2179,7 @@ def _analyze_bucket_encryption_parallel(
     return results
 
 
-def _categorize_encryption_results(
-    results: List[Dict[str, Any]]
-) -> Dict[str, Any]:
+def _categorize_encryption_results(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Categorize encryption results by type.
 
     Args:

@@ -1,7 +1,8 @@
 """Data models for AWS resources."""
 
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -92,28 +93,6 @@ class LambdaFunction(AWSResource):
     def resource_type(self) -> str:
         """Resource type."""
         return "LambdaFunction"
-
-
-class IAMRole(AWSResource):
-    """IAM role model."""
-
-    role_name: str = Field(..., description="Role name")
-    path: str = Field("/", description="Role path")
-    assume_role_policy: Dict[str, Any] = Field(
-        ..., description="Assume role policy document"
-    )
-    max_session_duration: int = Field(3600, description="Maximum session duration")
-    attached_policies: List[str] = Field(
-        default_factory=list, description="Attached policy ARNs"
-    )
-    inline_policies: List[str] = Field(
-        default_factory=list, description="Inline policy names"
-    )
-
-    @property
-    def resource_type(self) -> str:
-        """Resource type."""
-        return "IAMRole"
 
 
 class BedrockModel(AWSResource):

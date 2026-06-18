@@ -1,18 +1,18 @@
 """Common utilities for AWS Cloud Utilities."""
 
-import os
 import json
-import yaml
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
-from concurrent.futures import ThreadPoolExecutor, as_completed
+
 import boto3
+import yaml
 from botocore.exceptions import ClientError
 from rich.console import Console
-from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
 from tabulate import tabulate
 
 from .exceptions import AWSError

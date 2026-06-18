@@ -1,32 +1,32 @@
 """AWS resource inventory and discovery commands."""
 
-import logging
 import json
+import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
 import click
 from rich.console import Console
 from rich.progress import (
+    BarColumn,
     Progress,
     SpinnerColumn,
-    TextColumn,
-    BarColumn,
     TaskProgressColumn,
+    TextColumn,
 )
 
-from ..core.config import Config
 from ..core.auth import AWSAuth
+from ..core.config import Config
+from ..core.tag_filter import TagFilter
 from ..core.utils import (
+    ensure_directory,
+    get_detailed_timestamp,
+    get_timestamp,
+    parallel_execute,
     print_output,
     save_to_file,
-    get_timestamp,
-    get_detailed_timestamp,
-    ensure_directory,
-    parallel_execute,
 )
-from ..core.exceptions import AWSError
-from ..core.tag_filter import TagFilter
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -94,12 +94,14 @@ def scan(
         # Validate tag filter options
         if tag_key and not include_tags:
             console.print(
-                "[yellow]Warning: --tag-key requires --include-tags to be enabled. Enabling --include-tags automatically.[/yellow]"
+                "[yellow]Warning: --tag-key requires --include-tags to be enabled. Enabling --include-tags automatically.[/yellow]"  # noqa: E501
             )
             include_tags = True
 
         if tag_value and not tag_key:
-            console.print("[red]Error: --tag-value requires --tag-key to be specified[/red]")
+            console.print(
+                "[red]Error: --tag-value requires --tag-key to be specified[/red]"
+            )
             raise click.Abort()
 
         # Create tag filter
@@ -122,7 +124,9 @@ def scan(
 
         # Display tag filter if enabled
         if tag_filter.enabled:
-            console.print(f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]")
+            console.print(
+                f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]"
+            )
 
         # Determine regions to scan
         if regions:
@@ -162,7 +166,9 @@ def scan(
             "regions_scanned": target_regions,
             "services_scanned": target_services,
             "include_tags": include_tags,
-            "tag_filter": tag_filter.create_filter_display() if tag_filter.enabled else None,
+            "tag_filter": (
+                tag_filter.create_filter_display() if tag_filter.enabled else None
+            ),
             "output_format": format,
             "total_resources": 0,
             "total_resources_before_filter": 0,
@@ -172,7 +178,7 @@ def scan(
         }
 
         # Execute comprehensive scan
-        all_resources = _execute_comprehensive_scan(
+        _execute_comprehensive_scan(
             aws_auth,
             target_services,
             target_regions,
@@ -191,7 +197,7 @@ def scan(
         # Display summary
         _display_scan_summary(config, scan_summary, output_path)
 
-        console.print(f"\n[green]✅ AWS inventory scan completed successfully![/green]")
+        console.print("\n[green]✅ AWS inventory scan completed successfully![/green]")
         console.print(f"[dim]Files saved to: {output_path.absolute()}[/dim]")
 
     except Exception as e:
@@ -249,7 +255,9 @@ def workspaces(
     try:
         # Validate tag filter options
         if tag_value and not tag_key:
-            console.print("[red]Error: --tag-value requires --tag-key to be specified[/red]")
+            console.print(
+                "[red]Error: --tag-value requires --tag-key to be specified[/red]"
+            )
             raise click.Abort()
 
         # Create tag filter
@@ -263,7 +271,9 @@ def workspaces(
 
         # Display tag filter if enabled
         if tag_filter.enabled:
-            console.print(f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]")
+            console.print(
+                f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]"
+            )
 
         # Get WorkSpaces client
         workspaces_client = aws_auth.get_client("workspaces", region_name=target_region)
@@ -278,7 +288,9 @@ def workspaces(
             )
             return
 
-        console.print(f"[dim]Found {len(workspaces_data)} WorkSpaces (before filtering)[/dim]")
+        console.print(
+            f"[dim]Found {len(workspaces_data)} WorkSpaces (before filtering)[/dim]"
+        )
 
         # Enrich with tags and metrics if requested
         enriched_workspaces = []
@@ -336,7 +348,7 @@ def workspaces(
         # Log filtering results
         if tag_filter.enabled:
             console.print(
-                f"[dim]Tag filter reduced WorkSpaces from {workspaces_before_filter} to {len(enriched_workspaces)}[/dim]"
+                f"[dim]Tag filter reduced WorkSpaces from {workspaces_before_filter} to {len(enriched_workspaces)}[/dim]"  # noqa: E501
             )
         else:
             console.print(f"[dim]Processed {len(enriched_workspaces)} WorkSpaces[/dim]")
@@ -573,6 +585,7 @@ def _get_service_description(service: str) -> str:
         "codebuild": "AWS CodeBuild",
         "waf": "AWS WAF",
     }
+    return descriptions.get(service, service)
 
 
 def _execute_comprehensive_scan(
@@ -644,7 +657,7 @@ def _execute_comprehensive_scan(
             if tag_filter and tag_filter.enabled and resources:
                 resources = tag_filter.filter_resources(resources)
                 logger.info(
-                    f"Tag filter reduced {service}/{region} from {resources_before_filter} to {len(resources)} resources"
+                    f"Tag filter reduced {service}/{region} from {resources_before_filter} to {len(resources)} resources"  # noqa: E501
                 )
 
             # Save individual service/region file
@@ -974,12 +987,14 @@ def download_all(
         # Validate tag filter options
         if tag_key and not include_tags:
             console.print(
-                "[yellow]Warning: --tag-key requires --include-tags to be enabled. Enabling --include-tags automatically.[/yellow]"
+                "[yellow]Warning: --tag-key requires --include-tags to be enabled. Enabling --include-tags automatically.[/yellow]"  # noqa: E501
             )
             include_tags = True
 
         if tag_value and not tag_key:
-            console.print("[red]Error: --tag-value requires --tag-key to be specified[/red]")
+            console.print(
+                "[red]Error: --tag-value requires --tag-key to be specified[/red]"
+            )
             raise click.Abort()
 
         # Create tag filter
@@ -1002,7 +1017,9 @@ def download_all(
 
         # Display tag filter if enabled
         if tag_filter.enabled:
-            console.print(f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]")
+            console.print(
+                f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]"
+            )
 
         # Determine regions to scan
         if regions:
@@ -1042,7 +1059,9 @@ def download_all(
             "regions_scanned": target_regions,
             "services_scanned": target_services,
             "include_tags": include_tags,
-            "tag_filter": tag_filter.create_filter_display() if tag_filter.enabled else None,
+            "tag_filter": (
+                tag_filter.create_filter_display() if tag_filter.enabled else None
+            ),
             "include_cloudformation": include_cloudformation,
             "include_workspaces_metrics": include_workspaces_metrics,
             "output_format": format,
@@ -1056,7 +1075,7 @@ def download_all(
 
         # Execute comprehensive resource scan
         console.print("[yellow]Phase 1: Scanning AWS resources...[/yellow]")
-        all_resources = _execute_comprehensive_scan(
+        _execute_comprehensive_scan(
             aws_auth,
             target_services,
             target_regions,
@@ -1111,7 +1130,7 @@ def download_all(
         _display_comprehensive_download_summary(config, download_summary, output_path)
 
         console.print(
-            f"\n[green]✅ Comprehensive AWS inventory download completed successfully![/green]"
+            "\n[green]✅ Comprehensive AWS inventory download completed successfully![/green]"
         )
         console.print(f"[dim]Files saved to: {output_path.absolute()}[/dim]")
 
@@ -1330,15 +1349,15 @@ def _display_cloudformation_summary(
             )
 
     # Show errors if any
-    if download_summary["errors"]:
+    if backup_summary["errors"]:
         console.print(
-            f"\n[yellow]Errors encountered ({len(download_summary['errors'])}):[/yellow]"
+            f"\n[yellow]Errors encountered ({len(backup_summary['errors'])}):[/yellow]"
         )
-        for error in download_summary["errors"][:10]:  # Show first 10 errors
+        for error in backup_summary["errors"][:10]:  # Show first 10 errors
             console.print(f"  [dim]• {error}[/dim]")
-        if len(download_summary["errors"]) > 10:
+        if len(backup_summary["errors"]) > 10:
             console.print(
-                f"  [dim]... and {len(download_summary['errors']) - 10} more errors[/dim]"
+                f"  [dim]... and {len(backup_summary['errors']) - 10} more errors[/dim]"
             )
 
 

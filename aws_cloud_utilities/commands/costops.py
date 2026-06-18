@@ -1,38 +1,36 @@
 """AWS Cost optimization and analysis commands."""
 
-import logging
-import json
-import os
 import csv
+import json
+import logging
 import statistics
-import requests
-from datetime import datetime, timedelta
-from dateutil.relativedelta import relativedelta
-from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple, Union
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
 import click
+import requests
+from dateutil.relativedelta import relativedelta
 from rich.console import Console
 from rich.progress import (
+    BarColumn,
     Progress,
     SpinnerColumn,
-    TextColumn,
-    BarColumn,
     TaskProgressColumn,
+    TextColumn,
 )
 
-from ..core.config import Config
 from ..core.auth import AWSAuth
+from ..core.config import Config
+from ..core.tag_filter import TagFilter
 from ..core.utils import (
+    ensure_directory,
+    get_timestamp,
+    parallel_execute,
     print_output,
     save_to_file,
-    get_timestamp,
-    get_detailed_timestamp,
-    ensure_directory,
-    parallel_execute,
 )
-from ..core.exceptions import AWSError
-from ..core.tag_filter import TagFilter
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -87,7 +85,6 @@ def pricing(
 ) -> None:
     """Get AWS pricing information for services."""
     config: Config = ctx.obj["config"]
-    aws_auth: AWSAuth = ctx.obj["aws_auth"]
 
     try:
         if list_services:
@@ -139,7 +136,7 @@ def pricing(
         # Display results
         _display_pricing_results(config, pricing_results)
 
-        console.print(f"\n[green]✅ Pricing data collection completed![/green]")
+        console.print("\n[green]✅ Pricing data collection completed![/green]")
         console.print(f"[dim]Data saved to: {output_path}[/dim]")
 
     except Exception as e:
@@ -205,7 +202,7 @@ def cost_analysis(
             save_to_file(cost_results, output_path, file_format)
             console.print(f"[green]Cost analysis saved to:[/green] {output_path}")
 
-        console.print(f"\n[green]✅ Cost analysis completed![/green]")
+        console.print("\n[green]✅ Cost analysis completed![/green]")
 
     except Exception as e:
         console.print(f"[red]Error analyzing costs:[/red] {e}")
@@ -263,7 +260,9 @@ def ebs_optimization(
     try:
         # Validate tag filter options
         if tag_value and not tag_key:
-            console.print("[red]Error: --tag-value requires --tag-key to be specified[/red]")
+            console.print(
+                "[red]Error: --tag-value requires --tag-key to be specified[/red]"
+            )
             raise click.Abort()
 
         # Create tag filter
@@ -283,7 +282,9 @@ def ebs_optimization(
                 f"[dim]Volume type filter: {volume_type} ({EBS_VOLUME_TYPES[volume_type]['name']})[/dim]"
             )
         if tag_filter.enabled:
-            console.print(f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]")
+            console.print(
+                f"[cyan]Tag Filter: {tag_filter.create_filter_display()}[/cyan]"
+            )
         if include_cost_estimates:
             console.print("[dim]Including cost savings estimates[/dim]")
 
@@ -315,7 +316,7 @@ def ebs_optimization(
             save_to_file(ebs_results, output_path, file_format)
             console.print(f"[green]EBS analysis saved to:[/green] {output_path}")
 
-        console.print(f"\n[green]✅ EBS optimization analysis completed![/green]")
+        console.print("\n[green]✅ EBS optimization analysis completed![/green]")
 
     except Exception as e:
         console.print(f"[red]Error analyzing EBS volumes:[/red] {e}")
@@ -388,7 +389,7 @@ def usage_metrics(
             save_to_file(metrics_results, output_path, file_format)
             console.print(f"[green]Usage metrics saved to:[/green] {output_path}")
 
-        console.print(f"\n[green]✅ Usage metrics analysis completed![/green]")
+        console.print("\n[green]✅ Usage metrics analysis completed![/green]")
 
     except Exception as e:
         console.print(f"[red]Error getting usage metrics:[/red] {e}")
@@ -485,7 +486,7 @@ def spot_pricing(
 
         # Generate analysis if requested
         if output_file:
-            console.print(f"[blue]Generating spot pricing analysis...[/blue]")
+            console.print("[blue]Generating spot pricing analysis...[/blue]")
             analysis_results = _analyze_spot_pricing_data(output_path)
 
             # Save analysis to file
@@ -503,7 +504,7 @@ def spot_pricing(
                 f"[green]Spot pricing analysis saved to:[/green] {analysis_output_path}"
             )
 
-        console.print(f"\n[green]✅ Spot pricing data collection completed![/green]")
+        console.print("\n[green]✅ Spot pricing data collection completed![/green]")
         console.print(f"[dim]Data saved to: {output_path}[/dim]")
 
     except Exception as e:
@@ -585,7 +586,7 @@ def spot_analysis(
                 f"[green]Spot pricing analysis saved to:[/green] {output_path}"
             )
 
-        console.print(f"\n[green]✅ Spot pricing analysis completed![/green]")
+        console.print("\n[green]✅ Spot pricing analysis completed![/green]")
 
     except Exception as e:
         console.print(f"[red]Error analyzing spot pricing data:[/red] {e}")
@@ -1012,7 +1013,9 @@ def _analyze_ebs_volumes(
     result = {
         "regions_analyzed": len(regions),
         "volume_type_filter": volume_type_filter,
-        "tag_filter": tag_filter.create_filter_display() if tag_filter.enabled else None,
+        "tag_filter": (
+            tag_filter.create_filter_display() if tag_filter.enabled else None
+        ),
         "total_volumes": 0,
         "volumes_before_filter": 0,
         "optimizable_volumes": 0,
@@ -1047,7 +1050,9 @@ def _analyze_ebs_volumes(
             for page in paginator.paginate(Filters=filters):
                 for volume in page.get("Volumes", []):
                     # Track volumes before filtering
-                    region_result["volumes_before_filter"] = region_result.get("volumes_before_filter", 0) + 1
+                    region_result["volumes_before_filter"] = (
+                        region_result.get("volumes_before_filter", 0) + 1
+                    )
 
                     # Apply tag filter
                     if tag_filter and tag_filter.enabled:
@@ -1083,7 +1088,9 @@ def _analyze_ebs_volumes(
     for region, region_data in region_results:
         result["volumes_by_region"][region] = region_data
         result["total_volumes"] += region_data["volume_count"]
-        result["volumes_before_filter"] += region_data.get("volumes_before_filter", region_data["volume_count"])
+        result["volumes_before_filter"] += region_data.get(
+            "volumes_before_filter", region_data["volume_count"]
+        )
         result["optimizable_volumes"] += region_data["optimizable_count"]
         result["errors"].extend(region_data["errors"])
 

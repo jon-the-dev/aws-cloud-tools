@@ -1,8 +1,9 @@
 """AWS authentication and session management."""
 
-import boto3
 import logging
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
+import boto3
 from botocore.client import Config as BotoConfig
 from botocore.exceptions import ClientError, NoCredentialsError, ProfileNotFound
 
