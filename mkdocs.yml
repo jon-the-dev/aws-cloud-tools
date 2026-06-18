@@ -111,6 +111,7 @@ nav:
     - CloudFront CDN: commands/cloudfront.md
     - Cost Optimization: commands/costops.md
     - Container Registry (ECR): commands/ecr.md
+    - DynamoDB: commands/dynamodb.md
     - IAM Management: commands/iam.md
     - Inventory & Discovery: commands/inventory.md
     - Log Management: commands/logs.md
