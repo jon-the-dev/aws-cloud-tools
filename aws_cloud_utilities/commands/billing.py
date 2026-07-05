@@ -217,14 +217,18 @@ class CURManager:
                 raise AWSError(f"CUR report '{report_name}' already exists")
             raise AWSError(f"Failed to create CUR report: {e}")
 
-    def _create_bucket_policy(self, bucket_name: str, prefix: str) -> None:
+    def _create_bucket_policy(
+        self, bucket_name: str, prefix: str, s3_client: Optional[Any] = None
+    ) -> None:
         """
         Create S3 bucket policy for CUR delivery
 
         Args:
             bucket_name: S3 bucket name
             prefix: S3 prefix for CUR files
+            s3_client: Optional region-scoped S3 client (defaults to session client)
         """
+        client = s3_client or self.s3_client
         self.logger.info(f"Creating bucket policy for CUR delivery: {bucket_name}")
 
         bucket_policy = {
@@ -258,13 +262,287 @@ class CURManager:
         }
 
         try:
-            self.s3_client.put_bucket_policy(
+            client.put_bucket_policy(
                 Bucket=bucket_name, Policy=json.dumps(bucket_policy)
             )
             self.logger.info(f"Successfully created bucket policy for {bucket_name}")
 
         except Exception as e:
             raise AWSError(f"Failed to create bucket policy: {e}")
+
+    def bucket_exists(self, bucket_name: str, s3_client: Optional[Any] = None) -> bool:
+        """Return True if the S3 bucket already exists and is accessible.
+
+        Args:
+            bucket_name: S3 bucket name
+            s3_client: Optional region-scoped S3 client (defaults to session client)
+
+        Returns:
+            True if the bucket exists, False if it does not.
+        """
+        client = s3_client or self.s3_client
+        try:
+            client.head_bucket(Bucket=bucket_name)
+            return True
+        except Exception as e:
+            if any(code in str(e) for code in ("404", "NoSuchBucket", "Not Found")):
+                return False
+            # 403 means the bucket exists but is owned by someone else.
+            if "403" in str(e) or "Forbidden" in str(e):
+                raise AWSError(
+                    f"Bucket '{bucket_name}' exists but is not owned by this account"
+                )
+            raise AWSError(f"Failed to check bucket '{bucket_name}': {e}")
+
+    def report_exists(self, report_name: str) -> bool:
+        """Return True if a CUR report definition with this name already exists.
+
+        Args:
+            report_name: Name of the CUR report
+
+        Returns:
+            True if the report definition exists, False otherwise.
+        """
+        return self.get_cur_details(report_name) is not None
+
+    def create_cur_bucket(self, bucket_name: str, region: str, s3_client: Any) -> None:
+        """Create the CUR S3 bucket in the given region.
+
+        us-east-1 must not receive a ``CreateBucketConfiguration`` block; every
+        other region requires a matching ``LocationConstraint``.
+
+        Args:
+            bucket_name: S3 bucket name to create
+            region: Region to create the bucket in
+            s3_client: Region-scoped S3 client
+        """
+        self.logger.info(f"Creating CUR bucket '{bucket_name}' in {region}")
+        try:
+            if region == "us-east-1":
+                s3_client.create_bucket(Bucket=bucket_name)
+            else:
+                s3_client.create_bucket(
+                    Bucket=bucket_name,
+                    CreateBucketConfiguration={"LocationConstraint": region},
+                )
+        except Exception as e:
+            if "BucketAlreadyOwnedByYou" in str(e):
+                self.logger.info(
+                    f"Bucket '{bucket_name}' already owned by this account"
+                )
+                return
+            raise AWSError(f"Failed to create bucket '{bucket_name}': {e}")
+
+    def apply_bucket_security(
+        self, bucket_name: str, enable_versioning: bool, s3_client: Any
+    ) -> None:
+        """Apply public-access block, default encryption, and optional versioning.
+
+        Args:
+            bucket_name: S3 bucket name
+            enable_versioning: Enable bucket versioning when True
+            s3_client: Region-scoped S3 client
+        """
+        s3_client.put_public_access_block(
+            Bucket=bucket_name,
+            PublicAccessBlockConfiguration={
+                "BlockPublicAcls": True,
+                "IgnorePublicAcls": True,
+                "BlockPublicPolicy": True,
+                "RestrictPublicBuckets": True,
+            },
+        )
+        s3_client.put_bucket_encryption(
+            Bucket=bucket_name,
+            ServerSideEncryptionConfiguration={
+                "Rules": [
+                    {"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}
+                ]
+            },
+        )
+        if enable_versioning:
+            s3_client.put_bucket_versioning(
+                Bucket=bucket_name,
+                VersioningConfiguration={"Status": "Enabled"},
+            )
+
+    def apply_lifecycle_policy(
+        self, bucket_name: str, prefix: str, retention_days: int, s3_client: Any
+    ) -> None:
+        """Apply the CUR lifecycle policy (expiry + multipart cleanup).
+
+        Mirrors the reference Terraform: expire objects under the CUR prefix
+        after ``retention_days``, expire noncurrent versions after 30 days, and
+        abort incomplete multipart uploads after 7 days.
+
+        Args:
+            bucket_name: S3 bucket name
+            prefix: CUR S3 prefix
+            retention_days: Days before CUR objects are expired
+            s3_client: Region-scoped S3 client
+        """
+        s3_client.put_bucket_lifecycle_configuration(
+            Bucket=bucket_name,
+            LifecycleConfiguration={
+                "Rules": [
+                    {
+                        "ID": "delete-old-cur-data",
+                        "Status": "Enabled",
+                        "Filter": {"Prefix": f"{prefix}/"},
+                        "Expiration": {"Days": retention_days},
+                        "NoncurrentVersionExpiration": {"NoncurrentDays": 30},
+                    },
+                    {
+                        "ID": "abort-incomplete-multipart-uploads",
+                        "Status": "Enabled",
+                        "Filter": {"Prefix": ""},
+                        "AbortIncompleteMultipartUpload": {"DaysAfterInitiation": 7},
+                    },
+                ]
+            },
+        )
+
+    def create_report_definition(
+        self,
+        report_name: str,
+        s3_bucket: str,
+        s3_prefix: str,
+        time_unit: str,
+        s3_region: str,
+    ) -> None:
+        """Create the CUR report definition (Parquet, resource IDs, overwrite).
+
+        Mirrors the reference Terraform ``aws_cur_report_definition``.
+
+        Args:
+            report_name: Name for the CUR report
+            s3_bucket: Delivery bucket
+            s3_prefix: Delivery prefix
+            time_unit: HOURLY or DAILY
+            s3_region: Region of the delivery bucket
+        """
+        report_definition = {
+            "ReportName": report_name,
+            "TimeUnit": time_unit,
+            "Format": "Parquet",
+            "Compression": "Parquet",
+            "AdditionalSchemaElements": ["RESOURCES"],
+            "S3Bucket": s3_bucket,
+            "S3Prefix": s3_prefix,
+            "S3Region": s3_region,
+            "RefreshClosedReports": True,
+            "ReportVersioning": "OVERWRITE_REPORT",
+        }
+        try:
+            self.cur_client.put_report_definition(ReportDefinition=report_definition)
+            self.logger.info(f"Successfully created CUR report: {report_name}")
+        except Exception as e:
+            if "DuplicateReportNameException" in str(e):
+                raise AWSError(f"CUR report '{report_name}' already exists")
+            raise AWSError(f"Failed to create CUR report: {e}")
+
+    def _build_setup_plan(
+        self,
+        bucket: str,
+        prefix: str,
+        retention_days: int,
+        enable_versioning: bool,
+        report_name: str,
+        time_unit: str,
+        bucket_present: bool,
+        report_present: bool,
+    ) -> List[Dict[str, str]]:
+        """Build the ordered list of steps describing the target CUR state."""
+        steps = [
+            {
+                "resource": f"S3 bucket s3://{bucket}",
+                "action": "already exists" if bucket_present else "create",
+            },
+            {"resource": "Public access block (all blocked)", "action": "apply"},
+            {"resource": "Default encryption (AES256)", "action": "apply"},
+        ]
+        if enable_versioning:
+            steps.append({"resource": "Bucket versioning", "action": "enable"})
+        steps.append(
+            {
+                "resource": f"Lifecycle (expire {prefix}/ after {retention_days}d)",
+                "action": "apply",
+            }
+        )
+        steps.append(
+            {
+                "resource": "Bucket policy (billingreports.amazonaws.com)",
+                "action": "apply",
+            }
+        )
+        steps.append(
+            {
+                "resource": f"CUR report '{report_name}' ({time_unit}, Parquet)",
+                "action": "already exists — skipped" if report_present else "create",
+            }
+        )
+        return steps
+
+    def setup_cur(
+        self,
+        report_name: str,
+        bucket: str,
+        prefix: str,
+        time_unit: str,
+        retention_days: int,
+        region: Optional[str] = None,
+        enable_versioning: bool = False,
+        dry_run: bool = False,
+    ) -> Dict[str, Any]:
+        """Provision an end-to-end CUR data source (bucket + policy + report).
+
+        Idempotent-friendly: an existing bucket keeps its data (config is still
+        re-applied) and an existing report definition is left untouched.
+
+        Args:
+            report_name: Name for the CUR report
+            bucket: S3 bucket for CUR delivery
+            prefix: S3 prefix for CUR files
+            time_unit: HOURLY or DAILY granularity
+            retention_days: Days before CUR objects are expired
+            region: Bucket region (defaults to the session region, then us-east-1)
+            enable_versioning: Enable bucket versioning when True
+            dry_run: Print the plan without creating anything when True
+
+        Returns:
+            Summary dict with the resolved region, dry_run flag, and step plan.
+        """
+        region = region or self.aws_auth.region_name or "us-east-1"
+        s3_client = self.aws_auth.get_client("s3", region_name=region)
+
+        bucket_present = self.bucket_exists(bucket, s3_client)
+        report_present = self.report_exists(report_name)
+
+        steps = self._build_setup_plan(
+            bucket,
+            prefix,
+            retention_days,
+            enable_versioning,
+            report_name,
+            time_unit,
+            bucket_present,
+            report_present,
+        )
+        summary = {"region": region, "dry_run": dry_run, "steps": steps}
+        if dry_run:
+            return summary
+
+        if not bucket_present:
+            self.create_cur_bucket(bucket, region, s3_client)
+        self.apply_bucket_security(bucket, enable_versioning, s3_client)
+        self.apply_lifecycle_policy(bucket, prefix, retention_days, s3_client)
+        self._create_bucket_policy(bucket, prefix, s3_client)
+
+        if not report_present:
+            self.create_report_definition(
+                report_name, bucket, prefix, time_unit, region
+            )
+        return summary
 
     def delete_cur_report(self, report_name: str) -> bool:
         """
@@ -477,6 +755,92 @@ def cur_create(
 
     except Exception as e:
         console.print(f"[red]Error creating CUR report:[/red] {e}")
+        raise click.Abort()
+
+
+@billing_group.command(name="cur-setup")
+@click.option("--bucket", required=True, help="S3 bucket name for CUR delivery")
+@click.option(
+    "--report-name",
+    default="hourly-cur",
+    show_default=True,
+    help="Name for the CUR report",
+)
+@click.option(
+    "--prefix", default="cur", show_default=True, help="S3 prefix for CUR files"
+)
+@click.option(
+    "--time-unit",
+    type=click.Choice(["HOURLY", "DAILY"]),
+    default="HOURLY",
+    show_default=True,
+    help="CUR time granularity",
+)
+@click.option(
+    "--retention-days",
+    type=int,
+    default=365,
+    show_default=True,
+    help="Days before CUR objects are expired by the bucket lifecycle policy",
+)
+@click.option(
+    "--region",
+    help="Region for the S3 bucket (defaults to the session region)",
+)
+@click.option("--enable-versioning", is_flag=True, help="Enable S3 bucket versioning")
+@click.option(
+    "--dry-run", is_flag=True, help="Print the plan without creating anything"
+)
+@click.pass_context
+def cur_setup(
+    ctx: click.Context,
+    bucket: str,
+    report_name: str,
+    prefix: str,
+    time_unit: str,
+    retention_days: int,
+    region: Optional[str],
+    enable_versioning: bool,
+    dry_run: bool,
+) -> None:
+    """Provision an end-to-end CUR data source (bucket, policy, and report).
+
+    Creates the delivery bucket with a public-access block, AES256 encryption, a
+    lifecycle policy, and the billing-service bucket policy, then registers a
+    Parquet CUR report with resource IDs. Mirrors the reference Terraform.
+    """
+    aws_auth: AWSAuth = ctx.obj["aws_auth"]
+
+    try:
+        cur_manager = CURManager(aws_auth)
+        summary = cur_manager.setup_cur(
+            report_name=report_name,
+            bucket=bucket,
+            prefix=prefix,
+            time_unit=time_unit,
+            retention_days=retention_days,
+            region=region,
+            enable_versioning=enable_versioning,
+            dry_run=dry_run,
+        )
+
+        header = "Planned CUR setup (dry run)" if dry_run else "CUR setup"
+        console.print(
+            f"\n[blue]{header}[/blue] [dim](region: {summary['region']})[/dim]"
+        )
+        for step in summary["steps"]:
+            console.print(f"  [cyan]{step['action']:<22}[/cyan] {step['resource']}")
+
+        if dry_run:
+            console.print("\n[yellow]Dry run - no resources were created.[/yellow]")
+            return
+
+        console.print(f"\n[green]✅ CUR setup complete: {report_name}[/green]")
+        console.print(f"[dim]📍 Delivery Location: s3://{bucket}/{prefix}[/dim]")
+        console.print("[dim]⏳ First report delivery may take up to 24 hours[/dim]")
+
+    except Exception as e:
+        console.print(f"[red]Error setting up CUR:[/red] {e}")
         raise click.Abort()
 
 

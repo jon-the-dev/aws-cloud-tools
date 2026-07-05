@@ -86,6 +86,72 @@ aws-cloud-utilities billing cur-create \
   --schema-elements RESOURCES
 ```
 
+### cur-setup
+
+Provision an **end-to-end** CUR data source in one command: the delivery S3
+bucket (public-access block, AES256 encryption, lifecycle policy, and the
+billing-service bucket policy) plus a Parquet CUR report definition with
+resource IDs. This mirrors the reference Terraform module and is the
+recommended way to stand up CUR from scratch.
+
+Unlike `cur-create` (which assumes the bucket already exists and only patches
+its policy), `cur-setup` creates and fully configures the bucket for you.
+
+```bash
+aws-cloud-utilities billing cur-setup [OPTIONS]
+```
+
+**Required Options:**
+- `--bucket`: S3 bucket name for CUR delivery
+
+**Optional Options:**
+- `--report-name`: Name for the CUR report (default: `hourly-cur`)
+- `--prefix`: S3 prefix for CUR files (default: `cur`)
+- `--time-unit`: Time granularity, `HOURLY` or `DAILY` (default: `HOURLY`)
+- `--retention-days`: Days before CUR objects are expired by the lifecycle policy (default: `365`)
+- `--region`: Region for the S3 bucket (default: the session region)
+- `--enable-versioning`: Enable S3 bucket versioning (default: off)
+- `--dry-run`: Print the plan without creating anything
+
+**What it provisions (mirrors the reference Terraform):**
+- S3 bucket in the target region (us-east-1 handled without a `LocationConstraint`)
+- Public access block (all four settings enabled)
+- Default encryption (AES256)
+- Lifecycle policy: expire objects under `<prefix>/` after `--retention-days`,
+  expire noncurrent versions after 30 days, and abort incomplete multipart
+  uploads after 7 days
+- Bucket policy granting `billingreports.amazonaws.com` `GetBucketAcl`,
+  `GetBucketPolicy`, and `PutObject`, scoped by `aws:SourceArn` and
+  `aws:SourceAccount`
+- CUR report definition: Parquet format + Parquet compression, `RESOURCES`
+  schema element, `RefreshClosedReports`, and `OVERWRITE_REPORT` versioning
+
+The command is idempotent-friendly: an existing bucket is detected and left in
+place (its configuration is still re-applied), and an existing report
+definition is reported and skipped rather than failing.
+
+**Examples:**
+```bash
+# Preview the full plan without touching AWS
+aws-cloud-utilities billing cur-setup --bucket my-cur-bucket --dry-run
+
+# Provision an hourly CUR with defaults
+aws-cloud-utilities billing cur-setup --bucket my-cur-bucket
+
+# Daily CUR in us-west-2 with a 730-day retention and versioning
+aws-cloud-utilities billing cur-setup \
+  --bucket my-cur-bucket \
+  --report-name daily-cur \
+  --prefix cur \
+  --time-unit DAILY \
+  --retention-days 730 \
+  --region us-west-2 \
+  --enable-versioning
+```
+
+> **Note:** The CUR API is only available in `us-east-1`, so the report
+> definition is always created there regardless of the bucket's region.
+
 ### cur-delete
 
 Delete a Cost and Usage Report.
@@ -181,6 +247,12 @@ The `cur-create` command will automatically configure the required bucket policy
   - `s3:GetBucketPolicy`
   - `s3:PutBucketPolicy`
   - `s3:PutObject` (for the target S3 bucket)
+- Additional permissions used by `cur-setup` when provisioning the bucket:
+  - `s3:CreateBucket`
+  - `s3:PutBucketPublicAccessBlock`
+  - `s3:PutEncryptionConfiguration`
+  - `s3:PutLifecycleConfiguration`
+  - `s3:PutBucketVersioning` (only with `--enable-versioning`)
 
 ## Notes
 

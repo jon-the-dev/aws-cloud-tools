@@ -5,6 +5,19 @@ All notable changes to AWS Cloud Utilities will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `billing cur-setup` command: provisions an end-to-end Cost and Usage Report
+  data source in one step — creates and configures the delivery S3 bucket
+  (public-access block, AES256 encryption, lifecycle policy, and the
+  billing-service bucket policy) and registers a Parquet CUR report definition
+  with resource IDs. Mirrors the reference Terraform module.
+- `--dry-run` support for `cur-setup` to preview the plan without creating any
+  resources, plus idempotent detection of existing buckets and report
+  definitions.
+
 ## [2.1.2] - 2025-08-18
 
 ### Added
