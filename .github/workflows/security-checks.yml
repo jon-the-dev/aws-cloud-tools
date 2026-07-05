@@ -21,7 +21,7 @@ jobs:
     - name: Install security tools
       run: |
         pip install --upgrade pip
-        pip install bandit safety semgrep
+        pip install "setuptools<81" bandit safety semgrep
         pip install -r requirements.txt || echo "No requirements.txt found"
     
     - name: Run Bandit (Security Linter)
@@ -32,8 +32,8 @@ jobs:
     
     - name: Run Safety (Dependency Vulnerability Check)
       run: |
-        safety check --json --output safety-report.json || true
-        safety check
+        safety check --save-json safety-report.json -r requirements.txt -r requirements-dev.txt || true
+        safety check -r requirements.txt -r requirements-dev.txt
       continue-on-error: false
     
     - name: Run Semgrep (Static Analysis)
