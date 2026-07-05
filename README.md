@@ -28,7 +28,7 @@ A unified command-line toolkit for AWS operations with enhanced functionality. T
 ## Installation
 
 ```bash
-# Install from PyPI (when published)
+# Install from PyPI
 pip install aws-cloud-utilities
 
 # Install from source
@@ -290,6 +290,14 @@ export SLACK_WEBHOOK="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
 - Works with all major CI/CD platforms (GitHub Actions, GitLab CI, Jenkins, CircleCI)
 
 For complete documentation, see [slack-notify.md](slack-notify.md).
+
+## Publishing
+
+This package is published to PyPI as
+[`aws-cloud-utilities`](https://pypi.org/project/aws-cloud-utilities/). Release
+publishing is handled by GitHub Actions through PyPI trusted publishing. See
+[Publishing to PyPI](docs/development/publishing.md) for the release checklist
+and recovery notes.
 
 ## Development
 

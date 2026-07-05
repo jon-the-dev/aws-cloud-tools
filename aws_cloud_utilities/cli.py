@@ -8,6 +8,7 @@ import click
 from rich.console import Console
 from rich.traceback import install
 
+from . import __version__
 from .commands import (
     account,
     awsconfig,
@@ -106,7 +107,7 @@ cli_instance = AWSCloudUtilitiesCLI()
 @click.option("--verbose", is_flag=True, help="Enable verbose output")
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option("--config", help="Configuration file path")
-@click.version_option(version="2.1.2", prog_name="aws-cloud-utilities")
+@click.version_option(version=__version__, prog_name="aws-cloud-utilities")
 @click.pass_context
 def main(
     ctx: click.Context,
@@ -191,7 +192,7 @@ def info(ctx: click.Context) -> None:
         caller_identity = aws_auth.get_caller_identity()
 
         info_data = {
-            "Version": "2.1.2",
+            "Version": __version__,
             "AWS Account ID": caller_identity.get("Account", "Unknown"),
             "AWS User/Role": caller_identity.get("Arn", "Unknown"),
             "AWS Profile": config.aws_profile or "default",

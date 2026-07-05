@@ -2,6 +2,7 @@
 
 import pytest
 from click.testing import CliRunner
+from aws_cloud_utilities import __version__
 from aws_cloud_utilities.cli import main
 
 
@@ -18,7 +19,7 @@ def test_cli_version():
     runner = CliRunner()
     result = runner.invoke(main, ["--version"])
     assert result.exit_code == 0
-    assert "2.1.2" in result.output
+    assert __version__ in result.output
 
 
 def test_account_help():

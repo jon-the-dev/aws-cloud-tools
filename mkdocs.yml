@@ -126,6 +126,7 @@ nav:
     - Common Use Cases: examples/common-use-cases.md
   - Development:
     - Contributing: development/contributing.md
+    - Publishing to PyPI: development/publishing.md
   - Reference:
     - CLI Reference: reference/cli.md
     - Changelog: reference/changelog.md

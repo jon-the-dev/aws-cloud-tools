@@ -7,8 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [2.1.3] - 2026-07-05
+
 ### Added
 
+- Documented the PyPI publishing workflow, including GitHub trusted publishing,
+  TestPyPI dry runs, production release creation, and post-release checks.
 - `billing cur-setup` command: provisions an end-to-end Cost and Usage Report
   data source in one step — creates and configures the delivery S3 bucket
   (public-access block, AES256 encryption, lifecycle policy, and the
