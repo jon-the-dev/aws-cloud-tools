@@ -1,77 +1,32 @@
+# Dependabot updates are grouped into one monthly version-update PR across ecosystems.
+# Security updates are grouped per ecosystem where GitHub supports grouped security updates.
 version: 2
+multi-ecosystem-groups:
+  monthly-dependencies:
+    schedule:
+      interval: monthly
+      time: 09:00
+      timezone: America/Los_Angeles
+    labels:
+    - dependencies
 updates:
-  - package-ecosystem: "terraform"
-    directory: "/"
-    schedule:
-      interval: "quarterly"
-    open-pull-requests-limit: 10
-    reviewers:
-      - "jon-the-dev"
-    assignees:
-      - "jon-the-dev"
-    labels:
-      - "dependencies"
-      - "npm"
-    # Group minor and patch updates together
-    groups:
-      minor-and-patch:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "quarterly"
-    open-pull-requests-limit: 10
-    reviewers:
-      - "jon-the-dev"
-    assignees:
-      - "jon-the-dev"
-    labels:
-      - "dependencies"
-      - "npm"
-    # Group minor and patch updates together
-    groups:
-      minor-and-patch:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-  - package-ecosystem: "pip"
-    directory: "/"
-    schedule:
-      interval: "quarterly"
-    open-pull-requests-limit: 10
-    reviewers:
-      - "jon-the-dev"
-    assignees:
-      - "jon-the-dev"
-    labels:
-      - "dependencies"
-      - "python"
-    # Group minor and patch updates together
-    groups:
-      minor-and-patch:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 5
-    reviewers:
-      - "jon-the-dev"
-    assignees:
-      - "jon-the-dev"
-    commit-message:
-      prefix: "ci"
-      include: "scope"
-    labels:
-      - "dependencies"
-      - "github-actions"
+- package-ecosystem: github-actions
+  directory: /
+  patterns:
+  - '*'
+  multi-ecosystem-group: monthly-dependencies
+  groups:
+    github-actions-security:
+      applies-to: security-updates
+      patterns:
+      - '*'
+- package-ecosystem: pip
+  directory: /
+  patterns:
+  - '*'
+  multi-ecosystem-group: monthly-dependencies
+  groups:
+    pip-security:
+      applies-to: security-updates
+      patterns:
+      - '*'
