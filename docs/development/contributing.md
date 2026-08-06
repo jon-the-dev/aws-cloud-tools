@@ -345,12 +345,63 @@ def process_resources(
 
 ### Command Documentation
 
-Each command should have:
+The command reference is **generated from the CLI, not hand-written**. Each page under
+`docs/commands/` has a region delimited by markers:
 
-- Clear description
-- Usage examples
-- Option descriptions
-- Output format examples
+```markdown
+<!-- BEGIN GENERATED: commands -->
+...usage, arguments, and option tables...
+<!-- END GENERATED: commands -->
+```
+
+`scripts/gen_docs.py` introspects the live Click tree and rewrites everything between those markers.
+Edit the prose around them; never edit inside them, because the next regeneration will discard it.
+
+After changing a command, an option, or a help string:
+
+```bash
+make docs-gen     # regenerate the reference sections
+make docs-check   # verify nothing drifted
+```
+
+What you write by hand on each page:
+
+- A short intro explaining what the command group is for and which subcommand to reach for first
+- An `## Examples` block of runnable commands
+- Any `## Notes` covering behaviour the option table cannot express - argument ordering, two-step
+  flows, cost implications, destructive defaults
+- A `## Related` list linking to adjacent pages
+
+Since option tables and usage lines are generated, the value you add is the part that is not
+mechanical: why you would run it, what it costs, and what it breaks.
+
+### Documentation is checked in CI
+
+`scripts/validate_docs.py` parses every `aws-cloud-utilities ...` example in `docs/` and fails the
+build if it references a command group, subcommand, or option that does not exist.
+
+It also rejects global options written *after* the command name. Click only accepts them on the root
+command:
+
+```bash
+# Correct
+aws-cloud-utilities --output json s3 list-buckets
+```
+
+To document deliberately-invalid usage, put `validate-docs: ignore` on the line above the example:
+
+````markdown
+```bash
+# This is rejected  (validate-docs: ignore)
+aws-cloud-utilities s3 list-buckets --output json
+```
+````
+
+Run both checks locally before opening a PR:
+
+```bash
+make docs-check
+```
 
 ### README Updates
 

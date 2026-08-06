@@ -3,28 +3,61 @@ name: GitHub Pages
 on:
   push:
     branches:
-      - master
       - main
+  workflow_dispatch:
 
+# Pages for this repo is configured with build_type: workflow, so the site must be
+# uploaded as an artifact and published by actions/deploy-pages. Pushing a built site
+# to a gh-pages branch (what `mkdocs gh-deploy` does) is ignored in that mode, which
+# is why the published site sat stale while the branch kept advancing.
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref_name != github.event.repository.default_branch }}
 
 jobs:
-  deploy:
+  build:
+    name: Build site
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Configure Git Credentials
-        run: |
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+
       - uses: actions/setup-python@v7
         with:
-          python-version: 3.11
-      - run: pip install pipenv
-      - run: pipenv install mkdocs mkdocs-material "mkdocs-material[imaging]" "mkdocstrings[python]"
-      - run: pipenv run mkdocs gh-deploy --force
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r docs-requirements.txt
+          python -m pip install -e .
+
+      - name: Check generated command reference is current
+        run: python scripts/gen_docs.py --check
+
+      - name: Validate documented CLI examples
+        run: python scripts/validate_docs.py
+
+      - name: Build site
+        run: mkdocs build --strict
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    name: Deploy to Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

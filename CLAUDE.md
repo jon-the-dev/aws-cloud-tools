@@ -6,116 +6,43 @@ This document provides guidelines for Claude AI when working on this repository.
 
 This is the AWS Cloud Utilities repository - a unified command-line toolkit for AWS operations. It includes various tools for cost optimization, inventory management, security auditing, and more.
 
-## Workflow Guidelines
+## Documentation
 
-### When Work is Completed
+The docs site is MkDocs Material, published to <https://jon-the-dev.github.io/aws-cloud-tools/>.
 
-After completing a task (implementing features, fixing bugs, etc.), always notify via Slack:
+**The command reference is generated, not hand-written.** `docs/commands/*.md`, the services tables in
+`docs/index.md` and `docs/commands/index.md`, and `docs/reference/cli.md` each contain regions marked
+with `<!-- BEGIN GENERATED: ... -->` / `<!-- END GENERATED: ... -->`. Everything inside those markers
+comes from `scripts/gen_docs.py`, which introspects the live Click tree. Edit the prose around them;
+never edit inside them.
 
-1. **Send a Slack notification** using the `slack-notify.sh` script
-2. Include a summary of what was completed
-3. The script will automatically tag @jon in all messages
-
-#### Success Notification Example
-
-```bash
-export SLACK_WEBHOOK="your-webhook-url"  # Usually set in CI/CD environment
-
-./slack-notify.sh "Task completed: [brief description of work]
-
-Changes made:
-- [Change 1]
-- [Change 2]
-- [Change 3]
-
-Branch: $(git branch --show-current)
-Commit: $(git rev-parse --short HEAD)" \
-    --emoji ":white_check_mark:" \
-    --color "good" \
-    --title "Development Complete"
-```
-
-#### Error/Blocker Notification Example
+After changing any command, option, or help string:
 
 ```bash
-./slack-notify.sh "Task blocked: [description of blocker]
-
-Issue: [What went wrong]
-Next steps: [What needs to happen]
-
-Branch: $(git branch --show-current)" \
-    --emoji ":warning:" \
-    --color "warning" \
-    --title "Development Blocked"
+make docs-gen     # regenerate the reference sections
+make docs-check   # verify nothing drifted (also runs in CI)
 ```
 
-### Notification Best Practices
+`scripts/validate_docs.py` parses every `aws-cloud-utilities ...` example in `docs/` and fails if it
+names a command group, subcommand, or option that does not exist. It also rejects global options
+(`--profile`, `--region`, `--output`, `--verbose`, `--debug`, `--config`) written *after* the command
+name, because Click rejects them there.
 
-- **Always notify when**:
-  - A feature is complete and pushed
-  - A bug fix is complete and pushed
-  - Work is blocked and needs human intervention
-  - A significant milestone is reached
+To show a deliberately-invalid example, put `validate-docs: ignore` on the line above it.
 
-- **Include in notifications**:
-  - Summary of changes
-  - Branch name
-  - Commit SHA (short)
-  - Any important notes or next steps
+Both checks run in the `docs` job of `.github/workflows/ci.yml` and again before the Pages deploy.
 
-- **Use appropriate colors**:
-  - `good` (green) - Success, completion
-  - `warning` (yellow) - Blockers, needs attention
-  - `danger` (red) - Errors, failures
-
-### Git Workflow
+## Git Workflow
 
 1. Always work on feature branches (usually starting with `claude/`)
 2. Commit with clear, descriptive messages
 3. Push to the designated branch
-4. Send Slack notification after pushing
 
-### Code Standards
+## Code Standards
 
 - Follow existing code style in the repository
 - Add documentation for new scripts/features
 - Update README.md when adding new functionality
 - Include examples in documentation
-
-## CI/CD Integration
-
-The repository includes a `slack-notify.sh` script for Slack notifications:
-
-- **Location**: `./slack-notify.sh`
-- **Documentation**: `slack-notify.md`
-- **Environment Variable Required**: `SLACK_WEBHOOK`
-
-### Script Options
-
-```bash
-./slack-notify.sh "message" [OPTIONS]
-
-Options:
-  --emoji EMOJI          Emoji to display (default: :speech_balloon:)
-  --username USERNAME    Username to display (default: CI/CD Pipeline)
-  --color COLOR          Message color (good, warning, danger, or hex code)
-  --title TITLE          Title for the attachment
-  --channel CHANNEL      Override default channel
-```
-
-### Quick Reference
-
-```bash
-# Success
-./slack-notify.sh "Work complete!" --emoji ":white_check_mark:" --color "good"
-
-# Warning
-./slack-notify.sh "Need attention" --emoji ":warning:" --color "warning"
-
-# Error
-./slack-notify.sh "Something failed" --emoji ":x:" --color "danger"
-```
-
-## Note on @jon Tagging
-
-The slack-notify.sh script automatically includes @jon in all messages, so you don't need to manually add it. The mention is prepended to your message automatically.
+- Docstrings on Click commands become user-facing `--help` text and flow into the generated docs.
+  Write them accordingly, and keep the `Examples:` block in `aws_cloud_utilities/cli.py` valid.

@@ -1,7 +1,8 @@
 # AWS Cloud Utilities v2 - Makefile
 # Provides convenient commands for testing, development, and deployment
 
-.PHONY: help install test test-quick test-dry test-verbose test-ci clean lint format security docs
+.PHONY: help install test test-quick test-dry test-verbose test-ci clean lint format security \
+        docs docs-gen docs-check docs-serve
 
 # Default target
 help:
@@ -24,7 +25,10 @@ help:
 	@echo "  test-help    Run help-only tests"
 	@echo ""
 	@echo "Documentation:"
-	@echo "  docs         Generate documentation"
+	@echo "  docs         Regenerate, check, and build the docs site"
+	@echo "  docs-gen     Regenerate command reference from the CLI"
+	@echo "  docs-check   Verify docs match the CLI (no writes)"
+	@echo "  docs-serve   Serve the docs locally with live reload"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make test REGION=us-west-2 PROFILE=dev"
@@ -128,14 +132,22 @@ clean:
 	@echo "✅ Cleanup complete"
 
 # Documentation
-docs:
-	@echo "📚 Generating documentation..."
-	@echo "Available documentation:"
-	@echo "  - README.md: Main project documentation"
-	@echo "  - TESTING.md: Testing guide"
-	@echo "  - MIGRATED_COMMANDS.md: Migration documentation"
-	@echo "  - CLI help: Run 'aws-cloud-utilities --help'"
-	@echo "✅ Documentation ready"
+docs: docs-gen docs-check
+	@echo "📚 Building documentation site..."
+	$(PYTHON) -m mkdocs build --strict
+	@echo "✅ Site built in ./site"
+
+docs-gen:
+	@echo "📝 Regenerating command reference from the CLI..."
+	$(PYTHON) scripts/gen_docs.py
+
+docs-check:
+	@echo "🔍 Checking documentation against the CLI..."
+	$(PYTHON) scripts/gen_docs.py --check
+	$(PYTHON) scripts/validate_docs.py
+
+docs-serve:
+	$(PYTHON) -m mkdocs serve
 
 # Development helpers
 dev-setup: install

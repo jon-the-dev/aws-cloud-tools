@@ -1,248 +1,183 @@
 # Quick Start
 
-Get up and running with AWS Cloud Utilities v2 in minutes.
+Get from installed to useful in about five minutes.
 
-## First Steps
-
-### 1. Install the Tool
+## Install and verify
 
 ```bash
-# From source (current method)
 git clone https://github.com/jon-the-dev/aws-cloud-tools.git
-cd aws-cloud-tools/v2
+cd aws-cloud-tools
 pip install -e .
 ```
 
-### 2. Verify Installation
-
 ```bash
 aws-cloud-utilities --version
+aws-cloud-utilities info
 ```
 
-### 3. Check Your AWS Connection
+`info` prints the resolved profile, region, and caller identity. If that looks wrong, everything after
+it will be wrong too, so start here.
 
 ```bash
-aws-cloud-utilities account info
-```
-
-This command will show your AWS account details and verify your credentials are working.
-
-## Essential Commands
-
-### Account Information
-
-```bash
-# Basic account info
+# Confirm which account and identity you are using
 aws-cloud-utilities account info
 
-# Contact information
-aws-cloud-utilities account contact-info
-
-# Available regions
-aws-cloud-utilities account regions
-
-# Service limits
-aws-cloud-utilities account limits
+# Check that credentials work and see which permissions resolve
+aws-cloud-utilities account validate
 ```
 
-### Resource Inventory
+Most commands degrade gracefully when permissions are missing rather than failing outright, so
+`account validate` is worth running before you read an empty result as "nothing there."
+
+## Global options come first
 
 ```bash
-# List all resources
-aws-cloud-utilities inventory resources
-
-# Resources in specific region
-aws-cloud-utilities inventory resources --region us-west-2
-
-# Filter by service
-aws-cloud-utilities inventory resources --service ec2
-
-# Export to JSON
-aws-cloud-utilities inventory resources --output json > resources.json
+aws-cloud-utilities [GLOBAL OPTIONS] COMMAND [SUBCOMMAND] [ARGUMENTS] [OPTIONS]
 ```
 
-### Cost Optimization
+`--profile`, `--region`, `--output`, `--verbose`, `--debug`, and `--config` go **before** the command
+name. Everything else goes after.
 
 ```bash
-# Get pricing for EC2 instances
-aws-cloud-utilities costops pricing --service ec2
-
-# Find cheapest spot instances
-aws-cloud-utilities costops gpu-spots --instance-type p3.2xlarge
-
-# Cost analysis
-aws-cloud-utilities costops analyze
-
-# Savings recommendations
-aws-cloud-utilities costops recommendations
+# Correct
+aws-cloud-utilities --profile production --output json s3 list-buckets
 ```
-
-### Security Auditing
 
 ```bash
-# Basic security audit
-aws-cloud-utilities security audit
-
-# Blue team security assessment
-aws-cloud-utilities security blue-team-audit
-
-# Check for public resources
-aws-cloud-utilities security public-resources
-
-# IAM analysis
-aws-cloud-utilities iam analyze
+# Rejected -- --output is not an option of 's3 list-buckets'  (validate-docs: ignore)
+aws-cloud-utilities s3 list-buckets --output json
 ```
 
-### Log Management
+## See what exists
 
 ```bash
-# List log groups
-aws-cloud-utilities logs groups
-
-# Aggregate logs from a group
-aws-cloud-utilities logs aggregate --log-group /aws/lambda/my-function
-
-# Search logs
-aws-cloud-utilities logs search --log-group /aws/lambda/my-function --query "ERROR"
-
-# Export logs
-aws-cloud-utilities logs export --log-group /aws/lambda/my-function --start-time "2024-01-01"
+aws-cloud-utilities inventory services      # services the scanner supports
+aws-cloud-utilities account regions         # every region
+aws-cloud-utilities s3 list-buckets         # buckets, with regions
+aws-cloud-utilities iam list-roles          # IAM roles
+aws-cloud-utilities logs list-groups        # CloudWatch log groups
 ```
 
-## Common Workflows
-
-### 1. New Account Setup Audit
+A full account inventory writes to a directory rather than the terminal, because the output is far
+larger than a screen:
 
 ```bash
-# Get account overview
-aws-cloud-utilities account info
-aws-cloud-utilities account contact-info
-
-# Security baseline check
-aws-cloud-utilities security audit
-aws-cloud-utilities iam analyze
-
-# Resource inventory
-aws-cloud-utilities inventory resources
+aws-cloud-utilities inventory scan --output-dir ./inventory
 ```
 
-### 2. Cost Optimization Review
+Scope it while you are getting oriented:
 
 ```bash
-# Current resource inventory
-aws-cloud-utilities inventory resources --output json > current-resources.json
-
-# Cost analysis
-aws-cloud-utilities costops analyze
-
-# Find optimization opportunities
-aws-cloud-utilities costops recommendations
-
-# Check for unused resources
-aws-cloud-utilities inventory unused-resources
+aws-cloud-utilities inventory scan --services ec2,s3,rds --regions us-east-1,us-west-2
 ```
 
-### 3. Security Assessment
+## Find cost savings
 
 ```bash
-# Comprehensive security audit
-aws-cloud-utilities security blue-team-audit
+# Spend by service over the last three months
+aws-cloud-utilities costops cost-analysis
 
-# Check for public resources
-aws-cloud-utilities security public-resources
+# EBS volumes worth changing -- usually the fastest win
+aws-cloud-utilities costops ebs-optimization --all-regions --include-cost-estimates
 
-# IAM permissions analysis
-aws-cloud-utilities iam analyze
-aws-cloud-utilities iam unused-permissions
-
-# Network security
-aws-cloud-utilities networking security-groups
+# DynamoDB tables with provisioned capacity they are not using
+aws-cloud-utilities dynamodb cost-analysis --top 10
 ```
 
-### 4. Troubleshooting Issues
+Spot pricing is a two-step flow: collect, then analyze.
 
 ```bash
-# Check CloudWatch logs
-aws-cloud-utilities logs groups
-aws-cloud-utilities logs search --log-group /aws/lambda/my-function --query "ERROR"
-
-# Resource health check
-aws-cloud-utilities inventory health-check
-
-# Support case management
-aws-cloud-utilities support cases --status open
+aws-cloud-utilities costops spot-pricing --all-regions --output-dir ./spot-data
+aws-cloud-utilities costops spot-analysis ./spot-data --top-n 10
 ```
 
-## Output Formats
-
-All commands support multiple output formats:
+## Check security posture
 
 ```bash
-# Table format (default)
-aws-cloud-utilities account info
+# Findings from WAF, GuardDuty, and Security Hub
+aws-cloud-utilities security metrics
 
-# JSON format
-aws-cloud-utilities account info --output json
+# Certificates, including expired ones
+aws-cloud-utilities security list-certificates --all-regions
 
-# YAML format
-aws-cloud-utilities account info --output yaml
+# Config rules currently reporting non-compliance
+aws-cloud-utilities awsconfig list-rules --compliance-state NON_COMPLIANT
 
-# CSV format (for tabular data)
-aws-cloud-utilities inventory resources --output csv
+# Dump every role and customer-managed policy for offline review
+aws-cloud-utilities iam audit --output-dir ./iam-audit
+
+# Account-wide S3 encryption report
+aws-cloud-utilities s3 analyze-encryption --output-file s3-encryption.html
 ```
 
-## Global Options
-
-Use these options with any command:
+## Work with logs
 
 ```bash
-# Specify AWS profile
-aws-cloud-utilities --profile production account info
+# Log groups, with storage size
+aws-cloud-utilities logs list-groups --include-size
 
-# Specify region
-aws-cloud-utilities --region eu-west-1 inventory resources
+# Download the last 7 days for one group
+aws-cloud-utilities logs download /aws/lambda/my-function
 
-# Verbose output
-aws-cloud-utilities --verbose security audit
-
-# Debug mode
-aws-cloud-utilities --debug logs aggregate --log-group /aws/lambda/my-function
+# Find groups keeping data forever, then fix them
+aws-cloud-utilities logs set-retention /aws/lambda/my-function 30 --if-never --dry-run
+aws-cloud-utilities logs set-retention /aws/lambda/my-function 30 --if-never
 ```
 
-## Configuration
+Log groups with no retention policy keep data indefinitely and bill for it. `--if-never` only touches
+those, so it is safe to run broadly.
 
-Create a configuration file for default settings:
+## Get output you can script against
 
 ```bash
-# Interactive configuration
-aws-cloud-utilities configure
+# JSON to stdout, for piping
+aws-cloud-utilities --output json s3 list-buckets
+
+# Write to a file; the format follows the extension
+aws-cloud-utilities s3 list-buckets --output-file buckets.csv
+aws-cloud-utilities logs list-groups --output-file log-groups.json
 ```
 
-Or create `~/.aws-cloud-utilities.env`:
-
-```env
-AWS_PROFILE=default
-AWS_DEFAULT_REGION=us-east-1
-AWS_OUTPUT_FORMAT=table
-WORKERS=4
-```
-
-## Getting Help
+`--output` controls what is printed. `--output-file` writes to disk. They are independent, and not
+every command has the latter - `iam list-roles` and `security list-certificates`, for instance, only
+print. Redirect those instead:
 
 ```bash
-# General help
+aws-cloud-utilities --output json iam list-roles > roles.json
+```
+
+## Before you run anything destructive
+
+A handful of commands delete data. They are listed in the
+[command reference](../commands/index.md#commands-that-write-or-delete). Where `--dry-run` exists, use
+it first:
+
+```bash
+aws-cloud-utilities s3 nuke-bucket my-bucket --dry-run
+aws-cloud-utilities s3 delete-versions my-bucket --dry-run
+aws-cloud-utilities cloudfront update-logging --log-bucket my-logs --dry-run
+```
+
+## When something does not work
+
+```bash
+# Every level is self-documenting
 aws-cloud-utilities --help
-
-# Service-specific help
-aws-cloud-utilities account --help
-
-# Command-specific help
-aws-cloud-utilities account info --help
+aws-cloud-utilities costops --help
+aws-cloud-utilities costops ebs-optimization --help
 ```
 
-## Next Steps
+```bash
+# See what is actually happening
+aws-cloud-utilities --verbose --debug account validate
+```
 
-- [Configuration Guide](configuration.md) - Detailed configuration options
-- [Command Reference](../commands/index.md) - Complete command documentation
-- [Examples](../examples/common-use-cases.md) - Real-world usage examples
-- [Migration Guide](migration.md) - Migrate from v1 scripts
+If this documentation disagrees with `--help`, trust `--help` and please
+[open an issue](https://github.com/jon-the-dev/aws-cloud-tools/issues).
+
+## Next
+
+- [Configuration](configuration.md) - profiles, regions, and the config file
+- [Command Reference](../commands/index.md) - every command, with options
+- [Common Use Cases](../examples/common-use-cases.md) - longer worked examples
+- [Migration from v1](migration.md) - mapping old scripts to v2 commands
