@@ -9,6 +9,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [2.1.4] - 2026-08-05
+
+### Fixed
+
+- `waf list`, `waf stats`, and `waf troubleshoot` were completely non-functional,
+  failing with `'dict' object has no attribute 'region'`. The module was the only
+  one using `@click.pass_obj`, which passes the context dict where a `Config` was
+  expected. `waf list` and `waf stats` also reported the failure but still exited
+  0, so callers saw success.
+- `security metrics` always failed with `object of type 'NoneType' has no len()`.
+  `_collect_security_metrics` assembled its result but never returned it.
+- `iam list-roles --max-items` was ignored and returned every role. `MaxItems` was
+  sent as a service parameter, which botocore treats as a page size, and the
+  paginator then walked every page.
+- `s3 bucket-details --include-lifecycle` (and therefore `--include-all`) crashed
+  on botocore 1.43+, which no longer exposes `NoSuchLifecycleConfiguration` on the
+  S3 exception factory. Buckets with no lifecycle rules — the normal case — took
+  down the whole command.
+- Corrected the `Examples:` block in the CLI's root help, which referenced
+  commands and options that do not exist.
+
+### Changed
+
+- The command reference in the docs is now generated from the Click command tree
+  by `scripts/gen_docs.py` rather than maintained by hand. Validating the previous
+  docs found 465 of 927 examples referenced commands or options that do not
+  exist; `docs/commands/security.md` documented seven commands that were entirely
+  invented while omitting all three real ones.
+- `scripts/validate_docs.py` checks every documented example against the live CLI
+  and runs in CI, so documentation cannot drift from the code again.
+- Documented `billing cur-setup`, `s3 analyze-encryption`, `support
+  trusted-advisor`, and the top-level `configure` and `info` commands, none of
+  which previously appeared in the docs.
+- The GitHub Pages workflow now uploads a build artifact and deploys it, matching
+  the repository's `build_type: workflow` Pages configuration. It previously ran
+  `mkdocs gh-deploy`, which pushes to a branch that Pages ignores in that mode, so
+  the published site had been stale since 2025-07-25.
+
+### Removed
+
+- `slack-notify.sh` and `slack-notify.md`, along with all references to them.
+
 ## [2.1.3] - 2026-07-05
 
 ### Added
