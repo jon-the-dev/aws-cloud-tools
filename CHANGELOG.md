@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [2.1.5] - 2026-08-05
+
+### Fixed
+
+- `cloudfront update-logging` treated every distribution as having logging
+  disabled, because it read `DistributionConfig` off `list_distributions`
+  results, where that key does not exist. Using `.get(..., {})` meant it saw an
+  empty config rather than failing. On an account with 94 distributions it
+  reported all 94 as needing logging enabled when 42 were already configured
+  correctly; run for real it would have rewritten those 42 and given every
+  distribution the same flat `--log-prefix` instead of the intended per-alias
+  prefix. Logging state now comes from a `GetDistributionConfig` call per
+  distribution, which is the only place it is available.
+- `cloudfront list-distributions` failed with `KeyError: 'DistributionConfig'`
+  for any account that has distributions. All variants were affected, including
+  `--include-disabled` and `--show-logging-status`.
+- `cloudfront invalidate <domain-name>` silently reported the distribution as not
+  found. The same `KeyError` was swallowed by an enclosing handler that returns
+  `None`. Passing a distribution ID was unaffected.
+
+### Changed
+
+- `list-distributions --show-logging-status` and `update-logging` now issue one
+  additional API call per distribution, since `DistributionSummary` carries no
+  logging configuration. Documented in the CloudFront command page, along with
+  guidance to omit `--show-logging-status` when only the inventory is needed.
+
 ## [2.1.4] - 2026-08-05
 
 ### Fixed
