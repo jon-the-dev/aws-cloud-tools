@@ -96,12 +96,14 @@ def waf_group(ctx: click.Context) -> None:
     help="WAF scope (default: REGIONAL)",
 )
 @click.option("--output-file", help="Save output to file")
-@click.pass_obj
-def list_web_acls(config: Config, scope: str, output_file: Optional[str]):
+@click.pass_context
+def list_web_acls(ctx: click.Context, scope: str, output_file: Optional[str]):
     """List all Web ACLs in the account."""
+    config: Config = ctx.obj["config"]
+    aws_auth: AWSAuth = ctx.obj["aws_auth"]
+
     try:
-        aws_auth = AWSAuth(config)
-        analyzer = WAFAnalyzer(aws_auth, config.region)
+        analyzer = WAFAnalyzer(aws_auth, config.aws_region)
 
         with Progress(
             SpinnerColumn(),
@@ -132,7 +134,7 @@ def list_web_acls(config: Config, scope: str, output_file: Optional[str]):
 
     except Exception as e:
         logger.error(f"Error listing Web ACLs: {e}")
-        console.print(f"[red]Error: {e}[/red]")
+        raise click.ClickException(str(e))
 
 
 @waf_group.command(name="stats")
@@ -147,14 +149,16 @@ def list_web_acls(config: Config, scope: str, output_file: Optional[str]):
     help="WAF scope (default: REGIONAL)",
 )
 @click.option("--output-file", help="Save output to file")
-@click.pass_obj
+@click.pass_context
 def get_waf_stats(
-    config: Config, web_acl: str, hours: int, scope: str, output_file: Optional[str]
+    ctx: click.Context, web_acl: str, hours: int, scope: str, output_file: Optional[str]
 ):
     """Get comprehensive WAF statistics for troubleshooting."""
+    config: Config = ctx.obj["config"]
+    aws_auth: AWSAuth = ctx.obj["aws_auth"]
+
     try:
-        aws_auth = AWSAuth(config)
-        analyzer = WAFAnalyzer(aws_auth, config.region)
+        analyzer = WAFAnalyzer(aws_auth, config.aws_region)
 
         end_time = datetime.utcnow()
         start_time = end_time - timedelta(hours=hours)
@@ -236,7 +240,7 @@ def get_waf_stats(
 
     except Exception as e:
         logger.error(f"Error getting WAF stats: {e}")
-        console.print(f"[red]Error: {e}[/red]")
+        raise click.ClickException(str(e))
 
 
 @waf_group.command(name="troubleshoot")
@@ -245,14 +249,16 @@ def get_waf_stats(
     "--hours", type=int, default=24, help="Hours of data to analyze (default: 24)"
 )
 @click.option("--output-file", help="Save troubleshooting report to file")
-@click.pass_obj
+@click.pass_context
 def troubleshoot_waf(
-    config: Config, web_acl: str, hours: int, output_file: Optional[str]
+    ctx: click.Context, web_acl: str, hours: int, output_file: Optional[str]
 ):
     """Generate comprehensive WAF troubleshooting report."""
+    config: Config = ctx.obj["config"]
+    aws_auth: AWSAuth = ctx.obj["aws_auth"]
+
     try:
-        aws_auth = AWSAuth(config)
-        analyzer = WAFAnalyzer(aws_auth, config.region)
+        analyzer = WAFAnalyzer(aws_auth, config.aws_region)
 
         end_time = datetime.utcnow()
         start_time = end_time - timedelta(hours=hours)
@@ -352,7 +358,6 @@ def troubleshoot_waf(
 
     except Exception as e:
         logger.error(f"Error generating troubleshooting report: {e}")
-        console.print(f"[red]Error: {e}[/red]")
         raise click.ClickException(str(e))
     """Analyze AWS WAF metrics and statistics for troubleshooting."""
 
