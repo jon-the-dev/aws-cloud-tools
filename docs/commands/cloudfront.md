@@ -97,12 +97,30 @@ aws-cloud-utilities cloudfront invalidate cdn.example.com --paths "/index.html,/
 ## Notes
 
 `update-logging` applies to every distribution in the account. Always run it with `--dry-run` first.
+The dry run reports how many distributions would actually change, so a count well below your total
+means most are already configured the way you asked for.
 
 `--setup-alarms` creates CloudWatch alarms and requires `--sns-topic`. CloudWatch alarms are billable
 per alarm per month, so this is opt-in rather than part of the default logging change.
 
 `invalidate` accepts either a distribution ID or an alternate domain name as its argument. Paths
 default to `/*`, which invalidates everything.
+
+## Reading logging state costs an extra call per distribution
+
+`list-distributions` is one paginated call, but the summaries it returns carry no logging
+configuration. `--show-logging-status` therefore issues one additional `GetDistributionConfig` per
+distribution, as does `update-logging`. On an account with a hundred distributions that is a hundred
+extra calls and a noticeably slower run, so omit `--show-logging-status` when you only need the
+inventory.
+
+```bash
+# Fast: one paginated call
+aws-cloud-utilities cloudfront list-distributions
+
+# Slower: adds one API call per distribution
+aws-cloud-utilities cloudfront list-distributions --show-logging-status
+```
 
 ## Related
 
