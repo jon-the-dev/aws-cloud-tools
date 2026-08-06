@@ -392,6 +392,8 @@ def _collect_security_metrics(
         all_metrics[region] = region_metrics
         metrics_summary["metrics"][region] = region_metrics
 
+    return all_metrics
+
 
 def _get_waf_metrics(aws_auth: AWSAuth, region: str, time_range: int) -> Dict[str, Any]:
     """Get WAF metrics for a region."""

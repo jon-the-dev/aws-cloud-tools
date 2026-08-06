@@ -354,7 +354,9 @@ def list_roles(ctx: click.Context, path_prefix: Optional[str], max_items: int) -
     try:
         iam_client = aws_auth.get_client("iam")
 
-        params = {"MaxItems": max_items}
+        # MaxItems must go through PaginationConfig. As a service parameter it only
+        # caps the page size, and the paginator then walks every page anyway.
+        params = {"PaginationConfig": {"MaxItems": max_items}}
         if path_prefix:
             params["PathPrefix"] = path_prefix
 

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import click
+from botocore.exceptions import ClientError
 from rich.console import Console
 from rich.progress import (
     BarColumn,
@@ -1889,8 +1890,16 @@ def _get_bucket_details(
                 bucket_details["Lifecycle Rules"] = lifecycle_info
             else:
                 bucket_details["Lifecycle Rules"] = "None"
-        except s3_client.exceptions.NoSuchLifecycleConfiguration:
-            bucket_details["Lifecycle Rules"] = "None"
+        # Match on the error code rather than s3_client.exceptions.<Name>: current
+        # botocore no longer exposes NoSuchLifecycleConfiguration on the S3
+        # exception factory, and resolving it here raises while handling the
+        # original error.
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "NoSuchLifecycleConfiguration":
+                bucket_details["Lifecycle Rules"] = "None"
+            else:
+                logger.debug(f"Error getting lifecycle configuration: {e}")
+                bucket_details["Lifecycle Rules"] = "Error"
         except Exception as e:
             logger.debug(f"Error getting lifecycle configuration: {e}")
             bucket_details["Lifecycle Rules"] = "Error"
