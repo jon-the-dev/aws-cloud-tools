@@ -67,28 +67,42 @@ aws-cloud-utilities account validate
 | v1 Script | v2 Command | Notes |
 |-----------|------------|-------|
 | `costops/aws_pricing.py` | `aws-cloud-utilities costops pricing` | Enhanced with more services |
-| `costops/gpu_spot_prices.py` | `aws-cloud-utilities costops gpu-spots` | Better filtering and sorting |
+| `costops/gpu_spot_prices.py` | `aws-cloud-utilities costops spot-pricing` | Covers all instance types, not just GPU; filter with `--instance-types` |
 
 **New in v2:**
 ```bash
-aws-cloud-utilities costops analyze
-aws-cloud-utilities costops recommendations
-aws-cloud-utilities costops savings-plans
+aws-cloud-utilities costops cost-analysis
+aws-cloud-utilities costops ebs-optimization --all-regions
+aws-cloud-utilities costops usage-metrics AmazonEC2
+```
+
+GPU spot pricing is now a two-step flow rather than a dedicated command. Collect, then analyze:
+
+```bash
+aws-cloud-utilities costops spot-pricing --all-regions --instance-types p3.2xlarge,g4dn.xlarge --output-dir ./spot-data
+aws-cloud-utilities costops spot-analysis ./spot-data --top-n 10
 ```
 
 ### Security Commands
 
 | v1 Script | v2 Command | Notes |
 |-----------|------------|-------|
-| `security/blue_team_audit.py` | `aws-cloud-utilities security blue-team-audit` | Enhanced checks |
-| `security/public_resources.py` | `aws-cloud-utilities security public-resources` | Better detection |
+| `security/blue_team_audit.py` | `aws-cloud-utilities security metrics` | Aggregates WAF, GuardDuty, and Security Hub findings |
+| `security/public_resources.py` | `aws-cloud-utilities awsconfig compliance-checker` | Exposure detection now goes through AWS Config rules |
+| `iam/audit_roles.py` | `aws-cloud-utilities iam audit` | Dumps roles and policies to disk for offline review |
 
 **New in v2:**
 ```bash
-aws-cloud-utilities security audit
-aws-cloud-utilities security compliance
-aws-cloud-utilities iam analyze
+aws-cloud-utilities security metrics --all-regions
+aws-cloud-utilities security list-certificates --all-regions
+aws-cloud-utilities awsconfig compliance-status --compliance-type NON_COMPLIANT
 ```
+
+!!! warning "Not a one-to-one port"
+    The v1 `blue_team_audit.py` and `public_resources.py` scripts do not have direct v2 equivalents.
+    v2 leans on AWS Config and Security Hub for compliance and exposure findings rather than
+    reimplementing those checks. See [Security Commands](../commands/security.md) and
+    [AWS Config Commands](../commands/awsconfig.md) for what is actually available.
 
 ## Migration Steps
 
@@ -144,11 +158,11 @@ WORKERS=4
 
 **v2 Output:**
 ```bash
-# Multiple formats available
-aws-cloud-utilities account info --output json
-aws-cloud-utilities account info --output yaml
-aws-cloud-utilities account info --output table
-aws-cloud-utilities account info --output csv
+# Multiple formats available -- --output is a global option, so it goes first
+aws-cloud-utilities --output json account info
+aws-cloud-utilities --output yaml account info
+aws-cloud-utilities --output table account info
+aws-cloud-utilities --output csv account info
 ```
 
 ## Feature Enhancements
@@ -220,9 +234,11 @@ aws-cloud-utilities account info --output csv
 ```yaml
 - name: Run AWS Audit
   run: |
-    aws-cloud-utilities security blue-team-audit --output json > audit.json
-    aws-cloud-utilities account detect-control-tower --output json > control-tower.json
+    aws-cloud-utilities --output json security metrics > audit.json
+    aws-cloud-utilities --output json account detect-control-tower > control-tower.json
 ```
+
+Note that global options such as `--output` go **before** the command name, not after it.
 
 ### Monitoring Scripts
 
@@ -306,8 +322,8 @@ Update one automation script at a time and test thoroughly.
 
 2. **Different output format**
    ```bash
-   # Use --output to match expected format
-   aws-cloud-utilities account info --output json
+   # Use --output to match expected format (before the command name)
+   aws-cloud-utilities --output json account info
    ```
 
 3. **Missing functionality**

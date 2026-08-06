@@ -125,9 +125,9 @@ def main(
 
     Examples:
         aws-cloud-utilities account info
-        aws-cloud-utilities inventory resources --region us-east-1
-        aws-cloud-utilities costops pricing --service ec2
-        aws-cloud-utilities logs aggregate --log-group /aws/lambda/my-function
+        aws-cloud-utilities inventory scan --regions us-east-1
+        aws-cloud-utilities costops pricing --service AmazonEC2
+        aws-cloud-utilities logs download /aws/lambda/my-function --days 7
     """
     try:
         cli_instance.setup(

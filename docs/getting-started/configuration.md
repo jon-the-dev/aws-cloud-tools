@@ -162,12 +162,17 @@ AWS_DEFAULT_REGION=us-west-2
 Some commands support multi-region operations:
 
 ```bash
-# Inventory across all regions
-aws-cloud-utilities inventory resources --all-regions
+# Inventory across all regions (the default when --regions is omitted)
+aws-cloud-utilities inventory scan --output-dir ./inventory
 
 # Specific regions
-aws-cloud-utilities inventory resources --regions us-east-1,us-west-2,eu-west-1
+aws-cloud-utilities inventory scan --regions us-east-1,us-west-2,eu-west-1
 ```
+
+Multi-region support is per-command and not uniform. Some commands take `--all-regions` as a flag
+(`s3 list-buckets`, `logs list-groups`, `iam`-adjacent commands), others take a comma-separated
+`--regions` list (`inventory scan`, `cloudformation backup`), and a few are single-region only
+(`rds list-instances`). Check the command's page or `--help` rather than assuming.
 
 ## Output Format Configuration
 

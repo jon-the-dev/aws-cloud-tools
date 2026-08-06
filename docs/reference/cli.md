@@ -1,499 +1,1457 @@
 # CLI Reference
 
-Complete command-line interface reference for AWS Cloud Utilities v2.
+The complete command tree, generated from the CLI itself.
+
+```bash
+aws-cloud-utilities [GLOBAL OPTIONS] COMMAND [SUBCOMMAND] [ARGUMENTS] [OPTIONS]
+```
+
+Global options precede the command name. Command options follow it.
 
 ## Global Options
 
-These options are available for all commands:
-
-| Option | Short | Environment Variable | Default | Description |
-|--------|-------|---------------------|---------|-------------|
-| `--profile` | `-p` | `AWS_PROFILE` | `default` | AWS profile to use |
-| `--region` | `-r` | `AWS_DEFAULT_REGION` | `us-east-1` | AWS region |
-| `--output` | `-o` | `AWS_OUTPUT_FORMAT` | `table` | Output format |
-| `--verbose` | `-v` | `VERBOSE` | `false` | Enable verbose output |
-| `--debug` | `-d` | `DEBUG` | `false` | Enable debug mode |
-| `--config` | `-c` | `CONFIG_FILE` | `~/.aws-cloud-utilities.env` | Configuration file |
-| `--version` | | | | Show version and exit |
-| `--help` | `-h` | | | Show help and exit |
-
-## Output Formats
-
-| Format | Description | Use Case |
-|--------|-------------|----------|
-| `table` | Rich formatted tables | Human-readable output |
-| `json` | JSON format | Automation and scripting |
-| `yaml` | YAML format | Configuration files |
-| `csv` | CSV format | Spreadsheet import |
-
-## Command Structure
-
-```
-aws-cloud-utilities [GLOBAL-OPTIONS] <service> <operation> [OPTIONS]
-```
-
-## Services and Commands
-
-### account
-Account information and management
-
-```bash
-aws-cloud-utilities account <command> [options]
-```
-
-| Command | Description |
-|---------|-------------|
-| `info` | Get AWS account information and summary |
-| `contact-info` | Get AWS account contact information |
-| `detect-control-tower` | Detect AWS Control Tower or Landing Zone |
-| `regions` | List all available AWS regions |
-| `service-regions` | List regions for a specific AWS service |
-| `limits` | Get AWS service limits and usage quotas |
-| `validate` | Validate AWS credentials and permissions |
-
-### awsconfig
-AWS Config service operations
-
-```bash
-aws-cloud-utilities awsconfig <command> [options]
-```
-
-| Command | Description |
-|---------|-------------|
-| `download` | Download AWS Config files from S3 and convert |
-| `show-rules` | Show AWS Config rules with details |
-| `list-rules` | List AWS Config rules |
-| `compliance-status` | Show compliance status of resources |
-| `compliance-checker` | Check compliance against rules |
-
-### bedrock
-Amazon Bedrock AI/ML operations
-
-```bash
-aws-cloud-utilities bedrock <command> [options]
-```
-
-| Command | Description |
-|---------|-------------|
-| `list-models` | List Amazon Bedrock foundation models |
-| `model-details` | Get detailed information about a model |
-| `list-custom-models` | List custom/fine-tuned models |
-| `list-model-jobs` | List model training and customization jobs |
-| `regions` | List regions where Bedrock is available |
-
-### billing
-AWS Billing & Cost Management
-
-```bash
-aws-cloud-utilities billing <command> [options]
-```
-
-| Command | Description |
-|---------|-------------|
-| `cur-list` | List existing Cost and Usage Reports |
-| `cur-details` | Get detailed information about a CUR report |
-| `cur-create` | Create a new Cost and Usage Report |
-| `cur-delete` | Delete an existing Cost and Usage Report |
-| `cur-validate-bucket` | Validate S3 bucket for CUR delivery |
-
-### cloudformation
-CloudFormation stack management
-
-```bash
-aws-cloud-utilities cloudformation <command> [options]
-```
-
-| Command | Description |
-|---------|-------------|
-| `backup` | Backup stacks and templates across regions |
-| `list-stacks` | List CloudFormation stacks with status |
-| `stack-details` | Get detailed information about a stack |
-
-### cloudfront
-CloudFront distribution management
-
-```bash
-aws-cloud-utilities cloudfront <command> [options]
-```
-
-| Command | Description |
-|---------|-------------|
-| `update-logging` | Enable logging and setup CloudWatch alarms |
-| `list-distributions` | List CloudFront distributions |
-| `distribution-details` | Get detailed distribution information |
-| `invalidate` | Create cache invalidation |
-
-### costops
-Cost optimization and pricing tools
-
-```bash
-aws-cloud-utilities costops <command> [options]
-```
-
-| Command | Description |
-|---------|-------------|
-| `pricing` | Get AWS pricing information for services |
-| `cost-analysis` | Analyze costs using Cost Explorer |
-| `ebs-optimization` | Analyze EBS volume optimization |
-| `usage-metrics` | Collect usage metrics from CloudWatch |
-| `spot-pricing` | Get EC2 Spot instance pricing |
-| `spot-analysis` | Analyze Spot instance savings |
-
-### ecr
-Elastic Container Registry operations
-
-```bash
-aws-cloud-utilities ecr <command> [options]
-```
-
-| Command | Description |
-|---------|-------------|
-| `copy-image` | Copy Docker image to AWS ECR |
-| `list-repositories` | List all ECR repositories |
-| `list-images` | List images in an ECR repository |
-| `create-repository` | Create a new ECR repository |
-| `delete-repository` | Delete an ECR repository |
-| `get-login` | Get ECR login credentials |
-
-### iam
-IAM management and auditing
-
-```bash
-aws-cloud-utilities iam <command> [options]
-```
-
-| Command | Description |
-|---------|-------------|
-| `audit` | Audit IAM roles and policies, save locally |
-| `list-roles` | List all IAM roles with details |
-| `list-policies` | List IAM policies |
-| `role-details` | Get detailed information about a role |
-| `policy-details` | Get detailed information about a policy |
-
-### inventory
-Resource discovery and inventory
-
-```bash
-aws-cloud-utilities inventory <command> [options]
-```
-
-| Command | Description |
-|---------|-------------|
-| `scan` | Comprehensive resource inventory scan |
-| `workspaces` | List WorkSpaces instances and configs |
-| `services` | Discover available AWS services |
-| `download-all` | Download all resource data in bulk |
-
-### logs
-CloudWatch logs management
-
-```bash
-aws-cloud-utilities logs <command> [options]
-```
-
-| Command | Description |
-|---------|-------------|
-| `list-groups` | List CloudWatch log groups with details |
-| `download` | Download logs from CloudWatch |
-| `set-retention` | Set or update log retention policies |
-| `delete-group` | Delete log groups (with confirmation) |
-| `combine` | Combine logs from multiple sources |
-| `aggregate` | Aggregate logs from S3 (CloudTrail, etc.) |
-
-### networking
-Network utilities and analysis
-
-```bash
-aws-cloud-utilities networking <command> [options]
-```
-
-| Command | Description |
-|---------|-------------|
-| `ip-ranges` | Download and analyze AWS IP ranges |
-| `ip-summary` | Show summary statistics of IP ranges |
-
-### rds
-RDS database management
-
-```bash
-aws-cloud-utilities rds <command> [options]
-```
-
-| Command | Description |
-|---------|-------------|
-| `troubleshoot-mysql` | Troubleshoot MySQL RDS connections |
-| `list-instances` | List RDS instances with details |
-
-### s3
-S3 bucket operations
-
-```bash
-aws-cloud-utilities s3 <command> [options]
-```
-
-| Command | Description |
-|---------|-------------|
-| `list-buckets` | List S3 buckets with details |
-| `create-bucket` | Create a new S3 bucket |
-| `download` | Download objects from S3 buckets |
-| `nuke-bucket` | Delete all objects and versions from bucket |
-| `bucket-details` | Get detailed bucket configuration |
-| `delete-versions` | Delete specific object versions |
-| `restore-objects` | Restore objects from Glacier/Deep Archive |
-
-### security
-Security auditing and tools
-
-```bash
-aws-cloud-utilities security <command> [options]
-```
-
-| Command | Description |
-|---------|-------------|
-| `metrics` | Collect security metrics (WAF, GuardDuty, etc.) |
-| `create-certificate` | Create SSL/TLS certificates in ACM |
-| `list-certificates` | List SSL/TLS certificates |
-
-### stepfunctions
-Step Functions workflow management
-
-```bash
-aws-cloud-utilities stepfunctions <command> [options]
-```
-
-| Command | Description |
-|---------|-------------|
-| `list` | List all Step Functions state machines |
-| `describe` | Get detailed information about state machine |
-| `execute` | Execute a state machine |
-| `list-executions` | List executions of a state machine |
-| `logs` | View logs for state machine executions |
-
-### support
-AWS support tools
-
-```bash
-aws-cloud-utilities support <command> [options]
-```
-
-| Command | Description |
-|---------|-------------|
-| `check-level` | Check AWS support level |
-| `severity-levels` | List available support severity levels |
-| `cases` | List support cases |
-| `services` | List services covered by support plan |
-
-**Trusted Advisor Commands:**
-
-| Command | Description |
-|---------|-------------|
-| `cost-savings` | Get Trusted Advisor cost optimization recommendations |
-
-### waf
-Web Application Firewall management
-
-```bash
-aws-cloud-utilities waf <command> [options]
-```
-
-| Command | Description |
-|---------|-------------|
-| `list` | List all Web ACLs (REGIONAL or CLOUDFRONT) |
-| `stats` | Get CloudWatch metrics for Web ACLs |
-| `troubleshoot` | Troubleshoot WAF blocks and issues |
-
-## Common Option Patterns
-
-### Filtering Options
-
-Many commands support filtering:
-
-```bash
---service SERVICE          # Filter by AWS service
---region REGION           # Filter by region
---tag KEY=VALUE          # Filter by tag
---resource-type TYPE     # Filter by resource type
---status STATUS          # Filter by status
-```
-
-### Time-based Options
-
-Commands dealing with time-based data:
-
-```bash
---start-time TIME        # Start time for analysis
---end-time TIME         # End time for analysis
---age-threshold DAYS    # Age threshold in days
---lookback-period DAYS  # Lookback period
-```
-
-### Output Control Options
-
-Control output behavior:
-
-```bash
---max-results NUMBER     # Maximum number of results
---sort-by FIELD         # Sort results by field
---ascending             # Sort in ascending order
---descending            # Sort in descending order
---include-details       # Include detailed information
---summary-only          # Show summary only
-```
+<!-- BEGIN GENERATED: global-options -->
+<!-- Generated by scripts/gen_docs.py -- do not edit between these markers. -->
+
+| Option | Value | Description |
+|---|---|---|
+| `--profile` | `TEXT` | AWS profile to use |
+| `--region` | `TEXT` | AWS region |
+| `--output` | `table` \| `json` \| `yaml` \| `csv` | Output format |
+| `--verbose` | flag | Enable verbose output |
+| `--debug` | flag | Enable debug mode |
+| `--config` | `TEXT` | Configuration file path |
+| `--version` | flag | Show the version and exit. |
+
+<!-- END GENERATED: global-options -->
+
+None of these have short forms; write them out in full.
 
 ## Environment Variables
 
-All CLI options can be set via environment variables:
+Every global setting can be supplied through the environment instead of a flag.
+
+| Variable | Setting | Default |
+|---|---|---|
+| `AWS_PROFILE` | AWS profile | none |
+| `AWS_DEFAULT_REGION` / `AWS_REGION` | AWS region | none |
+| `AWS_OUTPUT_FORMAT` | Output format | `table` |
+| `WORKERS` | Worker threads for parallel operations | `4` |
+| `LOG_LEVEL` | Logging level | `INFO` |
+| `DATA_DIR` | Default data directory | none |
+| `VERBOSE` | Verbose output | `false` |
+| `DEBUG` | Debug mode | `false` |
+| `NO_COLOR` | Disable colored output | `false` |
+
+Precedence, highest first: command-line flags, environment variables, configuration file, defaults.
+See [Configuration](../getting-started/configuration.md).
+
+## Output Formats
+
+| Format | Use for |
+|---|---|
+| `table` | Reading in a terminal (default) |
+| `json` | Piping into `jq` or other tooling |
+| `yaml` | Configuration and diffing |
+| `csv` | Spreadsheets |
+
+`--output` sets what is printed. `--output-file` (available on many commands) writes to disk and
+picks its format from the file extension. They are independent.
+
+## Command Tree
+
+<!-- BEGIN GENERATED: full-reference -->
+<!-- Generated by scripts/gen_docs.py -- do not edit between these markers. -->
+
+## `account`
+
+Account information and management commands.
 
 ```bash
-# AWS Configuration
-export AWS_PROFILE=production
-export AWS_DEFAULT_REGION=us-west-2
-export AWS_OUTPUT_FORMAT=json
-
-# Tool Configuration
-export VERBOSE=true
-export DEBUG=false
-export WORKERS=8
-export CONFIG_FILE=/path/to/config.env
-
-# Logging
-export LOG_LEVEL=INFO
-export LOG_FILE=/var/log/aws-cloud-utilities.log
+aws-cloud-utilities account COMMAND
 ```
 
-## Configuration File
+### `account contact-info`
 
-Create `~/.aws-cloud-utilities.env`:
-
-```env
-# AWS Settings
-AWS_PROFILE=default
-AWS_DEFAULT_REGION=us-east-1
-AWS_OUTPUT_FORMAT=table
-
-# Performance
-WORKERS=4
-TIMEOUT=30
-RETRY_ATTEMPTS=3
-
-# Logging
-LOG_LEVEL=INFO
-VERBOSE=false
-DEBUG=false
-
-# Output
-SHOW_PROGRESS=true
-COLOR_OUTPUT=true
-TABLE_MAX_WIDTH=120
-```
-
-## Exit Codes
-
-| Code | Description |
-|------|-------------|
-| 0 | Success |
-| 1 | General error |
-| 2 | Configuration error |
-| 3 | AWS authentication error |
-| 4 | AWS permission error |
-| 5 | Resource not found |
-| 6 | Invalid input |
-
-## Examples
-
-### Basic Usage
+Get AWS account contact information.
 
 ```bash
-# Get account information
+aws-cloud-utilities account contact-info
+```
+
+### `account detect-control-tower`
+
+Detect AWS Control Tower or Landing Zone deployments.
+
+```bash
+aws-cloud-utilities account detect-control-tower [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--verbose` | flag | Enable verbose output showing region-by-region progress |
+
+### `account info`
+
+Get AWS account information.
+
+```bash
 aws-cloud-utilities account info
-
-# List resources with specific output format
-aws-cloud-utilities inventory resources --output json
-
-# Security audit with verbose output
-aws-cloud-utilities --verbose security audit
 ```
 
-### Advanced Usage
+### `account limits`
+
+Get AWS service limits and usage.
 
 ```bash
-# Multi-region resource inventory
-aws-cloud-utilities inventory resources --all-regions --output csv > resources.csv
-
-# Cost optimization for specific service
-aws-cloud-utilities costops analyze --service ec2 --start-date 2024-01-01
-
-# Security audit with specific profile and region
-aws-cloud-utilities --profile prod --region us-west-2 security blue-team-audit
+aws-cloud-utilities account limits
 ```
 
-### Automation Examples
+### `account regions`
+
+List all available AWS regions.
 
 ```bash
-# Daily security check
-aws-cloud-utilities security audit --severity high --output json > security-$(date +%Y%m%d).json
-
-# Weekly cost analysis
-aws-cloud-utilities costops analyze --group-by service --output yaml > weekly-costs.yaml
-
-# Resource health monitoring
-aws-cloud-utilities inventory health-check --unhealthy-only --output table
+aws-cloud-utilities account regions
 ```
 
-## Help System
+### `account service-regions`
 
-### Getting Help
+List available regions for a specific AWS service.
 
 ```bash
-# General help
-aws-cloud-utilities --help
-
-# Service help
-aws-cloud-utilities account --help
-
-# Command help
-aws-cloud-utilities account info --help
-
-# Show version
-aws-cloud-utilities --version
+aws-cloud-utilities account service-regions [OPTIONS]
 ```
 
-### Help Output Format
+| Option | Value | Description |
+|---|---|---|
+| `--service` | `TEXT` | AWS service to check regions for (default: `ec2`) |
 
-Help output includes:
+### `account validate`
 
-- Command description
-- Usage syntax
-- Available options
-- Examples
-- Related commands
-
-## Debugging
-
-### Debug Mode
-
-Enable debug mode for troubleshooting:
+Validate AWS credentials and permissions.
 
 ```bash
-aws-cloud-utilities --debug account info
+aws-cloud-utilities account validate
 ```
 
-Debug mode shows:
-- Configuration loading
-- AWS API calls
-- Error stack traces
-- Performance timing
+## `awsconfig`
 
-### Verbose Mode
-
-Enable verbose output for detailed information:
+AWS Config service management and compliance monitoring commands.
 
 ```bash
-aws-cloud-utilities --verbose inventory resources
+aws-cloud-utilities awsconfig COMMAND
 ```
 
-Verbose mode shows:
-- Progress indicators
-- Detailed status messages
-- Resource processing information
-- Summary statistics
+### `awsconfig compliance-checker`
+
+Comprehensive AWS Config compliance checker for various resource types.
+
+```bash
+aws-cloud-utilities awsconfig compliance-checker [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region to check compliance (default: current region) |
+| `--all-regions` | flag | Check compliance across all regions |
+| `--resource-type` | `TEXT` | Filter by specific AWS resource type (e.g., AWS::EC2::Instance) |
+| `--show-compliant` | flag | Include compliant resources in the output |
+| `--show-details` | flag | Show detailed resource information and rule descriptions |
+| `--output-file` | `TEXT` | Output file for compliance report (supports .json, .yaml, .csv) |
+
+### `awsconfig compliance-status`
+
+Get compliance status summary across AWS Config rules and resources.
+
+```bash
+aws-cloud-utilities awsconfig compliance-status [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region to check compliance status (default: current region) |
+| `--all-regions` | flag | Check compliance status across all regions |
+| `--resource-type` | `TEXT` | Filter by specific AWS resource type (e.g., AWS::EC2::Instance) |
+| `--compliance-type` | `COMPLIANT` \| `NON_COMPLIANT` \| `NOT_APPLICABLE` \| `INSUFFICIENT_DATA` | Filter by compliance type |
+| `--output-file` | `TEXT` | Output file for compliance status (supports .json, .yaml, .csv) |
+
+### `awsconfig download`
+
+Download and process AWS Config files from S3 into CSV or JSON format.
+
+```bash
+aws-cloud-utilities awsconfig download [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--bucket` | `TEXT` | **Required.** S3 bucket name containing AWS Config files |
+| `--prefix` | `TEXT` | **Required.** S3 prefix for Config files |
+| `--start-date` | `TEXT` | **Required.** Start date for download range (YYYY-MM-DD) |
+| `--end-date` | `TEXT` | **Required.** End date for download range (YYYY-MM-DD) |
+| `--output-file` | `TEXT` | Output CSV file name (default: config_data_<timestamp>.csv) |
+| `--region` | `TEXT` | AWS region for S3 access (default: current region) |
+| `--format` | `csv` \| `json` | Output format (default: csv) |
+| `--keep-temp-files` | flag | Keep downloaded temporary JSON files |
+
+### `awsconfig list-rules`
+
+List AWS Config rules with basic information.
+
+```bash
+aws-cloud-utilities awsconfig list-rules [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region to list Config rules from (default: current region) |
+| `--all-regions` | flag | List Config rules from all regions |
+| `--compliance-state` | `COMPLIANT` \| `NON_COMPLIANT` \| `NOT_APPLICABLE` \| `INSUFFICIENT_DATA` | Filter rules by compliance state |
+| `--output-file` | `TEXT` | Output file for rules list (supports .json, .yaml, .csv) |
+
+### `awsconfig show-rules`
+
+Show AWS Config rules with compliance metrics and meaningful statistics.
+
+```bash
+aws-cloud-utilities awsconfig show-rules [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region to analyze Config rules (default: current region) |
+| `--all-regions` | flag | Analyze Config rules across all regions |
+| `--rule-name` | `TEXT` | Specific Config rule to analyze |
+| `--include-metrics` | flag | Include compliance metrics and statistics |
+| `--output-file` | `TEXT` | Output file for rules analysis (supports .json, .yaml, .csv) |
+
+## `bedrock`
+
+Amazon Bedrock management commands.
+
+```bash
+aws-cloud-utilities bedrock COMMAND
+```
+
+### `bedrock list-custom-models`
+
+List custom Bedrock models.
+
+```bash
+aws-cloud-utilities bedrock list-custom-models [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | Specific region to list custom models from (default: current region) |
+| `--status` | `InProgress` \| `Completed` \| `Failed` \| `Stopping` \| `Stopped` | Filter by model status |
+
+### `bedrock list-model-jobs`
+
+List Bedrock model customization jobs.
+
+```bash
+aws-cloud-utilities bedrock list-model-jobs [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | Specific region to list model customization jobs from (default: current region) |
+| `--status` | `InProgress` \| `Completed` \| `Failed` \| `Stopping` \| `Stopped` | Filter by job status |
+
+### `bedrock list-models`
+
+List Amazon Bedrock foundation models across regions.
+
+```bash
+aws-cloud-utilities bedrock list-models [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | Specific region to list models from (default: all regions) |
+| `--output-file` | `TEXT` | Save results to file (supports .json, .csv, .yaml) |
+| `--model-type` | `foundation` \| `custom` \| `all` | Type of models to list (default: `foundation`) |
+| `--provider` | `TEXT` | Filter by model provider (e.g., amazon, anthropic, ai21, cohere) |
+
+### `bedrock model-details`
+
+Get detailed information about a specific Bedrock model.
+
+```bash
+aws-cloud-utilities bedrock model-details MODEL_ID [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | Region where the model is available (default: current region) |
+
+### `bedrock regions`
+
+List regions where Amazon Bedrock is available.
+
+```bash
+aws-cloud-utilities bedrock regions
+```
+
+## `billing`
+
+AWS billing and Cost and Usage Report (CUR) management commands.
+
+```bash
+aws-cloud-utilities billing COMMAND
+```
+
+### `billing cur-create`
+
+Create a new Cost and Usage Report (CUR 2.0).
+
+```bash
+aws-cloud-utilities billing cur-create [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--report-name` | `TEXT` | **Required.** Name for the new CUR report |
+| `--bucket` | `TEXT` | **Required.** S3 bucket name for CUR delivery |
+| `--prefix` | `TEXT` | S3 prefix for CUR files (default: cur-reports) |
+| `--format` | `textORcsv` \| `Parquet` | Report format (default: textORcsv) |
+| `--compression` | `GZIP` \| `ZIP` \| `Parquet` | Compression type (default: GZIP) |
+| `--schema-elements` | `TEXT` | Additional schema elements (default: RESOURCES) (repeatable) |
+
+### `billing cur-delete`
+
+Delete a Cost and Usage Report.
+
+```bash
+aws-cloud-utilities billing cur-delete REPORT_NAME [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--confirm` | flag | Skip confirmation prompt |
+
+### `billing cur-details`
+
+Show detailed configuration for a specific CUR report.
+
+```bash
+aws-cloud-utilities billing cur-details REPORT_NAME [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--output-file` | `TEXT` | Output file for CUR report details (supports .json, .yaml) |
+
+### `billing cur-list`
+
+List all existing Cost and Usage Reports.
+
+```bash
+aws-cloud-utilities billing cur-list [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--output-file` | `TEXT` | Output file for CUR reports list (supports .json, .yaml, .csv) |
+
+### `billing cur-setup`
+
+Provision an end-to-end CUR data source (bucket, policy, and report).
+
+```bash
+aws-cloud-utilities billing cur-setup [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--bucket` | `TEXT` | **Required.** S3 bucket name for CUR delivery |
+| `--report-name` | `TEXT` | Name for the CUR report (default: `hourly-cur`) |
+| `--prefix` | `TEXT` | S3 prefix for CUR files (default: `cur`) |
+| `--time-unit` | `HOURLY` \| `DAILY` | CUR time granularity (default: `HOURLY`) |
+| `--retention-days` | `INTEGER` | Days before CUR objects are expired by the bucket lifecycle policy (default: `365`) |
+| `--region` | `TEXT` | Region for the S3 bucket (defaults to the session region) |
+| `--enable-versioning` | flag | Enable S3 bucket versioning |
+| `--dry-run` | flag | Print the plan without creating anything |
+
+### `billing cur-validate-bucket`
+
+Validate S3 bucket permissions for CUR delivery.
+
+```bash
+aws-cloud-utilities billing cur-validate-bucket BUCKET_NAME [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--prefix` | `TEXT` | S3 prefix for CUR files (optional) |
+
+## `cloudformation`
+
+AWS CloudFormation management and backup commands.
+
+```bash
+aws-cloud-utilities cloudformation COMMAND
+```
+
+### `cloudformation backup`
+
+Backup CloudFormation stacks and templates across regions.
+
+```bash
+aws-cloud-utilities cloudformation backup [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--regions` | `TEXT` | Comma-separated list of regions to backup (default: all regions) |
+| `--output-dir` | `TEXT` | Directory to save CloudFormation backups (default: ./cfn_backup_<account_id>_<timestamp>) |
+| `--stack-status` | `TEXT` | Stack statuses to include in backup (can be specified multiple times) (repeatable) (default: `CREATE_COMPLETE,UPDATE_COMPLETE,UPDATE_ROLLBACK_COMPLETE`) |
+| `--parallel-regions` | `INTEGER` | Number of regions to process in parallel (default: from config) |
+| `--parallel-stacks` | `INTEGER` | Number of stacks to process in parallel per region (default: `2`) |
+| `--format` | `json` \| `yaml` | Output format for templates and parameters (default: `json`) |
+
+### `cloudformation list-stacks`
+
+List CloudFormation stacks with details.
+
+```bash
+aws-cloud-utilities cloudformation list-stacks [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region to list stacks from (default: current region) |
+| `--stack-status` | `TEXT` | Filter by stack status (can be specified multiple times) (repeatable) |
+| `--all-regions` | flag | List stacks from all regions |
+
+### `cloudformation stack-details`
+
+Get detailed information about a specific CloudFormation stack.
+
+```bash
+aws-cloud-utilities cloudformation stack-details STACK_NAME [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region where the stack is located (default: current region) |
+| `--show-template` | flag | Show the stack template |
+| `--show-parameters` | flag | Show stack parameters |
+| `--show-outputs` | flag | Show stack outputs |
+
+## `cloudfront`
+
+AWS CloudFront distribution management and monitoring commands.
+
+```bash
+aws-cloud-utilities cloudfront COMMAND
+```
+
+### `cloudfront distribution-details`
+
+Get detailed information about a specific CloudFront distribution.
+
+```bash
+aws-cloud-utilities cloudfront distribution-details DISTRIBUTION_ID [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--show-config` | flag | Show detailed distribution configuration |
+| `--output-file` | `TEXT` | Output file for distribution details (supports .json, .yaml) |
+
+### `cloudfront invalidate`
+
+Invalidate CloudFront distribution cache by domain name or distribution ID.
+
+```bash
+aws-cloud-utilities cloudfront invalidate TARGET [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--paths` | `TEXT` | Paths to invalidate (default: /*) (repeatable) |
+| `--output-file` | `TEXT` | Output file for invalidation details (supports .json, .yaml) |
+
+### `cloudfront list-distributions`
+
+List CloudFront distributions with their configuration details.
+
+```bash
+aws-cloud-utilities cloudfront list-distributions [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--include-disabled` | flag | Include disabled distributions in the list |
+| `--show-logging-status` | flag | Show logging configuration status for each distribution |
+| `--output-file` | `TEXT` | Output file for distributions list (supports .json, .yaml, .csv) |
+
+### `cloudfront update-logging`
+
+Update CloudFront distributions to enable logging and optionally setup alarms.
+
+```bash
+aws-cloud-utilities cloudfront update-logging [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--log-bucket` | `TEXT` | S3 bucket for CloudFront logs (required for logging configuration) |
+| `--log-prefix` | `TEXT` | Default log prefix when no alternate domain names found (default: cf-logs) |
+| `--setup-alarms` | flag | Setup CloudWatch alarms for CloudFront distributions |
+| `--remove-alarms` | flag | Remove CloudWatch alarms for CloudFront distributions |
+| `--sns-topic` | `TEXT` | SNS topic name for alarm notifications (required for alarm setup) |
+| `--region` | `TEXT` | AWS region for SNS topic and CloudWatch alarms (default: current region) |
+| `--dry-run` | flag | Show what would be changed without making changes |
+| `--output-file` | `TEXT` | Output file for results (supports .json, .yaml, .csv) |
+
+## `configure`
+
+Configure AWS Cloud Utilities settings.
+
+```bash
+aws-cloud-utilities configure
+```
+
+## `costops`
+
+AWS cost optimization and analysis commands.
+
+```bash
+aws-cloud-utilities costops COMMAND
+```
+
+### `costops cost-analysis`
+
+Analyze AWS costs using Cost Explorer.
+
+```bash
+aws-cloud-utilities costops cost-analysis [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--months` | `INTEGER` | Number of months to analyze (default: 3) |
+| `--service` | `TEXT` | Specific AWS service to analyze (e.g., Amazon Elastic Compute Cloud - Compute) |
+| `--group-by` | `service` \| `usage_type` \| `region` \| `account` | Group costs by dimension (default: service) |
+| `--output-file` | `TEXT` | Output file for cost analysis (supports .json, .yaml, .csv) |
+
+### `costops ebs-optimization`
+
+Analyze EBS volumes for cost optimization opportunities.
+
+```bash
+aws-cloud-utilities costops ebs-optimization [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region to analyze (default: current region) |
+| `--all-regions` | flag | Analyze EBS volumes across all regions |
+| `--volume-type` | `gp2` \| `gp3` \| `io1` \| `io2` \| `st1` \| `sc1` \| `standard` | Filter by specific volume type (default: analyze all types) |
+| `--show-recommendations` | flag | Show optimization recommendations (default: enabled) |
+| `--include-cost-estimates` | flag | Include cost savings estimates (requires pricing data) |
+| `--output-file` | `TEXT` | Output file for EBS analysis (supports .json, .yaml, .csv) |
+| `--tag-key` | `TEXT` | Filter EBS volumes by tag key (e.g., Environment) |
+| `--tag-value` | `TEXT` | Filter EBS volumes by tag value (requires --tag-key) |
+
+### `costops pricing`
+
+Get AWS pricing information for services.
+
+```bash
+aws-cloud-utilities costops pricing [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--service` | `TEXT` | Specific AWS service to get pricing for (e.g., AmazonEC2, AmazonS3) |
+| `--output-dir` | `TEXT` | Output directory for pricing data (default: ./aws_pricing_<timestamp>) |
+| `--list-services` | flag | List all available AWS services for pricing |
+| `--format` | `json` \| `summary` | Output format: json (raw data) or summary (processed) (default: `summary`) |
+
+### `costops spot-analysis`
+
+Analyze previously collected spot pricing data to find cheapest options.
+
+```bash
+aws-cloud-utilities costops spot-analysis DATA_DIRECTORY [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--top-n` | `INTEGER` | Number of top cheapest instances to show (default: 10) |
+| `--estimate-period` | `INTEGER` | Period in days for cost estimation (default: 30) |
+| `--instance-type-filter` | `TEXT` | Filter results by instance type pattern (e.g., 'm5', 'c5.large') |
+| `--region-filter` | `TEXT` | Filter results by region |
+| `--output-file` | `TEXT` | Output file for analysis results (supports .json, .yaml, .csv) |
+
+### `costops spot-pricing`
+
+Collect and analyze EC2 spot pricing data across regions.
+
+```bash
+aws-cloud-utilities costops spot-pricing [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | Specific AWS region to collect spot pricing for |
+| `--all-regions` | flag | Collect spot pricing data from all regions |
+| `--time-range` | `INTEGER` | Time range in hours for spot pricing data (default: 24) |
+| `--instance-types` | `TEXT` | Comma-separated list of instance types to include (e.g., m5.large,c5.xlarge) |
+| `--product-description` | `TEXT` | Product description filter (default: Linux/UNIX) |
+| `--output-dir` | `TEXT` | Output directory for spot pricing data (default: ./spot_pricing_<timestamp>) |
+| `--output-file` | `TEXT` | Output file for consolidated spot pricing analysis (supports .json, .yaml, .csv) |
+
+### `costops usage-metrics`
+
+Get detailed usage metrics for a specific AWS service.
+
+```bash
+aws-cloud-utilities costops usage-metrics SERVICE_NAME [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--months` | `INTEGER` | Number of months to analyze (default: 3) |
+| `--metric-type` | `cost` \| `usage` \| `both` | Type of metrics to retrieve (default: both) |
+| `--group-by` | `usage_type` \| `region` \| `instance_type` \| `operation` | Group metrics by dimension (default: usage_type) |
+| `--output-file` | `TEXT` | Output file for usage metrics (supports .json, .yaml, .csv) |
+
+## `dynamodb`
+
+DynamoDB cost and capacity analysis commands.
+
+```bash
+aws-cloud-utilities dynamodb COMMAND
+```
+
+### `dynamodb cost-analysis`
+
+Analyse DynamoDB tables for capacity usage and estimated monthly cost.
+
+```bash
+aws-cloud-utilities dynamodb cost-analysis [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | Single region to scan (default: all regions). |
+| `--all-regions` | flag | Scan all regions (default behavior). |
+| `--top` | `INTEGER` | Number of top-expensive tables to show. (default: `10`) |
+| `--output-file` | `TEXT` | Save results to file (.json/.yaml/.csv). |
+
+## `ecr`
+
+AWS ECR (Elastic Container Registry) management commands.
+
+```bash
+aws-cloud-utilities ecr COMMAND
+```
+
+### `ecr copy-image`
+
+Copy a Docker image from any registry to AWS ECR.
+
+```bash
+aws-cloud-utilities ecr copy-image SOURCE_IMAGE ECR_REPOSITORY [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--tag` | `TEXT` | Tag to use for the image in ECR (default: latest) |
+| `--region` | `TEXT` | AWS region for ECR repository (default: current region) |
+| `--create-repo` | flag | Create ECR repository if it doesn't exist |
+| `--force` | flag | Force overwrite if image already exists |
+
+### `ecr create-repository`
+
+Create a new ECR repository.
+
+```bash
+aws-cloud-utilities ecr create-repository REPOSITORY_NAME [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region to create repository in (default: current region) |
+| `--scan-on-push` | flag | Enable image scanning on push |
+| `--image-tag-mutability` | `MUTABLE` \| `IMMUTABLE` | Image tag mutability setting (default: MUTABLE) |
+| `--encryption-type` | `AES256` \| `KMS` | Encryption type for the repository (default: AES256) |
+
+### `ecr delete-repository`
+
+Delete an ECR repository.
+
+```bash
+aws-cloud-utilities ecr delete-repository REPOSITORY_NAME [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region where the repository is located (default: current region) |
+| `--force` | flag | Force delete repository even if it contains images |
+| `--confirm` | flag | Skip confirmation prompt |
+
+### `ecr get-login`
+
+Get Docker login command for ECR or execute login directly.
+
+```bash
+aws-cloud-utilities ecr get-login [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region for ECR login (default: current region) |
+| `--print-command` | flag | Print the docker login command instead of executing it |
+
+### `ecr list-images`
+
+List images in an ECR repository.
+
+```bash
+aws-cloud-utilities ecr list-images REPOSITORY_NAME [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region where the repository is located (default: current region) |
+| `--max-results` | `INTEGER` | Maximum number of images to list (default: 100) |
+| `--output-file` | `TEXT` | Output file for images list (supports .json, .yaml, .csv) |
+
+### `ecr list-repositories`
+
+List ECR repositories with details.
+
+```bash
+aws-cloud-utilities ecr list-repositories [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region to list repositories from (default: current region) |
+| `--all-regions` | flag | List repositories from all regions |
+| `--output-file` | `TEXT` | Output file for repositories list (supports .json, .yaml, .csv) |
+
+## `iam`
+
+IAM management and auditing commands.
+
+```bash
+aws-cloud-utilities iam COMMAND
+```
+
+### `iam audit`
+
+Audit IAM roles and policies, saving them locally.
+
+```bash
+aws-cloud-utilities iam audit [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--output-dir` | `TEXT` | Directory to save audit files (default: ./iam_audit_<account_id>_<timestamp>) |
+| `--include-aws-managed` | flag | Include AWS managed policies in audit (warning: large output) |
+| `--roles-only` | flag | Audit only IAM roles |
+| `--policies-only` | flag | Audit only IAM policies |
+| `--format` | `json` \| `yaml` | Output format for saved files (default: `json`) |
+
+### `iam list-policies`
+
+List IAM policies.
+
+```bash
+aws-cloud-utilities iam list-policies [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--scope` | `All` \| `AWS` \| `Local` | Policy scope to list (default: `Local`) |
+| `--only-attached` | flag | Only show policies that are attached to users, groups, or roles |
+| `--path-prefix` | `TEXT` | Filter policies by path prefix |
+
+### `iam list-roles`
+
+List IAM roles with details.
+
+```bash
+aws-cloud-utilities iam list-roles [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--path-prefix` | `TEXT` | Filter roles by path prefix |
+| `--max-items` | `INTEGER` | Maximum number of roles to return (default: `100`) |
+
+### `iam policy-details`
+
+Get detailed information about a specific IAM policy.
+
+```bash
+aws-cloud-utilities iam policy-details POLICY_ARN
+```
+
+### `iam role-details`
+
+Get detailed information about a specific IAM role.
+
+```bash
+aws-cloud-utilities iam role-details ROLE_NAME
+```
+
+## `info`
+
+Show AWS Cloud Utilities information.
+
+```bash
+aws-cloud-utilities info
+```
+
+## `inventory`
+
+AWS resource inventory and discovery commands.
+
+```bash
+aws-cloud-utilities inventory COMMAND
+```
+
+### `inventory download-all`
+
+Download comprehensive inventory of all AWS resources including optional CloudFormation backups.
+
+```bash
+aws-cloud-utilities inventory download-all [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--output-dir` | `TEXT` | Directory to save all inventory files (default: ./full_inventory_<account_id>_<timestamp>) |
+| `--services` | `TEXT` | Comma-separated list of services to include (default: all supported services) |
+| `--regions` | `TEXT` | Comma-separated list of regions to scan (default: all regions) |
+| `--format` | `json` \| `yaml` | Output format for saved files (default: `json`) |
+| `--include-tags` | flag | Include resource tags where available (slower but more comprehensive) |
+| `--include-cloudformation` | flag | Include CloudFormation stack backups |
+| `--include-workspaces-metrics` | flag | Include WorkSpaces CloudWatch metrics |
+| `--parallel-regions` | `INTEGER` | Number of regions to process in parallel (default: from config) |
+| `--tag-key` | `TEXT` | Filter resources by tag key (e.g., Environment). Requires --include-tags. |
+| `--tag-value` | `TEXT` | Filter resources by tag value (requires --tag-key and --include-tags) |
+
+### `inventory scan`
+
+Comprehensive AWS resource inventory scan across services and regions.
+
+```bash
+aws-cloud-utilities inventory scan [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--output-dir` | `TEXT` | Directory to save inventory files (default: ./inventory_<account_id>_<timestamp>) |
+| `--services` | `TEXT` | Comma-separated list of services to scan (default: all supported services) |
+| `--regions` | `TEXT` | Comma-separated list of regions to scan (default: all regions) |
+| `--format` | `json` \| `yaml` | Output format for saved files (default: `json`) |
+| `--include-tags` | flag | Include resource tags where available (slower but more comprehensive) |
+| `--parallel-regions` | `INTEGER` | Number of regions to process in parallel (default: from config) |
+| `--tag-key` | `TEXT` | Filter resources by tag key (e.g., Environment). Requires --include-tags. |
+| `--tag-value` | `TEXT` | Filter resources by tag value (requires --tag-key and --include-tags) |
+
+### `inventory services`
+
+List all supported services for inventory scanning.
+
+```bash
+aws-cloud-utilities inventory services
+```
+
+### `inventory workspaces`
+
+Generate comprehensive WorkSpaces inventory report with optional metrics.
+
+```bash
+aws-cloud-utilities inventory workspaces [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region to scan for WorkSpaces (default: current region) |
+| `--output-file` | `TEXT` | Output file for WorkSpaces report (supports .csv, .json, .yaml) |
+| `--include-metrics` | flag | Include CloudWatch metrics for each WorkSpace (slower) |
+| `--lookback-days` | `INTEGER` | Number of days to look back for metrics (default: `30`) |
+| `--metric-names` | `TEXT` | Comma-separated list of CloudWatch metrics to collect (default: `Available`) |
+| `--tag-key` | `TEXT` | Filter WorkSpaces by tag key (e.g., Environment) |
+| `--tag-value` | `TEXT` | Filter WorkSpaces by tag value (requires --tag-key) |
+
+## `logs`
+
+AWS CloudWatch Logs management and processing commands.
+
+```bash
+aws-cloud-utilities logs COMMAND
+```
+
+### `logs aggregate`
+
+Aggregate AWS log files into larger files for efficient processing.
+
+```bash
+aws-cloud-utilities logs aggregate INPUT_DIRECTORY [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--output-dir` | `TEXT` | Output directory for aggregated files (default: ./aggregated_logs) |
+| `--target-size` | `INTEGER` | Target size for aggregated files in MB (default: 250) |
+| `--log-type` | `cloudtrail` \| `cloudfront` \| `elb` \| `alb` \| `route53` \| `all` | Log type to process (auto-detect if not specified) |
+| `--prefix` | `TEXT` | Prefix for output files (default: aggregated) |
+| `--keep-structure` | flag | Keep original directory structure in output |
+| `--no-compression` | flag | Disable compression of output files |
+| `--delete-source` | flag | Delete source files after successful processing |
+
+### `logs combine`
+
+Combine multiple log files into a single sorted file.
+
+```bash
+aws-cloud-utilities logs combine LOG_FOLDER [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--output-file` | `TEXT` | Output file for combined logs (default: combined_logs_<timestamp>.log) |
+| `--sort-lines` | flag | Sort log lines chronologically (default: enabled) |
+
+### `logs delete-group`
+
+Delete a CloudWatch log group.
+
+```bash
+aws-cloud-utilities logs delete-group LOG_GROUP [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region where the log group is located (default: current region) |
+| `--confirm` | flag | Skip confirmation prompt |
+
+### `logs download`
+
+Download CloudWatch logs for a specific log group or all groups.
+
+```bash
+aws-cloud-utilities logs download LOG_GROUP [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--days` | `INTEGER` | Number of days to look back for logs (default: 7) |
+| `--region` | `TEXT` | AWS region where the log group is located (default: current region) |
+| `--output-dir` | `TEXT` | Output directory for downloaded logs (default: ./logs_<timestamp>) |
+| `--all-groups` | flag | Download logs from all log groups (use 'ALL' as log_group argument) |
+
+### `logs list-groups`
+
+List CloudWatch log groups with details.
+
+```bash
+aws-cloud-utilities logs list-groups [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region to list log groups from (default: current region) |
+| `--all-regions` | flag | List log groups from all available regions |
+| `--include-size` | flag | Include storage size information for each log group |
+| `--output-file` | `TEXT` | Output file for log groups list (supports .json, .yaml, .csv) |
+
+### `logs set-retention`
+
+Set retention policy for a CloudWatch log group.
+
+```bash
+aws-cloud-utilities logs set-retention LOG_GROUP [RETENTION] [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region where the log group is located (default: current region) |
+| `--if-never` | flag | Only set retention if current retention is 'Never' |
+| `--dry-run` | flag | Show what would be changed without making changes |
+
+## `networking`
+
+AWS networking and IP management commands.
+
+```bash
+aws-cloud-utilities networking COMMAND
+```
+
+### `networking ip-ranges`
+
+Download and analyze AWS IP ranges.
+
+```bash
+aws-cloud-utilities networking ip-ranges [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--output-file` | `TEXT` | Output file for AWS IP ranges (supports .json, .yaml, .csv) |
+| `--filter-service` | `TEXT` | Filter IP ranges by AWS service (e.g., EC2, S3, CLOUDFRONT) |
+| `--filter-region` | `TEXT` | Filter IP ranges by AWS region (e.g., us-east-1, eu-west-1) |
+| `--ipv6` | flag | Include IPv6 ranges in addition to IPv4 |
+| `--show-summary` | flag | Show summary statistics of IP ranges |
+
+### `networking ip-summary`
+
+Show summary statistics of AWS IP ranges.
+
+```bash
+aws-cloud-utilities networking ip-summary [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--service` | `TEXT` | Show summary for specific service only |
+| `--region` | `TEXT` | Show summary for specific region only |
+
+## `rds`
+
+RDS management and troubleshooting commands.
+
+```bash
+aws-cloud-utilities rds COMMAND
+```
+
+### `rds list-instances`
+
+List RDS instances in the current region.
+
+```bash
+aws-cloud-utilities rds list-instances [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--engine` | `TEXT` | Filter by database engine (e.g., mysql, postgres) |
+| `--status` | `TEXT` | Filter by instance status (e.g., available, stopped) |
+| `--tag-key` | `TEXT` | Filter RDS instances by tag key (e.g., Environment) |
+| `--tag-value` | `TEXT` | Filter RDS instances by tag value (requires --tag-key) |
+
+### `rds troubleshoot-mysql`
+
+Troubleshoot MySQL RDS connection issues.
+
+```bash
+aws-cloud-utilities rds troubleshoot-mysql DB_INSTANCE_IDENTIFIER [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--output-file` | `TEXT` | Save detailed results to JSON file |
+
+## `s3`
+
+AWS S3 bucket and object management commands.
+
+```bash
+aws-cloud-utilities s3 COMMAND
+```
+
+### `s3 analyze-encryption`
+
+Analyze S3 bucket encryption configurations with parallel processing.
+
+```bash
+aws-cloud-utilities s3 analyze-encryption [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | Filter buckets by region (default: analyze all regions) |
+| `--output-file` | `TEXT` | Output HTML file for encryption analysis report (default: s3_encryption_report_<timestamp>.html) |
+| `--workers` | `INTEGER` | Number of parallel workers for bucket analysis (default: from config) |
+| `--tag-key` | `TEXT` | Filter S3 buckets by tag key (e.g., Environment) |
+| `--tag-value` | `TEXT` | Filter S3 buckets by tag value (requires --tag-key) |
+
+### `s3 bucket-details`
+
+Get comprehensive details about an S3 bucket including configuration and settings.
+
+```bash
+aws-cloud-utilities s3 bucket-details [BUCKET_NAME] [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region where the bucket is located (default: auto-detect) |
+| `--include-policies` | flag | Include bucket policies and ACLs |
+| `--include-lifecycle` | flag | Include lifecycle configuration |
+| `--include-cors` | flag | Include CORS configuration |
+| `--include-website` | flag | Include website configuration |
+| `--include-logging` | flag | Include logging configuration |
+| `--include-all` | flag | Include all available bucket details |
+| `--all-buckets` | flag | Get details for every bucket in the account |
+| `--output-file` | `TEXT` | Output file for bucket details (supports .json, .yaml) |
+
+### `s3 create-bucket`
+
+Create a new S3 bucket with optional configuration.
+
+```bash
+aws-cloud-utilities s3 create-bucket BUCKET_NAME [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region for the bucket (default: current region or us-west-2) |
+| `--versioning` | flag | Enable versioning on the bucket |
+| `--encryption` | flag | Enable default encryption on the bucket |
+| `--public-access-block` | flag | Enable public access block (default: enabled) |
+
+### `s3 delete-versions`
+
+Delete object versions from an S3 bucket.
+
+```bash
+aws-cloud-utilities s3 delete-versions BUCKET_NAME [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--prefix` | `TEXT` | Prefix filter for S3 objects |
+| `--region` | `TEXT` | AWS region where the bucket is located (default: current region) |
+| `--delete-all-versions` | flag | Delete ALL versions, not just those with delete markers |
+| `--chunk-size` | `INTEGER` | Number of objects to process in each batch (default: 1000) |
+| `--dry-run` | flag | Show what would be deleted without actually deleting |
+| `--confirm` | flag | Skip confirmation prompt |
+
+### `s3 download`
+
+Download objects from an S3 bucket with parallel processing.
+
+```bash
+aws-cloud-utilities s3 download BUCKET_NAME [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--output-dir` | `TEXT` | Output directory for downloads (default: ./s3_downloads_<bucket>_<timestamp>) |
+| `--prefix` | `TEXT` | Prefix filter for S3 objects to download |
+| `--region` | `TEXT` | AWS region where the bucket is located (default: current region) |
+| `--include-versions` | flag | Include all versions of objects (not just latest) |
+| `--delete-after-download` | flag | Delete objects from S3 after successful download |
+| `--max-objects` | `INTEGER` | Maximum number of objects to download (default: unlimited) |
+| `--chunk-size` | `INTEGER` | Number of objects to process in each batch (default: 1000) |
+| `--max-retries` | `INTEGER` | Maximum number of retries for failed downloads (default: 3) |
+
+### `s3 list-buckets`
+
+List S3 buckets with details including region and optional size information.
+
+```bash
+aws-cloud-utilities s3 list-buckets [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | Filter buckets by region (default: show all regions) |
+| `--all-regions` | flag | Show buckets from all regions (default behavior) |
+| `--include-size` | flag | Include bucket size information from CloudWatch metrics |
+| `--output-file` | `TEXT` | Output file for bucket list (supports .json, .yaml, .csv) |
+| `--tag-key` | `TEXT` | Filter S3 buckets by tag key (e.g., Environment) |
+| `--tag-value` | `TEXT` | Filter S3 buckets by tag value (requires --tag-key) |
+
+### `s3 nuke-bucket`
+
+Completely delete an S3 bucket and all its contents (including versions).
+
+```bash
+aws-cloud-utilities s3 nuke-bucket BUCKET_NAME [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--download-first` | flag | Download all objects before deleting the bucket |
+| `--output-dir` | `TEXT` | Output directory for downloads (if --download-first is used) |
+| `--region` | `TEXT` | AWS region where the bucket is located (default: current region) |
+| `--dry-run` | flag | Show what would be deleted without actually deleting |
+| `--confirm` | flag | Skip confirmation prompts |
+
+### `s3 restore-objects`
+
+Restore objects from Glacier or other archive storage classes.
+
+```bash
+aws-cloud-utilities s3 restore-objects BUCKET_NAME [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--prefix` | `TEXT` | Prefix filter for S3 objects |
+| `--region` | `TEXT` | AWS region where the bucket is located (default: current region) |
+| `--restore-days` | `INTEGER` | Number of days to keep restored objects available (default: 1) |
+| `--restore-tier` | `Standard` \| `Bulk` \| `Expedited` | Restore tier: Standard, Bulk, or Expedited (default: Standard) |
+| `--include-versions` | flag | Include all versions of objects (not just latest) |
+| `--check-status` | flag | Check restore status instead of initiating restore |
+| `--max-objects` | `INTEGER` | Maximum number of objects to process (default: unlimited) |
+| `--dry-run` | flag | Show what would be restored without actually doing it |
+
+## `security`
+
+AWS security monitoring and certificate management commands.
+
+```bash
+aws-cloud-utilities security COMMAND
+```
+
+### `security create-certificate`
+
+Create an ACM certificate with Route53 DNS validation.
+
+```bash
+aws-cloud-utilities security create-certificate DOMAIN [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--alt-names` | `TEXT` | Comma-separated list of alternative domain names |
+| `--hosted-zone-id` | `TEXT` | Route53 hosted zone ID for validation (auto-detected if not provided) |
+| `--region` | `TEXT` | AWS region for certificate (default: us-east-1 for CloudFront) |
+| `--wait-for-validation` | flag | Wait for certificate validation to complete |
+| `--timeout` | `INTEGER` | Timeout in seconds for validation wait (default: 300) |
+
+### `security list-certificates`
+
+List ACM certificates with details.
+
+```bash
+aws-cloud-utilities security list-certificates [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region to list certificates from (default: current region) |
+| `--status` | `PENDING_VALIDATION` \| `ISSUED` \| `INACTIVE` \| `EXPIRED` \| `VALIDATION_TIMED_OUT` \| `REVOKED` \| `FAILED` | Filter certificates by status |
+| `--all-regions` | flag | List certificates from all regions |
+
+### `security metrics`
+
+Collect security metrics from AWS WAF, GuardDuty, and Security Hub.
+
+```bash
+aws-cloud-utilities security metrics [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region to collect metrics from (default: current region) |
+| `--time-range` | `INTEGER` | Time range in hours for metrics collection (default: 24) |
+| `--services` | `TEXT` | Comma-separated list of services to include (waf,guardduty,securityhub) |
+| `--output-file` | `TEXT` | Output file for security metrics (supports .json, .yaml, .csv) |
+| `--all-regions` | flag | Collect metrics from all regions |
+
+## `stepfunctions`
+
+AWS Step Functions management and monitoring commands.
+
+```bash
+aws-cloud-utilities stepfunctions COMMAND
+```
+
+### `stepfunctions describe`
+
+Get detailed information about a Step Functions state machine.
+
+```bash
+aws-cloud-utilities stepfunctions describe STATE_MACHINE_ARN [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--show-definition` | flag | Show the state machine definition |
+| `--output-file` | `TEXT` | Output file for state machine details (supports .json, .yaml) |
+
+### `stepfunctions execute`
+
+Start an execution of a Step Functions state machine.
+
+```bash
+aws-cloud-utilities stepfunctions execute STATE_MACHINE_ARN [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--input` | `TEXT` | JSON input for the execution (default: {}) |
+| `--name` | `TEXT` | Name for the execution (auto-generated if not provided) |
+| `--wait` | flag | Wait for execution to complete |
+| `--timeout` | `INTEGER` | Timeout in seconds for execution wait (default: 300) |
+
+### `stepfunctions list`
+
+List all Step Functions state machines.
+
+```bash
+aws-cloud-utilities stepfunctions list [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--region` | `TEXT` | AWS region to list state machines from (default: current region) |
+| `--all-regions` | flag | List state machines from all regions |
+| `--output-file` | `TEXT` | Output file for state machines list (supports .json, .yaml, .csv) |
+
+### `stepfunctions list-executions`
+
+List executions of a Step Functions state machine.
+
+```bash
+aws-cloud-utilities stepfunctions list-executions STATE_MACHINE_ARN [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--status` | `RUNNING` \| `SUCCEEDED` \| `FAILED` \| `TIMED_OUT` \| `ABORTED` | Filter executions by status |
+| `--max-results` | `INTEGER` | Maximum number of executions to list (default: 10) |
+| `--output-file` | `TEXT` | Output file for executions list (supports .json, .yaml, .csv) |
+
+### `stepfunctions logs`
+
+Show CloudWatch logs for a Step Functions execution.
+
+```bash
+aws-cloud-utilities stepfunctions logs EXECUTION_ARN LOG_GROUP [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--lines` | `INTEGER` | Maximum number of log lines to retrieve (default: 100) |
+| `--output-file` | `TEXT` | Output file for logs (supports .txt, .json) |
+
+## `support`
+
+AWS support tools commands.
+
+```bash
+aws-cloud-utilities support COMMAND
+```
+
+### `support cases`
+
+List AWS support cases.
+
+```bash
+aws-cloud-utilities support cases [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--status` | `all` \| `open` \| `resolved` | Filter cases by status (default: `open`) |
+| `--max-results` | `INTEGER` | Maximum number of cases to return (default: `25`) |
+
+### `support check-level`
+
+Check AWS support level using different methods.
+
+```bash
+aws-cloud-utilities support check-level [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--method` | `api` \| `severity` | Method to check support level (severity levels or support plans API) (default: `severity`) |
+
+### `support services`
+
+List AWS services available for support cases.
+
+```bash
+aws-cloud-utilities support services
+```
+
+### `support severity-levels`
+
+List available support severity levels.
+
+```bash
+aws-cloud-utilities support severity-levels
+```
+
+### `support trusted-advisor`
+
+AWS Trusted Advisor tools commands.
+
+```bash
+aws-cloud-utilities support trusted-advisor COMMAND
+```
+
+#### `support trusted-advisor cost-savings`
+
+Analyze AWS Trusted Advisor cost optimization opportunities.
+
+```bash
+aws-cloud-utilities support trusted-advisor cost-savings [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--csv-file` | `TEXT` | CSV file to store historical data (default: `ta_cost_savings.csv`) |
+| `--export-only` | flag | Only export current month data without updating CSV |
+| `--show-details` | flag | Show detailed breakdown by check type |
+
+## `waf`
+
+AWS WAF management and troubleshooting commands.
+
+```bash
+aws-cloud-utilities waf COMMAND
+```
+
+### `waf list`
+
+List all Web ACLs in the account.
+
+```bash
+aws-cloud-utilities waf list [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--scope` | `REGIONAL` \| `CLOUDFRONT` | WAF scope (default: REGIONAL) |
+| `--output-file` | `TEXT` | Save output to file |
+
+### `waf stats`
+
+Get comprehensive WAF statistics for troubleshooting.
+
+```bash
+aws-cloud-utilities waf stats [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--web-acl` | `TEXT` | **Required.** Web ACL name to analyze |
+| `--hours` | `INTEGER` | Hours of data to analyze (default: 24) |
+| `--scope` | `REGIONAL` \| `CLOUDFRONT` | WAF scope (default: REGIONAL) |
+| `--output-file` | `TEXT` | Save output to file |
+
+### `waf troubleshoot`
+
+Generate comprehensive WAF troubleshooting report.
+
+```bash
+aws-cloud-utilities waf troubleshoot [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--web-acl` | `TEXT` | **Required.** Web ACL name to troubleshoot |
+| `--hours` | `INTEGER` | Hours of data to analyze (default: 24) |
+| `--output-file` | `TEXT` | Save troubleshooting report to file |
+
+<!-- END GENERATED: full-reference -->

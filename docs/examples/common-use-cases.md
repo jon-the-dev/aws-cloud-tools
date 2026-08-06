@@ -1,391 +1,329 @@
 # Common Use Cases
 
-Real-world examples of using AWS Cloud Utilities v2 for common AWS management tasks.
+Worked examples that chain several commands together. Every command here is checked against the CLI
+in CI, so these scripts run as written.
 
-## Account Setup and Validation
+## Onboarding an unfamiliar account
 
-### New Account Onboarding
+You have been handed credentials to an account nobody has documented. Establish what it is, what is in
+it, and what it costs.
 
 ```bash
-#!/bin/bash
-# Complete new account setup validation
-echo "=== Account Information ==="
+#!/usr/bin/env bash
+set -euo pipefail
+
+OUT="./onboarding-$(date +%Y%m%d)"
+mkdir -p "$OUT"
+
+# Who and where
 aws-cloud-utilities account info
-
-echo "=== Contact Information ==="
+aws-cloud-utilities account validate
 aws-cloud-utilities account contact-info
+aws-cloud-utilities account detect-control-tower --verbose
 
-echo "=== Available Regions ==="
-aws-cloud-utilities account regions
-
-echo "=== Service Limits ==="
-aws-cloud-utilities account limits
-
-echo "=== Control Tower Detection ==="
-aws-cloud-utilities account detect-control-tower
-
-echo "=== Initial Security Audit ==="
-aws-cloud-utilities security audit
-
-echo "=== Support Level ==="
+# What support plan, and whether Trusted Advisor is available
 aws-cloud-utilities support check-level
+
+# What exists
+aws-cloud-utilities inventory scan --output-dir "$OUT/inventory" --include-tags
+
+# What it costs
+aws-cloud-utilities costops cost-analysis --months 6 --output-file "$OUT/spend-by-service.csv"
+aws-cloud-utilities costops cost-analysis --months 6 --group-by region --output-file "$OUT/spend-by-region.csv"
 ```
 
-### Multi-Account Management
+`account validate` matters more than it looks. Commands here degrade gracefully on missing
+permissions, so a thin result may mean thin credentials rather than an empty account.
+
+## Cost reduction pass
+
+Ordered by how much money it usually finds per minute spent.
 
 ```bash
-#!/bin/bash
-# Check multiple AWS accounts
-accounts=("dev" "staging" "prod")
+#!/usr/bin/env bash
+set -euo pipefail
 
-for account in "${accounts[@]}"; do
-    echo "=== $account Account ==="
-    aws-cloud-utilities --profile $account account info --output json > ${account}-info.json
-    aws-cloud-utilities --profile $account security audit --output json > ${account}-security.json
-    aws-cloud-utilities --profile $account inventory resources --output json > ${account}-resources.json
+OUT="./cost-review-$(date +%Y%m%d)"
+mkdir -p "$OUT"
+
+# 1. Where the money goes
+aws-cloud-utilities costops cost-analysis --months 12 --output-file "$OUT/annual-spend.csv"
+
+# 2. EBS -- unattached volumes and gp2 that should be gp3
+aws-cloud-utilities costops ebs-optimization --all-regions --include-cost-estimates \
+    --output-file "$OUT/ebs.csv"
+
+# 3. DynamoDB -- provisioned capacity nobody is using
+aws-cloud-utilities dynamodb cost-analysis --output-file "$OUT/dynamodb.csv"
+
+# 4. Log retention -- groups keeping data forever
+aws-cloud-utilities logs list-groups --all-regions --include-size \
+    --output-file "$OUT/log-groups.csv"
+
+# 5. Drill into the top service from step 1
+aws-cloud-utilities costops usage-metrics AmazonEC2 --months 6 --group-by instance_type \
+    --output-file "$OUT/ec2-usage.csv"
+
+# 6. Trusted Advisor, if the support plan allows it
+aws-cloud-utilities support trusted-advisor cost-savings || \
+    echo "Trusted Advisor needs Business or Enterprise support -- skipped"
+```
+
+Cost Explorer bills roughly $0.01 per request, so a loop over every service adds up. Start with the
+grouped view and drill into the two or three services that dominate.
+
+### Spot pricing for batch workloads
+
+Two steps, in order:
+
+```bash
+aws-cloud-utilities costops spot-pricing --all-regions \
+    --instance-types m5.xlarge,m5.2xlarge,c5.xlarge \
+    --time-range 168 \
+    --output-dir ./spot-data
+
+aws-cloud-utilities costops spot-analysis ./spot-data --top-n 20 --estimate-period 30
+```
+
+`spot-pricing` collects; `spot-analysis` reads the directory it wrote and ranks the results.
+
+## Security review
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+OUT="./security-$(date +%Y%m%d)"
+mkdir -p "$OUT"
+
+# Findings from WAF, GuardDuty, and Security Hub, past week
+aws-cloud-utilities security metrics --time-range 168 --all-regions \
+    --output-file "$OUT/findings.json"
+
+# Config rules currently failing
+aws-cloud-utilities awsconfig list-rules --all-regions --compliance-state NON_COMPLIANT \
+    --output-file "$OUT/failing-rules.csv"
+aws-cloud-utilities awsconfig compliance-checker --all-regions --show-details \
+    --output-file "$OUT/compliance.json"
+
+# Full IAM surface, on disk
+aws-cloud-utilities iam audit --output-dir "$OUT/iam"
+aws-cloud-utilities --output csv iam list-policies --only-attached > "$OUT/attached-policies.csv"
+
+# S3 encryption across every bucket
+aws-cloud-utilities s3 analyze-encryption --output-file "$OUT/s3-encryption.html"
+
+# Certificates about to become someone's outage
+aws-cloud-utilities --output csv security list-certificates --all-regions > "$OUT/certificates.csv"
+```
+
+Not every command has `--output-file`. Where it is missing, set the global `--output` format and
+redirect, as above.
+
+### Diffing IAM between reviews
+
+The point of `iam audit` writing to disk is that you can compare runs:
+
+```bash
+aws-cloud-utilities iam audit --output-dir "./iam-$(date +%Y%m%d)"
+diff -r ./iam-20260701 ./iam-20260801
+```
+
+Anything in that diff is a permission change nobody mentioned.
+
+## Log cleanup
+
+CloudWatch log groups with no retention policy keep data forever and bill for it monthly. This is
+usually the cheapest recurring saving available.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# What is there, and how big
+aws-cloud-utilities logs list-groups --all-regions --include-size --output-file log-groups.csv
+
+# Preview retention changes, only touching groups set to 'Never'
+aws-cloud-utilities logs set-retention /aws/lambda/my-function 30 --if-never --dry-run
+
+# Apply
+aws-cloud-utilities logs set-retention /aws/lambda/my-function 30 --if-never
+```
+
+`--if-never` skips groups that already have a policy, so it will not silently shorten retention
+somebody chose deliberately.
+
+### Pulling logs down for offline analysis
+
+```bash
+# Download, then compact into larger files
+aws-cloud-utilities logs download /aws/lambda/my-function --days 30 --output-dir ./raw-logs
+aws-cloud-utilities logs aggregate ./raw-logs --target-size 250 --prefix lambda --output-dir ./compact
+
+# Or merge into one chronologically sorted file
+aws-cloud-utilities logs combine ./raw-logs --output-file combined.log
+```
+
+`aggregate` and `combine` work on local directories, not on CloudWatch. Download first.
+
+## Disaster recovery snapshots
+
+Infrastructure that was clicked together rather than committed to a repo has no source of truth.
+These commands create one.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+OUT="./dr-snapshot-$(date +%Y%m%d)"
+
+# Every stack template, parameter set, and output, every region
+aws-cloud-utilities cloudformation backup --output-dir "$OUT/cloudformation" --format yaml
+
+# Everything else, including the CloudFormation backups
+aws-cloud-utilities inventory download-all --output-dir "$OUT/inventory" \
+    --include-cloudformation --include-tags
+
+# IAM, separately, because it is the hardest to reconstruct
+aws-cloud-utilities iam audit --output-dir "$OUT/iam" --format yaml
+```
+
+Run it on a schedule and keep the output in version control. The diff between two snapshots is a
+change log you did not have to write.
+
+## Setting up cost reporting from scratch
+
+If the account has no Cost and Usage Report, most cost tooling has nothing to read.
+
+```bash
+# See the plan without creating anything
+aws-cloud-utilities billing cur-setup --bucket my-cur-bucket --dry-run
+
+# Create the bucket, policy, lifecycle rule, and report in one step
+aws-cloud-utilities billing cur-setup --bucket my-cur-bucket \
+    --time-unit HOURLY --retention-days 365
+
+# Confirm it registered
+aws-cloud-utilities billing cur-list
+aws-cloud-utilities billing cur-details hourly-cur
+```
+
+CUR is a us-east-1 global service, and the first file can take up to 24 hours to land.
+
+## Cleaning up an S3 bucket safely
+
+```bash
+# What is actually in there
+aws-cloud-utilities s3 bucket-details my-bucket --include-all
+
+# Preview version cleanup
+aws-cloud-utilities s3 delete-versions my-bucket --dry-run
+
+# Remove old versions under one prefix
+aws-cloud-utilities s3 delete-versions my-bucket --prefix old/ --delete-all-versions --confirm
+```
+
+To retire a bucket entirely while keeping a copy:
+
+```bash
+aws-cloud-utilities s3 nuke-bucket my-bucket --dry-run
+aws-cloud-utilities s3 nuke-bucket my-bucket --download-first --output-dir ./bucket-backup --confirm
+```
+
+`--download-first` is the only built-in undo. Neither command is recoverable without it.
+
+## Turning on CloudFront logging fleet-wide
+
+```bash
+# What exists and whether logging is already on
+aws-cloud-utilities cloudfront list-distributions --include-disabled --show-logging-status
+
+# Preview -- this touches every distribution in the account
+aws-cloud-utilities cloudfront update-logging --log-bucket my-cf-logs --dry-run
+
+# Apply
+aws-cloud-utilities cloudfront update-logging --log-bucket my-cf-logs --log-prefix cf-logs
+```
+
+Then compact the delivered logs once they start arriving:
+
+```bash
+aws-cloud-utilities s3 download my-cf-logs --prefix cf-logs/ --output-dir ./cf-raw
+aws-cloud-utilities logs aggregate ./cf-raw --log-type cloudfront --target-size 500
+```
+
+CloudWatch alarms (`--setup-alarms`) are billable per alarm per month and require `--sns-topic`. They
+are deliberately not part of the default logging change.
+
+## Debugging a WAF block
+
+Someone reports a legitimate request being rejected.
+
+```bash
+# Find the Web ACL -- scope matters
+aws-cloud-utilities waf list
+aws-cloud-utilities --region us-east-1 waf list --scope CLOUDFRONT
+
+# Which rules are firing
+aws-cloud-utilities waf stats --web-acl my-web-acl --hours 24
+
+# Full report: config, per-rule counts, sampled requests
+aws-cloud-utilities waf troubleshoot --web-acl my-web-acl --hours 24 --output-file waf-report.json
+```
+
+A Web ACL missing from `list` is almost always a scope mismatch. `REGIONAL` covers ALB, API Gateway,
+AppSync, and Cognito; `CLOUDFRONT` covers distributions and only resolves from `us-east-1`.
+
+Sampled requests cover a rolling three-hour window, so `--hours 24` gives aggregate metrics without
+per-request samples beyond that window.
+
+## Automating a scheduled report
+
+```bash
+#!/usr/bin/env bash
+# Weekly account report. Add to cron or a scheduled CI job.
+set -euo pipefail
+
+OUT="./weekly-$(date +%Y%m%d)"
+mkdir -p "$OUT"
+
+aws-cloud-utilities --output json account info > "$OUT/account.json"
+aws-cloud-utilities costops cost-analysis --months 1 --output-file "$OUT/spend.csv"
+aws-cloud-utilities security metrics --time-range 168 --output-file "$OUT/security.json"
+aws-cloud-utilities logs list-groups --include-size --output-file "$OUT/log-groups.csv"
+aws-cloud-utilities s3 list-buckets --include-size --output-file "$OUT/buckets.csv"
+
+echo "Report written to $OUT"
+```
+
+Global options such as `--output` go before the command name. Command-level `--output-file` goes
+after, and picks its format from the extension.
+
+## Working across several accounts
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+for profile in dev staging production; do
+  echo "=== $profile ==="
+  aws-cloud-utilities --profile "$profile" account info
+  aws-cloud-utilities --profile "$profile" costops cost-analysis --months 1 \
+      --output-file "spend-${profile}.csv"
 done
 ```
 
-## Daily Operations
-
-### Daily Health Check
-
-```bash
-#!/bin/bash
-# Daily AWS environment health check
-DATE=$(date +%Y%m%d)
-
-echo "=== Resource Health Check ==="
-aws-cloud-utilities inventory health-check --unhealthy-only
-
-echo "=== Security Issues ==="
-aws-cloud-utilities security audit --severity high
-
-echo "=== Public Resources ==="
-aws-cloud-utilities security public-resources
-
-echo "=== Support Cases ==="
-aws-cloud-utilities support cases --status open
-
-# Save results
-aws-cloud-utilities inventory health-check --output json > health-${DATE}.json
-aws-cloud-utilities security audit --output json > security-${DATE}.json
-```
-
-### Resource Monitoring
+Some commands are single-region only. Loop over regions with the global `--region` flag where there is
+no `--all-regions` or `--regions` option:
 
 ```bash
-#!/bin/bash
-# Monitor resource changes and usage
-echo "=== Resource Inventory ==="
-aws-cloud-utilities inventory resources --all-regions --output csv > resources-$(date +%Y%m%d).csv
-
-echo "=== Unused Resources ==="
-aws-cloud-utilities inventory unused-resources --age-threshold 7
-
-echo "=== Cost Analysis ==="
-aws-cloud-utilities costops analyze --group-by service
-
-echo "=== Tagging Compliance ==="
-aws-cloud-utilities inventory tagging-audit --required-tags Environment,Owner,Project
-```
-
-## Cost Management
-
-### Monthly Cost Review
-
-```bash
-#!/bin/bash
-# Monthly cost optimization review
-MONTH=$(date +%Y%m)
-
-echo "=== Cost Analysis ==="
-aws-cloud-utilities costops analyze --start-date $(date -d "1 month ago" +%Y-%m-01) --output json > cost-analysis-${MONTH}.json
-
-echo "=== Optimization Recommendations ==="
-aws-cloud-utilities costops recommendations --min-savings 50 --output json > recommendations-${MONTH}.json
-
-echo "=== Unused Resources ==="
-aws-cloud-utilities inventory unused-resources --output json > unused-resources-${MONTH}.json
-
-echo "=== Rightsizing Opportunities ==="
-aws-cloud-utilities costops rightsizing --min-savings 25 --output json > rightsizing-${MONTH}.json
-
-echo "=== Savings Plans Analysis ==="
-aws-cloud-utilities costops savings-plans --output json > savings-plans-${MONTH}.json
-
-# Generate summary report
-echo "=== Cost Summary ==="
-echo "Total recommendations: $(jq length recommendations-${MONTH}.json)"
-echo "Potential monthly savings: $(jq '[.[].estimated_monthly_savings] | add' recommendations-${MONTH}.json)"
-```
-
-### GPU Cost Optimization
-
-```bash
-#!/bin/bash
-# Find cheapest GPU instances for ML workloads
-echo "=== P3 Instance Pricing ==="
-aws-cloud-utilities costops gpu-spots --instance-type p3.2xlarge --output table
-
-echo "=== P4 Instance Pricing ==="
-aws-cloud-utilities costops gpu-spots --instance-type p4d.xlarge --output table
-
-echo "=== G4 Instance Pricing ==="
-aws-cloud-utilities costops gpu-spots --instance-type g4dn.xlarge --output table
-
-echo "=== Best GPU Deals Under $1/hour ==="
-aws-cloud-utilities costops gpu-spots --max-price 1.00 --output csv > gpu-deals.csv
-
-echo "=== Multi-Region GPU Pricing ==="
-aws-cloud-utilities costops gpu-spots --regions us-east-1,us-west-2,eu-west-1 --instance-type p3.2xlarge
-```
-
-## Security Operations
-
-### Security Audit Workflow
-
-```bash
-#!/bin/bash
-# Comprehensive security audit
-DATE=$(date +%Y%m%d)
-
-echo "=== Blue Team Security Audit ==="
-aws-cloud-utilities security blue-team-audit --detailed --include-remediation --output json > security-audit-${DATE}.json
-
-echo "=== Public Resource Exposure ==="
-aws-cloud-utilities security public-resources --output json > public-resources-${DATE}.json
-
-echo "=== IAM Analysis ==="
-aws-cloud-utilities iam analyze --output json > iam-analysis-${DATE}.json
-
-echo "=== Network Security ==="
-aws-cloud-utilities security network-analysis --risky-rules-only --output json > network-security-${DATE}.json
-
-echo "=== Encryption Status ==="
-aws-cloud-utilities security encryption-status --unencrypted-only --output json > encryption-status-${DATE}.json
-
-echo "=== Compliance Check ==="
-aws-cloud-utilities security compliance --framework cis --output json > compliance-${DATE}.json
-
-# Generate security summary
-echo "=== Security Summary ==="
-echo "Critical findings: $(jq '[.[] | select(.severity == "CRITICAL")] | length' security-audit-${DATE}.json)"
-echo "High findings: $(jq '[.[] | select(.severity == "HIGH")] | length' security-audit-${DATE}.json)"
-echo "Public resources: $(jq length public-resources-${DATE}.json)"
-```
-
-### Incident Response
-
-```bash
-#!/bin/bash
-# Security incident response checklist
-echo "=== Immediate Security Assessment ==="
-
-echo "1. Check for public exposures"
-aws-cloud-utilities security public-resources --severity critical
-
-echo "2. Review recent IAM changes"
-aws-cloud-utilities iam analyze --recent-changes
-
-echo "3. Check network security"
-aws-cloud-utilities security network-analysis --risky-rules-only
-
-echo "4. Review CloudTrail logs"
-aws-cloud-utilities logs search --log-group CloudTrail --query "ERROR" --start-time "1 hour ago"
-
-echo "5. Check for unusual activity"
-aws-cloud-utilities security audit --severity critical
-
-echo "6. Review support cases"
-aws-cloud-utilities support cases --status open
-```
-
-## Log Management
-
-### Log Analysis Workflow
-
-```bash
-#!/bin/bash
-# Comprehensive log analysis
-LOG_GROUP="/aws/lambda/my-function"
-START_TIME="24 hours ago"
-
-echo "=== Log Groups Overview ==="
-aws-cloud-utilities logs groups
-
-echo "=== Error Analysis ==="
-aws-cloud-utilities logs search --log-group $LOG_GROUP --query "ERROR" --start-time "$START_TIME"
-
-echo "=== Warning Analysis ==="
-aws-cloud-utilities logs search --log-group $LOG_GROUP --query "WARN" --start-time "$START_TIME"
-
-echo "=== Log Aggregation ==="
-aws-cloud-utilities logs aggregate --log-group $LOG_GROUP --start-time "$START_TIME" --output json > log-summary.json
-
-echo "=== Export Logs ==="
-aws-cloud-utilities logs export --log-group $LOG_GROUP --start-time "$START_TIME" --format json > exported-logs.json
-```
-
-### Multi-Service Log Monitoring
-
-```bash
-#!/bin/bash
-# Monitor logs across multiple services
-services=("lambda" "api-gateway" "ecs" "rds")
-
-for service in "${services[@]}"; do
-    echo "=== $service Logs ==="
-    
-    # Find log groups for service
-    aws-cloud-utilities logs groups --filter $service
-    
-    # Search for errors in the last hour
-    for log_group in $(aws-cloud-utilities logs groups --filter $service --output json | jq -r '.[].logGroupName'); do
-        echo "Checking $log_group for errors..."
-        aws-cloud-utilities logs search --log-group $log_group --query "ERROR" --start-time "1 hour ago" --max-results 10
-    done
+for region in us-east-1 us-west-2 eu-west-1; do
+  aws-cloud-utilities --region "$region" rds list-instances
 done
 ```
 
-## Automation and Reporting
+## Related
 
-### Weekly Report Generation
-
-```bash
-#!/bin/bash
-# Generate weekly AWS report
-WEEK=$(date +%Y-W%U)
-REPORT_DIR="reports/$WEEK"
-mkdir -p $REPORT_DIR
-
-echo "=== Generating Weekly Report for $WEEK ==="
-
-# Account summary
-aws-cloud-utilities account info --output json > $REPORT_DIR/account-info.json
-
-# Resource inventory
-aws-cloud-utilities inventory resources --all-regions --output json > $REPORT_DIR/resources.json
-
-# Security audit
-aws-cloud-utilities security audit --output json > $REPORT_DIR/security-audit.json
-
-# Cost analysis
-aws-cloud-utilities costops analyze --output json > $REPORT_DIR/cost-analysis.json
-
-# Unused resources
-aws-cloud-utilities inventory unused-resources --output json > $REPORT_DIR/unused-resources.json
-
-# Health check
-aws-cloud-utilities inventory health-check --output json > $REPORT_DIR/health-check.json
-
-# Generate summary
-cat > $REPORT_DIR/summary.md << EOF
-# AWS Weekly Report - $WEEK
-
-## Summary
-- Total resources: $(jq length $REPORT_DIR/resources.json)
-- Security findings: $(jq length $REPORT_DIR/security-audit.json)
-- Unused resources: $(jq length $REPORT_DIR/unused-resources.json)
-- Unhealthy resources: $(jq '[.[] | select(.status != "healthy")] | length' $REPORT_DIR/health-check.json)
-
-## Cost Analysis
-- Monthly spend: $(jq '.total_cost' $REPORT_DIR/cost-analysis.json)
-- Potential savings: $(jq '.potential_savings' $REPORT_DIR/unused-resources.json)
-
-Generated on: $(date)
-EOF
-
-echo "Report generated in $REPORT_DIR/"
-```
-
-### Compliance Monitoring
-
-```bash
-#!/bin/bash
-# Automated compliance monitoring
-COMPLIANCE_DIR="compliance/$(date +%Y%m%d)"
-mkdir -p $COMPLIANCE_DIR
-
-echo "=== CIS Compliance Check ==="
-aws-cloud-utilities security compliance --framework cis --output json > $COMPLIANCE_DIR/cis-compliance.json
-
-echo "=== Tagging Compliance ==="
-aws-cloud-utilities inventory tagging-audit --required-tags Environment,Owner,CostCenter --output json > $COMPLIANCE_DIR/tagging-compliance.json
-
-echo "=== Encryption Compliance ==="
-aws-cloud-utilities security encryption-status --output json > $COMPLIANCE_DIR/encryption-status.json
-
-echo "=== IAM Compliance ==="
-aws-cloud-utilities iam analyze --output json > $COMPLIANCE_DIR/iam-analysis.json
-
-# Generate compliance score
-TOTAL_CHECKS=$(jq length $COMPLIANCE_DIR/cis-compliance.json)
-PASSED_CHECKS=$(jq '[.[] | select(.status == "PASS")] | length' $COMPLIANCE_DIR/cis-compliance.json)
-COMPLIANCE_SCORE=$(echo "scale=2; $PASSED_CHECKS * 100 / $TOTAL_CHECKS" | bc)
-
-echo "=== Compliance Summary ==="
-echo "CIS Compliance Score: $COMPLIANCE_SCORE%"
-echo "Passed: $PASSED_CHECKS/$TOTAL_CHECKS checks"
-```
-
-## Integration Examples
-
-### CI/CD Pipeline Integration
-
-```yaml
-# .github/workflows/aws-audit.yml
-name: AWS Security Audit
-on:
-  schedule:
-    - cron: '0 2 * * *'  # Daily at 2 AM
-  workflow_dispatch:
-
-jobs:
-  audit:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
-      - name: Install AWS Cloud Utilities
-        run: pip install aws-cloud-utilities
-
-      - name: Run Security Audit
-        run: |
-          aws-cloud-utilities security audit --output json > security-audit.json
-          aws-cloud-utilities security public-resources --output json > public-resources.json
-
-      - name: Upload Results
-        uses: actions/upload-artifact@v2
-        with:
-          name: security-audit-results
-          path: |
-            security-audit.json
-            public-resources.json
-```
-
-### Monitoring Integration
-
-```bash
-#!/bin/bash
-# Integration with monitoring systems
-# Send metrics to CloudWatch
-
-# Get resource counts
-TOTAL_RESOURCES=$(aws-cloud-utilities inventory resources --output json | jq length)
-UNHEALTHY_RESOURCES=$(aws-cloud-utilities inventory health-check --unhealthy-only --output json | jq length)
-SECURITY_FINDINGS=$(aws-cloud-utilities security audit --severity high --output json | jq length)
-
-# Send to CloudWatch
-aws cloudwatch put-metric-data --namespace "AWS/CloudUtilities" --metric-data \
-  MetricName=TotalResources,Value=$TOTAL_RESOURCES,Unit=Count \
-  MetricName=UnhealthyResources,Value=$UNHEALTHY_RESOURCES,Unit=Count \
-  MetricName=SecurityFindings,Value=$SECURITY_FINDINGS,Unit=Count
-```
-
-These examples demonstrate practical, real-world usage patterns that can be adapted for specific environments and requirements.
+- [Command Reference](../commands/index.md) - every command and option
+- [Quick Start](../getting-started/quick-start.md) - the five-minute version
+- [Configuration](../getting-started/configuration.md) - profiles, regions, and defaults

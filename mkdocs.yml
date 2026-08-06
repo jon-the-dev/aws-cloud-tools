@@ -122,6 +122,8 @@ nav:
     - Step Functions: commands/stepfunctions.md
     - Support Tools: commands/support.md
     - WAF Management: commands/waf.md
+    - configure: commands/configure.md
+    - info: commands/info.md
   - Examples:
     - Common Use Cases: examples/common-use-cases.md
   - Development:
