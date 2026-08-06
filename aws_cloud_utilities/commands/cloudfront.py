@@ -484,12 +484,9 @@ def _get_distribution_id(cf_client, target: str) -> Optional[str]:
                 continue
 
             for distribution in page["DistributionList"]["Items"]:
-                # Check aliases
-                aliases = (
-                    distribution["DistributionConfig"]
-                    .get("Aliases", {})
-                    .get("Items", [])
-                )
+                # Aliases live at the top level of a DistributionSummary, not
+                # under DistributionConfig.
+                aliases = distribution.get("Aliases", {}).get("Items", [])
                 if target in aliases:
                     return distribution["Id"]
 
@@ -548,6 +545,31 @@ def _get_sns_topic_arn(
         return None
 
 
+def _get_distribution_logging(cf_client, distribution_id: str) -> Dict[str, Any]:
+    """Return the Logging block for a distribution.
+
+    ``list_distributions`` returns DistributionSummary objects, which carry no
+    logging configuration at all. Reading logging state therefore requires a
+    per-distribution ``get_distribution_config`` call.
+
+    Args:
+        cf_client: A CloudFront boto3 client.
+        distribution_id: The distribution to look up.
+
+    Returns:
+        The distribution's ``Logging`` configuration, or an empty dict if it
+        could not be retrieved.
+    """
+    if not distribution_id:
+        return {}
+    try:
+        response = cf_client.get_distribution_config(Id=distribution_id)
+        return response["DistributionConfig"].get("Logging", {})
+    except Exception as e:
+        logger.debug(f"Error getting logging config for {distribution_id}: {e}")
+        return {}
+
+
 def _get_all_distributions(
     cf_client, include_disabled: bool, show_logging_status: bool
 ) -> List[Dict[str, Any]]:
@@ -561,49 +583,45 @@ def _get_all_distributions(
             if "Items" not in page["DistributionList"]:
                 continue
 
+            # list_distributions returns DistributionSummary objects, whose fields
+            # are flattened at the top level rather than nested under
+            # DistributionConfig. Read them directly off the summary.
             for dist in page["DistributionList"]["Items"]:
-                dist_config = dist["DistributionConfig"]
-
                 # Skip disabled distributions unless requested
-                if not include_disabled and not dist_config.get("Enabled", False):
+                if not include_disabled and not dist.get("Enabled", False):
                     continue
 
+                comment = dist.get("Comment", "")
                 dist_data = {
                     "Distribution ID": dist.get("Id", ""),
                     "Domain Name": dist.get("DomainName", ""),
                     "Status": dist.get("Status", ""),
-                    "State": (
-                        "Enabled" if dist_config.get("Enabled", False) else "Disabled"
-                    ),
-                    "Price Class": dist_config.get("PriceClass", ""),
-                    "Comment": (
-                        dist_config.get("Comment", "")[:50] + "..."
-                        if len(dist_config.get("Comment", "")) > 50
-                        else dist_config.get("Comment", "")
-                    ),
+                    "State": "Enabled" if dist.get("Enabled", False) else "Disabled",
+                    "Price Class": dist.get("PriceClass", ""),
+                    "Comment": (comment[:50] + "..." if len(comment) > 50 else comment),
                     "Last Modified": (
-                        dist.get("LastModifiedTime", "").strftime("%Y-%m-%d %H:%M")
+                        dist["LastModifiedTime"].strftime("%Y-%m-%d %H:%M")
                         if dist.get("LastModifiedTime")
                         else ""
                     ),
                 }
 
                 # Add aliases if present
-                aliases = dist_config.get("Aliases", {}).get("Items", [])
+                aliases = dist.get("Aliases", {}).get("Items", [])
                 if aliases:
                     dist_data["Aliases"] = ", ".join(aliases[:3]) + (
                         "..." if len(aliases) > 3 else ""
                     )
 
-                # Add logging status if requested
+                # A DistributionSummary carries no Logging block, so this needs a
+                # per-distribution call. Only pay for it when asked.
                 if show_logging_status:
-                    logging_config = dist_config.get("Logging", {})
-                    dist_data["Logging"] = (
-                        "Enabled"
-                        if logging_config.get("Enabled", False)
-                        else "Disabled"
+                    logging_config = _get_distribution_logging(
+                        cf_client, dist.get("Id", "")
                     )
-                    if logging_config.get("Enabled", False):
+                    enabled = logging_config.get("Enabled", False)
+                    dist_data["Logging"] = "Enabled" if enabled else "Disabled"
+                    if enabled:
                         dist_data["Log Bucket"] = logging_config.get("Bucket", "")
 
                 distributions_data.append(dist_data)
@@ -644,6 +662,7 @@ def _update_cloudfront_distributions(
         """Process a single distribution."""
         return _update_single_distribution(
             aws_auth,
+            cf_client,
             dist,
             region,
             log_bucket,
@@ -702,6 +721,7 @@ def _update_cloudfront_distributions(
 
 def _update_single_distribution(
     aws_auth: AWSAuth,
+    cf_client,
     distribution: Dict[str, Any],
     region: str,
     log_bucket: Optional[str],
@@ -713,8 +733,10 @@ def _update_single_distribution(
 ) -> Dict[str, Any]:
     """Update a single CloudFront distribution."""
 
+    # `distribution` is a DistributionSummary from list_distributions: aliases sit
+    # at the top level and there is no logging block, so logging state has to be
+    # fetched separately.
     dist_id = distribution.get("Id", "")
-    dist_config = distribution.get("DistributionConfig", {})
 
     result = {
         "id": dist_id,
@@ -731,14 +753,14 @@ def _update_single_distribution(
 
     try:
         # Get aliases
-        aliases = dist_config.get("Aliases", {}).get("Items", [])
+        aliases = distribution.get("Aliases", {}).get("Items", [])
         result["aliases"] = aliases
 
         # Check if managed by CloudFormation
         result["stack_name"] = _get_cloudformation_stack(aws_auth, dist_id)
 
         # Check current logging configuration
-        logging_config = dist_config.get("Logging", {})
+        logging_config = _get_distribution_logging(cf_client, dist_id)
         result["logging_enabled"] = logging_config.get("Enabled", False)
         result["current_bucket"] = logging_config.get("Bucket", "")
         result["log_prefix"] = logging_config.get("Prefix", "")
