@@ -62,7 +62,7 @@ aws-cloud-utilities route53 backup --source-profile PROFILE [OPTIONS]
 
 #### What it does
 
-Writes one JSON file per hosted zone in the source account, named after the zone. Each file holds the zone, its delegation set (public zones), its VPC associations (private zones), and every record in it. It also writes `registered-domains.json` with the detail for each domain registered in the source account. The command only reads from AWS.
+Writes one JSON file per hosted zone in the source account, named `<zone>.<zone-id>.json`. Files are created readable only by you, since the domain details include registrant contact information. Each file holds the zone, its delegation set (public zones), its VPC associations (private zones), and every record in it. It also writes `registered-domains.json` with the detail for each domain registered in the source account. The command only reads from AWS.
 
 #### Examples
 
@@ -152,7 +152,7 @@ aws-cloud-utilities route53 cleanup --source-profile PROFILE --dest-profile PROF
 
 #### What it does
 
-For each domain, the command refuses to run unless both accounts have a public hosted zone for the domain and the registrar's name servers match the destination zone's name servers. A refusal stops the run.
+For each domain, the command refuses to run unless both accounts have a public hosted zone for the domain, the domain is registered in the destination account, the registrar's name servers match the destination zone's name servers, and the destination zone serves every non-apex record the source zone still has with the same values. A record added to the source after `migrate-zone` therefore blocks cleanup until you re-run `migrate-zone`. A refusal stops the run.
 
 If the checks pass, the command reports how many records it will delete from the source zone and asks for confirmation. Answering no skips that domain and moves on to the next one. Otherwise it deletes the non-apex records, then deletes the source zone.
 
@@ -193,5 +193,7 @@ Infrastructure as code that finds the zone by name in the source account will br
 
 ## Notes
 
+- Domain arguments are normalised: case is ignored and a trailing dot is dropped.
+- Registrar operations are polled every 15 seconds for up to 30 minutes, then the command fails with the operation ID so you can check it in the console.
 - The `route53domains` API exists only in us-east-1. These commands pin that region for the domains client, so the global `--region` option has no effect on them.
 - Snapshots and transfer state go under the data directory, `~/data/aws-cloud-utilities` by default. Set the `DATA_DIR` environment variable to change it.

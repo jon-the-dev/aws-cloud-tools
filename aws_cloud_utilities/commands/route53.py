@@ -13,8 +13,8 @@ the zone is orphaned in the source account. These commands do the full move:
     migration-status  show where each domain stands and which step is next
 """
 
+import copy
 import json
-import logging
 import os
 import time
 from datetime import datetime, timezone
@@ -28,12 +28,13 @@ from ..core.auth import AWSAuth
 from ..core.config import Config
 from ..core.utils import print_output
 
-logger = logging.getLogger(__name__)
 console = Console()
 
 MAX_BATCH_ELEMENTS = 1000
 MAX_BATCH_CHARS = 32000
 POLL_SECONDS = 15
+MAX_POLLS = 120
+MAX_RETRIES = 10
 DOMAINS_REGION = "us-east-1"
 SOURCE_BOUND_FIELDS = ("HealthCheckId", "TrafficPolicyInstanceId", "CidrRoutingConfig")
 
@@ -44,8 +45,16 @@ class Accounts:
     def __init__(self, source_profile: str, dest_profile: str):
         self.source_profile = source_profile
         self.dest_profile = dest_profile
-        self._src = AWSAuth(profile_name=source_profile, region_name=DOMAINS_REGION)
-        self._dst = AWSAuth(profile_name=dest_profile, region_name=DOMAINS_REGION)
+        self._src = AWSAuth(
+            profile_name=source_profile,
+            region_name=DOMAINS_REGION,
+            max_retries=MAX_RETRIES,
+        )
+        self._dst = AWSAuth(
+            profile_name=dest_profile,
+            region_name=DOMAINS_REGION,
+            max_retries=MAX_RETRIES,
+        )
         self.route53_src = self._src.get_client("route53")
         self.domains_src = self._src.get_client("route53domains")
         self.route53_dst = self._dst.get_client("route53")
@@ -57,6 +66,10 @@ class Accounts:
 
 def normalize_ns(name: str) -> str:
     return name.lower().rstrip(".")
+
+
+def normalize_domain(domain: str) -> str:
+    return domain.strip().lower().rstrip(".")
 
 
 def zone_id_of(zone: Dict[str, Any]) -> str:
@@ -71,7 +84,7 @@ def is_apex_ns_or_soa(record: Dict[str, Any], apex: str) -> bool:
 
 def find_zone(route53: Any, domain: str) -> Optional[Dict[str, Any]]:
     """Return the public hosted zone whose name exactly matches ``domain``."""
-    name = domain.rstrip(".") + "."
+    name = normalize_domain(domain) + "."
     zones = route53.list_hosted_zones_by_name(DNSName=name, MaxItems="5")["HostedZones"]
     for zone in zones:
         if zone["Name"] == name and not zone["Config"].get("PrivateZone"):
@@ -93,8 +106,8 @@ def registered_domains(domains: Any) -> Set[str]:
 
 
 def wait_for_operation(domains: Any, operation_id: str, label: str) -> None:
-    """Poll a Route 53 Domains operation until it succeeds or fails."""
-    while True:
+    """Poll a Route 53 Domains operation until it succeeds, fails, or times out."""
+    for _ in range(MAX_POLLS):
         detail = domains.get_operation_detail(OperationId=operation_id)
         status = detail["Status"]
         console.print(f"  [dim]{label}: {status}[/dim]")
@@ -104,6 +117,10 @@ def wait_for_operation(domains: Any, operation_id: str, label: str) -> None:
             message = detail.get("Message", "no message from Route 53")
             raise click.ClickException(f"{label} failed: {message}")
         time.sleep(POLL_SECONDS)
+    raise click.ClickException(
+        f"{label}: operation {operation_id} still {status} after "
+        f"{MAX_POLLS * POLL_SECONDS // 60} minutes; check it in the Route 53 console"
+    )
 
 
 def next_step(registered_in: str, zone_in_src: bool, zone_in_dst: bool) -> str:
@@ -130,6 +147,7 @@ def rewrite_record(
     record: Dict[str, Any], src_zone_id: str, dst_zone_id: str
 ) -> Dict[str, Any]:
     """Repoint an alias whose target is the source zone itself at the new zone."""
+    record = copy.deepcopy(record)
     alias = record.get("AliasTarget")
     if alias and alias["HostedZoneId"] == src_zone_id:
         alias["HostedZoneId"] = dst_zone_id
@@ -205,13 +223,43 @@ def default_backup_root(config: Config) -> Path:
     return config.get_data_dir() / "route53"
 
 
+def write_private(path: Path, text: str) -> None:
+    """Write a file readable only by the owner, replacing any existing one."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as handle:
+        handle.write(text)
+
+
+def record_key(record: Dict[str, Any]) -> Tuple[str, str, Optional[str]]:
+    return (record["Name"].lower(), record["Type"], record.get("SetIdentifier"))
+
+
+def record_payload(record: Dict[str, Any]) -> Tuple[Any, ...]:
+    values = sorted(rr["Value"] for rr in record.get("ResourceRecords", []))
+    return (tuple(values), record.get("AliasTarget"), record.get("TTL"))
+
+
+def missing_in_destination(
+    src_records: List[Dict[str, Any]],
+    dst_records: List[Dict[str, Any]],
+    src_zone_id: str,
+    dst_zone_id: str,
+) -> List[str]:
+    """Source records the destination does not serve identically."""
+    dst_by_key = {record_key(r): record_payload(r) for r in dst_records}
+    missing = []
+    for record in src_records:
+        expected = record_payload(rewrite_record(record, src_zone_id, dst_zone_id))
+        if dst_by_key.get(record_key(record)) != expected:
+            missing.append(f"{record['Name']} {record['Type']}")
+    return missing
+
+
 def save_transfer_state(root: Path, domain: str, state: Dict[str, Any]) -> Path:
     """Persist the transfer password so a failed accept can be retried."""
     path = root / "transfers" / f"{domain}.json"
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as handle:
-        handle.write(json.dumps(state, indent=2))
+    write_private(path, json.dumps(state, indent=2))
     return path
 
 
@@ -298,12 +346,14 @@ def migration_status(
 def backup(ctx: click.Context, source_profile: str, output_dir: Optional[str]) -> None:
     """Snapshot every hosted zone and registered domain in the source account."""
     config: Config = ctx.obj["config"]
-    auth = AWSAuth(profile_name=source_profile, region_name=DOMAINS_REGION)
+    auth = AWSAuth(
+        profile_name=source_profile, region_name=DOMAINS_REGION, max_retries=MAX_RETRIES
+    )
     route53, domains = auth.get_client("route53"), auth.get_client("route53domains")
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     out = Path(output_dir) if output_dir else default_backup_root(config) / stamp
-    out.mkdir(parents=True, exist_ok=True)
+    out.mkdir(parents=True, exist_ok=True, mode=0o700)
 
     zones = [
         z
@@ -319,8 +369,8 @@ def backup(ctx: click.Context, source_profile: str, output_dir: Optional[str]) -
             "vpcs": detail.get("VPCs", []),
             "records": list_records(route53, zone_id),
         }
-        path = out / f"{zone['Name'].rstrip('.')}.json"
-        path.write_text(json.dumps(payload, indent=2, default=str))
+        path = out / f"{zone['Name'].rstrip('.')}.{zone_id}.json"
+        write_private(path, json.dumps(payload, indent=2, default=str))
         console.print(
             f"  {zone['Name']:<30} {len(payload['records']):>4} records -> {path.name}"
         )
@@ -330,8 +380,8 @@ def backup(ctx: click.Context, source_profile: str, output_dir: Optional[str]) -
         detail = domains.get_domain_detail(DomainName=name)
         detail.pop("ResponseMetadata", None)
         details.append(detail)
-    (out / "registered-domains.json").write_text(
-        json.dumps(details, indent=2, default=str)
+    write_private(
+        out / "registered-domains.json", json.dumps(details, indent=2, default=str)
     )
     console.print(
         f"[green]Backed up {len(zones)} zones and {len(details)} registered domains "
@@ -361,7 +411,7 @@ def transfer(
     root = Path(state_dir) if state_dir else default_backup_root(config)
     dest_account = accounts.dest_account_id()
 
-    for domain in domains:
+    for domain in map(normalize_domain, domains):
         console.print(f"[blue]== {domain}: transfer to {dest_account}[/blue]")
         offer = accounts.domains_src.transfer_domain_to_another_aws_account(
             DomainName=domain, AccountId=dest_account
@@ -456,29 +506,57 @@ def migrate_zone(
     while the change propagates.
     """
     accounts = Accounts(source_profile, dest_profile)
-    for domain in domains:
+    for domain in map(normalize_domain, domains):
         console.print(f"[blue]== {domain}: migrate hosted zone[/blue]")
         _migrate_one_zone(accounts, domain)
 
 
-def _check_cleanup_safe(accounts: Accounts, domain: str) -> Dict[str, Any]:
-    """Return the source zone if deleting it is safe, otherwise raise."""
+def _check_cleanup_safe(
+    accounts: Accounts, domain: str
+) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
+    """Return the source zone and its deletable records if cleanup is safe.
+
+    Safe means: a public zone exists in both accounts, the domain is registered
+    in the destination, the registrar points at the destination zone's name
+    servers, and the destination serves every non-apex source record.
+    """
     src_zone = find_zone(accounts.route53_src, domain)
     dst_zone = find_zone(accounts.route53_dst, domain)
     if not src_zone or not dst_zone:
         raise click.ClickException(
             f"{domain}: need a zone in both accounts before deleting the source one"
         )
+    if domain not in registered_domains(accounts.domains_dst):
+        raise click.ClickException(
+            f"{domain} is not registered in {accounts.dest_profile}; "
+            f"run `transfer {domain}` first"
+        )
     detail = accounts.domains_dst.get_domain_detail(DomainName=domain)
     registrar_ns = {normalize_ns(ns["Name"]) for ns in detail["Nameservers"]}
-    delegation = accounts.route53_dst.get_hosted_zone(Id=zone_id_of(dst_zone))[
-        "DelegationSet"
-    ]
+    src_zone_id, dst_zone_id = zone_id_of(src_zone), zone_id_of(dst_zone)
+    delegation = accounts.route53_dst.get_hosted_zone(Id=dst_zone_id)["DelegationSet"]
     if registrar_ns != {normalize_ns(ns) for ns in delegation["NameServers"]}:
         raise click.ClickException(
             f"{domain}: registrar name servers do not match the destination zone; not deleting"
         )
-    return src_zone
+    leftovers = [
+        r
+        for r in list_records(accounts.route53_src, src_zone_id)
+        if not is_apex_ns_or_soa(r, src_zone["Name"])
+    ]
+    missing = missing_in_destination(
+        leftovers,
+        list_records(accounts.route53_dst, dst_zone_id),
+        src_zone_id,
+        dst_zone_id,
+    )
+    if missing:
+        raise click.ClickException(
+            f"{domain}: destination zone is missing or differs on "
+            f"{len(missing)} source records; re-run `migrate-zone {domain}` first: "
+            + ", ".join(missing)
+        )
+    return src_zone, leftovers
 
 
 @route53_group.command(name="cleanup")
@@ -495,14 +573,9 @@ def cleanup(
     after migrate-zone so TLD name server caches have expired.
     """
     accounts = Accounts(source_profile, dest_profile)
-    for domain in domains:
-        src_zone = _check_cleanup_safe(accounts, domain)
+    for domain in map(normalize_domain, domains):
+        src_zone, leftovers = _check_cleanup_safe(accounts, domain)
         src_zone_id = zone_id_of(src_zone)
-        leftovers = [
-            r
-            for r in list_records(accounts.route53_src, src_zone_id)
-            if not is_apex_ns_or_soa(r, src_zone["Name"])
-        ]
         if not confirm:
             console.print(
                 f"[red]This will permanently delete zone {src_zone_id} ({domain}) "

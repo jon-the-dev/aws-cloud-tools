@@ -340,7 +340,26 @@ class TestChangeInBatches:
         client.change_resource_record_sets.assert_not_called()
 
 
+class TestNormalizeDomain:
+    @pytest.mark.parametrize(
+        "raw", ["Example.COM", "example.com.", " example.com ", "EXAMPLE.com."]
+    )
+    def test_strips_case_whitespace_and_trailing_dot(self, raw):
+        assert route53.normalize_domain(raw) == "example.com"
+
+
 class TestWaitForOperation:
+    def test_times_out_with_a_clear_error(self):
+        domains = MagicMock()
+        domains.get_operation_detail.return_value = {"Status": "IN_PROGRESS"}
+
+        with patch.object(route53.time, "sleep"), pytest.raises(
+            click.ClickException, match="still IN_PROGRESS"
+        ):
+            wait_for_operation(domains, "op-1", "accept")
+
+        assert domains.get_operation_detail.call_count == route53.MAX_POLLS
+
     def test_returns_on_successful(self):
         domains = MagicMock()
         domains.get_operation_detail.return_value = {"Status": "SUCCESSFUL"}
@@ -436,7 +455,10 @@ class TestCheckCleanupSafe:
             route53_dst=_route53_client(
                 zones=[_zone("example.com.", DST_ZONE_ID)], delegation=NS_DST
             ),
-            domains_dst=_domains_client(nameservers=["ns-9.awsdns-09.net"] + NS_DST[:1]),
+            domains_dst=_domains_client(
+                registered=["example.com"],
+                nameservers=["ns-9.awsdns-09.net"] + NS_DST[:1],
+            ),
         )
 
         with pytest.raises(click.ClickException, match="do not match"):
@@ -448,11 +470,109 @@ class TestCheckCleanupSafe:
             route53_dst=_route53_client(
                 zones=[_zone("example.com.", DST_ZONE_ID)], delegation=NS_DST
             ),
-            domains_dst=_domains_client(nameservers=["ns-7.awsdns-07.co.uk", "ns-8.awsdns-08.org"]),
+            domains_dst=_domains_client(
+                registered=["example.com"],
+                nameservers=["ns-7.awsdns-07.co.uk", "ns-8.awsdns-08.org"],
+            ),
         )
 
         with pytest.raises(click.ClickException):
             _check_cleanup_safe(accounts, "example.com")
+
+    def test_raises_when_domain_not_registered_in_dest(self):
+        accounts = _accounts(
+            route53_src=_route53_client(zones=[_zone("example.com.")]),
+            route53_dst=_route53_client(
+                zones=[_zone("example.com.", DST_ZONE_ID)], delegation=NS_DST
+            ),
+            domains_dst=_domains_client(nameservers=NS_DST),
+        )
+
+        with pytest.raises(click.ClickException, match="not registered"):
+            _check_cleanup_safe(accounts, "example.com")
+
+        accounts.domains_dst.get_domain_detail.assert_not_called()
+
+    def test_raises_when_destination_lacks_a_source_record(self):
+        src_records = _zone_records() + [
+            _record("mail.example.com.", "MX", ResourceRecords=[{"Value": "10 mx"}])
+        ]
+        dst_records = _zone_records()
+        accounts = _accounts(
+            route53_src=_route53_client(
+                zones=[_zone("example.com.", SRC_ZONE_ID)], records=src_records
+            ),
+            route53_dst=_route53_client(
+                zones=[_zone("example.com.", DST_ZONE_ID)],
+                records=dst_records,
+                delegation=NS_DST,
+            ),
+            domains_dst=_domains_client(registered=["example.com"], nameservers=NS_DST),
+        )
+
+        with pytest.raises(click.ClickException) as exc:
+            _check_cleanup_safe(accounts, "example.com")
+
+        assert "mail.example.com. MX" in str(exc.value)
+        assert "www.example.com. A" not in str(exc.value)
+
+    def test_raises_when_destination_record_values_differ(self):
+        src_records = _zone_records() + [
+            _record("api.example.com.", "A", ResourceRecords=[{"Value": "10.0.0.1"}])
+        ]
+        dst_records = _zone_records() + [
+            _record("api.example.com.", "A", ResourceRecords=[{"Value": "10.0.0.2"}])
+        ]
+        accounts = _accounts(
+            route53_src=_route53_client(
+                zones=[_zone("example.com.", SRC_ZONE_ID)], records=src_records
+            ),
+            route53_dst=_route53_client(
+                zones=[_zone("example.com.", DST_ZONE_ID)],
+                records=dst_records,
+                delegation=NS_DST,
+            ),
+            domains_dst=_domains_client(registered=["example.com"], nameservers=NS_DST),
+        )
+
+        with pytest.raises(click.ClickException, match="api.example.com. A"):
+            _check_cleanup_safe(accounts, "example.com")
+
+    def test_rewritten_alias_in_destination_counts_as_present(self):
+        src_records = _zone_records() + [
+            _record(
+                "self.example.com.",
+                "A",
+                AliasTarget={"HostedZoneId": SRC_ZONE_ID, "DNSName": "example.com."},
+            )
+        ]
+        dst_records = _zone_records() + [
+            _record(
+                "self.example.com.",
+                "A",
+                AliasTarget={"HostedZoneId": DST_ZONE_ID, "DNSName": "example.com."},
+            )
+        ]
+        accounts = _accounts(
+            route53_src=_route53_client(
+                zones=[_zone("example.com.", SRC_ZONE_ID)], records=src_records
+            ),
+            route53_dst=_route53_client(
+                zones=[_zone("example.com.", DST_ZONE_ID)],
+                records=dst_records,
+                delegation=NS_DST,
+            ),
+            domains_dst=_domains_client(registered=["example.com"], nameservers=NS_DST),
+        )
+
+        zone, leftovers = _check_cleanup_safe(accounts, "example.com")
+
+        assert zone_id_of(zone) == SRC_ZONE_ID
+        assert [r["Name"] for r in leftovers] == [
+            "www.example.com.",
+            "sub.example.com.",
+            "self.example.com.",
+        ]
 
     def test_returns_source_zone_when_everything_matches(self):
         accounts = _accounts(
@@ -460,12 +580,15 @@ class TestCheckCleanupSafe:
             route53_dst=_route53_client(
                 zones=[_zone("example.com.", DST_ZONE_ID)], delegation=NS_DST
             ),
-            domains_dst=_domains_client(nameservers=list(reversed(NS_DST))),
+            domains_dst=_domains_client(
+                registered=["example.com"], nameservers=list(reversed(NS_DST))
+            ),
         )
 
-        zone = _check_cleanup_safe(accounts, "example.com")
+        zone, leftovers = _check_cleanup_safe(accounts, "example.com")
 
         assert zone_id_of(zone) == SRC_ZONE_ID
+        assert leftovers == []
         accounts.route53_dst.get_hosted_zone.assert_called_once_with(Id=DST_ZONE_ID)
 
     def test_name_server_case_and_trailing_dot_do_not_block_cleanup(self):
@@ -475,10 +598,10 @@ class TestCheckCleanupSafe:
             route53_dst=_route53_client(
                 zones=[_zone("example.com.", DST_ZONE_ID)], delegation=NS_DST
             ),
-            domains_dst=_domains_client(nameservers=registrar),
+            domains_dst=_domains_client(registered=["example.com"], nameservers=registrar),
         )
 
-        zone = _check_cleanup_safe(accounts, "example.com")
+        zone, _ = _check_cleanup_safe(accounts, "example.com")
 
         assert zone_id_of(zone) == SRC_ZONE_ID
 
@@ -631,14 +754,11 @@ class TestCleanupCommand:
 
     def _invoke(self, args, input_text=None, leftover_count=3):
         zone = _zone("example.com.", SRC_ZONE_ID)
-        records = [
-            _record("example.com.", "NS"),
-            _record("example.com.", "SOA"),
-        ] + [_record(f"r{i}.example.com.") for i in range(leftover_count)]
+        leftovers = [_record(f"r{i}.example.com.") for i in range(leftover_count)]
         accounts = MagicMock()
-        accounts.route53_src = _route53_client(records=records)
+        accounts.route53_src = _route53_client()
         with patch.object(route53, "Accounts", return_value=accounts), patch.object(
-            route53, "_check_cleanup_safe", return_value=zone
+            route53, "_check_cleanup_safe", return_value=(zone, leftovers)
         ):
             result = CliRunner().invoke(
                 route53_group,
@@ -698,3 +818,66 @@ class TestCleanupCommand:
         assert result.exit_code != 0
         assert "unsafe" in result.output
         accounts.route53_src.delete_hosted_zone.assert_not_called()
+
+
+class TestBackupCommand:
+    def _invoke(self, tmp_path, zones, records=(), zone_detail=None):
+        auth = MagicMock()
+        r53 = MagicMock()
+        r53.get_paginator.side_effect = lambda name: MagicMock(
+            paginate=MagicMock(
+                return_value=[{"HostedZones": zones}]
+                if name == "list_hosted_zones"
+                else [{"ResourceRecordSets": list(records)}]
+            )
+        )
+        r53.get_hosted_zone.return_value = zone_detail or {
+            "DelegationSet": {"NameServers": NS_DST}
+        }
+        domains = _domains_client(registered=["example.com"])
+        domains.get_domain_detail.return_value = {
+            "DomainName": "example.com",
+            "ResponseMetadata": {"RequestId": "x"},
+        }
+        auth.get_client.side_effect = lambda svc: r53 if svc == "route53" else domains
+        out = tmp_path / "snap"
+        with patch.object(route53, "AWSAuth", return_value=auth):
+            result = CliRunner().invoke(
+                route53_group,
+                ["backup", "--source-profile", "src", "--output-dir", str(out)],
+                obj={"config": Config(aws_output_format="table")},
+            )
+        return result, out
+
+    def test_same_name_zones_get_distinct_files_with_private_modes(self, tmp_path):
+        zones = [
+            _zone("example.com.", "ZPUBLIC"),
+            _zone("example.com.", "ZPRIVATE", private=True),
+        ]
+
+        result, out = self._invoke(tmp_path, zones)
+
+        assert result.exit_code == 0, result.output
+        names = sorted(p.name for p in out.iterdir())
+        assert names == [
+            "example.com.ZPRIVATE.json",
+            "example.com.ZPUBLIC.json",
+            "registered-domains.json",
+        ]
+        assert stat.S_IMODE(out.stat().st_mode) == 0o700
+        for path in out.iterdir():
+            assert stat.S_IMODE(path.stat().st_mode) == 0o600
+        detail = json.loads((out / "registered-domains.json").read_text())
+        assert detail == [{"DomainName": "example.com"}]
+
+    def test_private_zone_without_delegation_set_is_still_written(self, tmp_path):
+        zones = [_zone("internal.", "ZPRIV", private=True)]
+
+        result, out = self._invoke(
+            tmp_path, zones, zone_detail={"VPCs": [{"VPCId": "vpc-1"}]}
+        )
+
+        assert result.exit_code == 0, result.output
+        payload = json.loads((out / "internal.ZPRIV.json").read_text())
+        assert payload["delegation_set"] is None
+        assert payload["vpcs"] == [{"VPCId": "vpc-1"}]
