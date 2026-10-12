@@ -420,6 +420,18 @@ class TestSaveTransferState:
         assert stat.S_IMODE(path.stat().st_mode) == 0o600
         assert stat.S_IMODE(path.parent.stat().st_mode) == 0o700
 
+    def test_overwrite_tightens_a_loose_existing_file_and_dir(self, tmp_path):
+        transfers = tmp_path / "transfers"
+        transfers.mkdir(mode=0o755)
+        existing = transfers / "example.com.json"
+        existing.write_text("{}")
+        existing.chmod(0o644)
+
+        path = save_transfer_state(tmp_path, "example.com", {"password": "new"})
+
+        assert stat.S_IMODE(path.stat().st_mode) == 0o600
+        assert stat.S_IMODE(transfers.stat().st_mode) == 0o700
+
     def test_overwrite_keeps_restrictive_mode(self, tmp_path):
         save_transfer_state(tmp_path, "example.com", {"password": "old"})
 
@@ -477,6 +489,17 @@ class TestCheckCleanupSafe:
         )
 
         with pytest.raises(click.ClickException):
+            _check_cleanup_safe(accounts, "example.com")
+
+    def test_raises_when_source_and_destination_are_the_same_zone(self):
+        same = _zone("example.com.", SRC_ZONE_ID)
+        accounts = _accounts(
+            route53_src=_route53_client(zones=[same], delegation=NS_DST),
+            route53_dst=_route53_client(zones=[same], delegation=NS_DST),
+            domains_dst=_domains_client(registered=["example.com"], nameservers=NS_DST),
+        )
+
+        with pytest.raises(click.ClickException, match="same zone"):
             _check_cleanup_safe(accounts, "example.com")
 
     def test_raises_when_domain_not_registered_in_dest(self):
@@ -881,3 +904,26 @@ class TestBackupCommand:
         payload = json.loads((out / "internal.ZPRIV.json").read_text())
         assert payload["delegation_set"] is None
         assert payload["vpcs"] == [{"VPCId": "vpc-1"}]
+
+
+
+class TestAccounts:
+    def test_rejects_profiles_that_resolve_to_the_same_account(self):
+        with patch.object(route53, "AWSAuth") as auth_cls:
+            auth_cls.return_value.get_account_id.return_value = "111111111111"
+
+            with pytest.raises(click.ClickException, match="same AWS account"):
+                route53.Accounts("a", "b")
+
+    def test_builds_clients_for_two_distinct_accounts(self):
+        with patch.object(route53, "AWSAuth") as auth_cls:
+            src, dst = MagicMock(), MagicMock()
+            src.get_account_id.return_value = "111111111111"
+            dst.get_account_id.return_value = "222222222222"
+            auth_cls.side_effect = [src, dst]
+
+            accounts = route53.Accounts("a", "b")
+
+        assert accounts.dest_account_id() == "222222222222"
+        assert src.get_client.call_args_list[0].args == ("route53",)
+        assert dst.get_client.call_args_list[1].args == ("route53domains",)

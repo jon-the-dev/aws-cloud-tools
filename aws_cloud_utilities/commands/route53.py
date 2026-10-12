@@ -55,6 +55,11 @@ class Accounts:
             region_name=DOMAINS_REGION,
             max_retries=MAX_RETRIES,
         )
+        if self._src.get_account_id() == self._dst.get_account_id():
+            raise click.ClickException(
+                f"--source-profile {source_profile} and --dest-profile {dest_profile} "
+                "resolve to the same AWS account; nothing to migrate"
+            )
         self.route53_src = self._src.get_client("route53")
         self.domains_src = self._src.get_client("route53domains")
         self.route53_dst = self._dst.get_client("route53")
@@ -225,7 +230,9 @@ def default_backup_root(config: Config) -> Path:
 
 def write_private(path: Path, text: str) -> None:
     """Write a file readable only by the owner, replacing any existing one."""
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(path, flags, 0o600)
+    os.fchmod(fd, 0o600)
     with os.fdopen(fd, "w") as handle:
         handle.write(text)
 
@@ -259,6 +266,7 @@ def save_transfer_state(root: Path, domain: str, state: Dict[str, Any]) -> Path:
     """Persist the transfer password so a failed accept can be retried."""
     path = root / "transfers" / f"{domain}.json"
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(path.parent, 0o700)
     write_private(path, json.dumps(state, indent=2))
     return path
 
@@ -525,6 +533,10 @@ def _check_cleanup_safe(
     if not src_zone or not dst_zone:
         raise click.ClickException(
             f"{domain}: need a zone in both accounts before deleting the source one"
+        )
+    if zone_id_of(src_zone) == zone_id_of(dst_zone):
+        raise click.ClickException(
+            f"{domain}: source and destination are the same zone; not deleting"
         )
     if domain not in registered_domains(accounts.domains_dst):
         raise click.ClickException(
