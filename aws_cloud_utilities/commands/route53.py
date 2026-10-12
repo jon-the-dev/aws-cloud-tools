@@ -235,7 +235,8 @@ def write_private(path: Path, text: str) -> None:
     """Write a file readable only by the owner, replacing any existing one."""
     flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
     fd = os.open(path, flags, 0o600)
-    os.fchmod(fd, 0o600)
+    if hasattr(os, "fchmod"):
+        os.fchmod(fd, 0o600)
     with os.fdopen(fd, "w") as handle:
         handle.write(text)
 

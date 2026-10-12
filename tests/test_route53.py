@@ -2,6 +2,7 @@
 
 import json
 import stat
+import sys
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -33,6 +34,12 @@ from aws_cloud_utilities.core.config import Config
 
 SRC_ZONE_ID = "ZSRC"
 DST_ZONE_ID = "ZDST"
+
+
+def _assert_mode(path, mode: int) -> None:
+    """POSIX permission bits are meaningless on Windows, so only check them elsewhere."""
+    if sys.platform != "win32":
+        assert stat.S_IMODE(path.stat().st_mode) == mode
 
 
 def _zone(name: str, zone_id: str = SRC_ZONE_ID, private: bool = False) -> dict:
@@ -422,8 +429,8 @@ class TestSaveTransferState:
 
         assert path == tmp_path / "transfers" / "example.com.json"
         assert json.loads(path.read_text()) == state
-        assert stat.S_IMODE(path.stat().st_mode) == 0o600
-        assert stat.S_IMODE(path.parent.stat().st_mode) == 0o700
+        _assert_mode(path, 0o600)
+        _assert_mode(path.parent, 0o700)
 
     def test_overwrite_tightens_a_loose_existing_file_and_dir(self, tmp_path):
         transfers = tmp_path / "transfers"
@@ -434,8 +441,8 @@ class TestSaveTransferState:
 
         path = save_transfer_state(tmp_path, "example.com", {"password": "new"})
 
-        assert stat.S_IMODE(path.stat().st_mode) == 0o600
-        assert stat.S_IMODE(transfers.stat().st_mode) == 0o700
+        _assert_mode(path, 0o600)
+        _assert_mode(transfers, 0o700)
 
     def test_overwrite_keeps_restrictive_mode(self, tmp_path):
         save_transfer_state(tmp_path, "example.com", {"password": "old"})
@@ -443,7 +450,7 @@ class TestSaveTransferState:
         path = save_transfer_state(tmp_path, "example.com", {"password": "new"})
 
         assert json.loads(path.read_text()) == {"password": "new"}
-        assert stat.S_IMODE(path.stat().st_mode) == 0o600
+        _assert_mode(path, 0o600)
 
 
 # ---------------------------------------------------------------------------
@@ -926,9 +933,9 @@ class TestBackupCommand:
             "example.com.ZPUBLIC.json",
             "registered-domains.json",
         ]
-        assert stat.S_IMODE(out.stat().st_mode) == 0o700
+        _assert_mode(out, 0o700)
         for path in out.iterdir():
-            assert stat.S_IMODE(path.stat().st_mode) == 0o600
+            _assert_mode(path, 0o600)
         detail = json.loads((out / "registered-domains.json").read_text())
         assert detail == [{"DomainName": "example.com"}]
 
