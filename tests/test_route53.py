@@ -347,6 +347,11 @@ class TestNormalizeDomain:
     def test_strips_case_whitespace_and_trailing_dot(self, raw):
         assert route53.normalize_domain(raw) == "example.com"
 
+    @pytest.mark.parametrize("raw", ["", "../x", "a/b.com", ".example.com", "a..b"])
+    def test_rejects_path_like_input(self, raw):
+        with pytest.raises(click.ClickException, match="not a valid domain"):
+            route53.normalize_domain(raw)
+
 
 class TestWaitForOperation:
     def test_times_out_with_a_clear_error(self):
@@ -559,6 +564,40 @@ class TestCheckCleanupSafe:
         )
 
         with pytest.raises(click.ClickException, match="api.example.com. A"):
+            _check_cleanup_safe(accounts, "example.com")
+
+    def test_raises_when_routing_policy_differs(self):
+        src_records = _zone_records() + [
+            _record(
+                "lb.example.com.",
+                "A",
+                SetIdentifier="east",
+                Weight=10,
+                ResourceRecords=[{"Value": "10.0.0.1"}],
+            )
+        ]
+        dst_records = _zone_records() + [
+            _record(
+                "lb.example.com.",
+                "A",
+                SetIdentifier="east",
+                Weight=90,
+                ResourceRecords=[{"Value": "10.0.0.1"}],
+            )
+        ]
+        accounts = _accounts(
+            route53_src=_route53_client(
+                zones=[_zone("example.com.", SRC_ZONE_ID)], records=src_records
+            ),
+            route53_dst=_route53_client(
+                zones=[_zone("example.com.", DST_ZONE_ID)],
+                records=dst_records,
+                delegation=NS_DST,
+            ),
+            domains_dst=_domains_client(registered=["example.com"], nameservers=NS_DST),
+        )
+
+        with pytest.raises(click.ClickException, match="lb.example.com. A"):
             _check_cleanup_safe(accounts, "example.com")
 
     def test_rewritten_alias_in_destination_counts_as_present(self):

@@ -74,7 +74,10 @@ def normalize_ns(name: str) -> str:
 
 
 def normalize_domain(domain: str) -> str:
-    return domain.strip().lower().rstrip(".")
+    name = domain.strip().lower().rstrip(".")
+    if not name or "/" in name or name.startswith(".") or ".." in name:
+        raise click.ClickException(f"{domain!r} is not a valid domain name")
+    return name
 
 
 def zone_id_of(zone: Dict[str, Any]) -> str:
@@ -241,9 +244,21 @@ def record_key(record: Dict[str, Any]) -> Tuple[str, str, Optional[str]]:
     return (record["Name"].lower(), record["Type"], record.get("SetIdentifier"))
 
 
+ROUTING_FIELDS = (
+    "TTL",
+    "Weight",
+    "Region",
+    "Failover",
+    "GeoLocation",
+    "GeoProximityLocation",
+    "MultiValueAnswer",
+)
+
+
 def record_payload(record: Dict[str, Any]) -> Tuple[Any, ...]:
     values = sorted(rr["Value"] for rr in record.get("ResourceRecords", []))
-    return (tuple(values), record.get("AliasTarget"), record.get("TTL"))
+    routing = tuple(json.dumps(record.get(f), sort_keys=True) for f in ROUTING_FIELDS)
+    return (tuple(values), record.get("AliasTarget")) + routing
 
 
 def missing_in_destination(
@@ -362,6 +377,7 @@ def backup(ctx: click.Context, source_profile: str, output_dir: Optional[str]) -
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     out = Path(output_dir) if output_dir else default_backup_root(config) / stamp
     out.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(out, 0o700)
 
     zones = [
         z
