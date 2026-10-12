@@ -1,0 +1,454 @@
+"""Route 53 domain and hosted zone migration between AWS accounts.
+
+Transferring a registered domain between AWS accounts does not move its hosted
+zone. The registrar keeps pointing at the old zone, so DNS keeps working, but
+the zone is orphaned in the source account. These commands do the full move:
+
+    backup            snapshot every zone and registered domain in source
+    transfer          offer the domain from source, accept it in destination
+    migrate-zone      recreate the zone in destination, copy records, repoint
+                      the registrar at the new name servers
+    cleanup           delete the old source zone once the registrar points at
+                      the destination zone
+    migration-status  show where each domain stands and which step is next
+"""
+
+import json
+import logging
+import os
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+
+import click
+from rich.console import Console
+
+from ..core.auth import AWSAuth
+from ..core.config import Config
+from ..core.utils import print_output
+
+logger = logging.getLogger(__name__)
+console = Console()
+
+BATCH_SIZE = 500
+POLL_SECONDS = 15
+DOMAINS_REGION = "us-east-1"
+
+
+class Accounts:
+    """Route 53 and Route 53 Domains clients for the source and destination."""
+
+    def __init__(self, source_profile: str, dest_profile: str):
+        self.source_profile = source_profile
+        self.dest_profile = dest_profile
+        self._src = AWSAuth(profile_name=source_profile, region_name=DOMAINS_REGION)
+        self._dst = AWSAuth(profile_name=dest_profile, region_name=DOMAINS_REGION)
+        self.route53_src = self._src.get_client("route53")
+        self.domains_src = self._src.get_client("route53domains")
+        self.route53_dst = self._dst.get_client("route53")
+        self.domains_dst = self._dst.get_client("route53domains")
+
+    def dest_account_id(self) -> str:
+        return self._dst.get_account_id()
+
+
+def zone_id_of(zone: Dict[str, Any]) -> str:
+    """Strip the ``/hostedzone/`` prefix from a hosted zone Id."""
+    return str(zone["Id"]).split("/")[-1]
+
+
+def is_apex_ns_or_soa(record: Dict[str, Any], apex: str) -> bool:
+    """True for the zone's own NS and SOA records, which Route 53 manages."""
+    return record["Name"] == apex and record["Type"] in ("NS", "SOA")
+
+
+def find_zone(route53: Any, domain: str) -> Optional[Dict[str, Any]]:
+    """Return the public hosted zone whose name exactly matches ``domain``."""
+    name = domain.rstrip(".") + "."
+    zones = route53.list_hosted_zones_by_name(DNSName=name, MaxItems="5")["HostedZones"]
+    for zone in zones:
+        if zone["Name"] == name and not zone["Config"].get("PrivateZone"):
+            return dict(zone)
+    return None
+
+
+def list_records(route53: Any, zone_id: str) -> List[Dict[str, Any]]:
+    paginator = route53.get_paginator("list_resource_record_sets")
+    records: List[Dict[str, Any]] = []
+    for page in paginator.paginate(HostedZoneId=zone_id):
+        records.extend(page["ResourceRecordSets"])
+    return records
+
+
+def registered_domains(domains: Any) -> Set[str]:
+    paginator = domains.get_paginator("list_domains")
+    return {d["DomainName"] for page in paginator.paginate() for d in page["Domains"]}
+
+
+def wait_for_operation(domains: Any, operation_id: str, label: str) -> None:
+    """Poll a Route 53 Domains operation until it succeeds or fails."""
+    while True:
+        detail = domains.get_operation_detail(OperationId=operation_id)
+        status = detail["Status"]
+        console.print(f"  [dim]{label}: {status}[/dim]")
+        if status == "SUCCESSFUL":
+            return
+        if status in ("ERROR", "FAILED"):
+            message = detail.get("Message", "no message from Route 53")
+            raise click.ClickException(f"{label} failed: {message}")
+        time.sleep(POLL_SECONDS)
+
+
+def next_step(registered_in: str, zone_in_src: bool, zone_in_dst: bool) -> str:
+    """Return the next migration command for a domain given where things live."""
+    if registered_in == "source":
+        return "transfer"
+    if not zone_in_dst:
+        return "migrate-zone"
+    if zone_in_src:
+        return "cleanup"
+    return "done"
+
+
+def zone_location(zone_in_src: bool, zone_in_dst: bool) -> str:
+    return {
+        (True, True): "both",
+        (True, False): "source",
+        (False, True): "dest",
+        (False, False): "none",
+    }[(zone_in_src, zone_in_dst)]
+
+
+def rewrite_record(
+    record: Dict[str, Any], src_zone_id: str, dst_zone_id: str
+) -> Dict[str, Any]:
+    """Repoint an alias whose target is the source zone itself at the new zone."""
+    alias = record.get("AliasTarget")
+    if alias and alias["HostedZoneId"] == src_zone_id:
+        alias["HostedZoneId"] = dst_zone_id
+    return record
+
+
+def records_to_copy(
+    records: List[Dict[str, Any]], src_zone_id: str, dst_zone_id: str
+) -> List[Dict[str, Any]]:
+    """Everything except the apex NS and SOA, with self-referencing aliases rewritten."""
+    apex = next(r["Name"] for r in records if r["Type"] == "SOA")
+    return [
+        rewrite_record(r, src_zone_id, dst_zone_id)
+        for r in records
+        if not is_apex_ns_or_soa(r, apex)
+    ]
+
+
+def change_in_batches(
+    route53: Any, zone_id: str, action: str, records: List[Dict[str, Any]]
+) -> None:
+    for start in range(0, len(records), BATCH_SIZE):
+        changes = [
+            {"Action": action, "ResourceRecordSet": r}
+            for r in records[start : start + BATCH_SIZE]
+        ]
+        route53.change_resource_record_sets(
+            HostedZoneId=zone_id, ChangeBatch={"Changes": changes}
+        )
+
+
+def default_backup_root(config: Config) -> Path:
+    return config.get_data_dir() / "route53"
+
+
+def save_transfer_state(root: Path, domain: str, state: Dict[str, Any]) -> Path:
+    """Persist the transfer password so a failed accept can be retried by hand."""
+    path = root / "transfers" / f"{domain}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(state, indent=2))
+    os.chmod(path, 0o600)
+    return path
+
+
+def profile_options(func: Callable[..., None]) -> Callable[..., None]:
+    func = click.option(
+        "--dest-profile",
+        required=True,
+        help="AWS profile of the account domains move into",
+    )(func)
+    func = click.option(
+        "--source-profile",
+        required=True,
+        help="AWS profile of the account domains move out of",
+    )(func)
+    return func
+
+
+@click.group(name="route53")
+def route53_group() -> None:
+    """Migrate Route 53 registered domains and hosted zones between accounts.
+
+    Run in order: backup, transfer, migrate-zone, then cleanup a couple of days
+    later. migration-status shows where each domain stands and what to run next.
+    """
+    pass
+
+
+@route53_group.command(name="migration-status")
+@profile_options
+@click.pass_context
+def migration_status(
+    ctx: click.Context, source_profile: str, dest_profile: str
+) -> None:
+    """Show each domain's registered account, zone location, and next step."""
+    config: Config = ctx.obj["config"]
+    accounts = Accounts(source_profile, dest_profile)
+
+    in_src = registered_domains(accounts.domains_src)
+    in_dst = registered_domains(accounts.domains_dst)
+    rows = []
+    for domain in sorted(in_src | in_dst):
+        registered_in = "source" if domain in in_src else "dest"
+        zone_in_src = find_zone(accounts.route53_src, domain) is not None
+        zone_in_dst = find_zone(accounts.route53_dst, domain) is not None
+        rows.append(
+            {
+                "Domain": domain,
+                "Registered": registered_in,
+                "Zone": zone_location(zone_in_src, zone_in_dst),
+                "Next": next_step(registered_in, zone_in_src, zone_in_dst),
+            }
+        )
+
+    print_output(
+        rows, output_format=config.aws_output_format, title="Route 53 Migration Status"
+    )
+    if config.aws_output_format == "table":
+        console.print(
+            f"[dim]{len(in_src)} registered in {source_profile}, "
+            f"{len(in_dst)} in {dest_profile}[/dim]"
+        )
+
+
+@route53_group.command(name="backup")
+@profile_options
+@click.option(
+    "--output-dir",
+    help="Directory to write the snapshot into (default: <data-dir>/route53/<timestamp>)",
+)
+@click.pass_context
+def backup(
+    ctx: click.Context,
+    source_profile: str,
+    dest_profile: str,
+    output_dir: Optional[str],
+) -> None:
+    """Snapshot every hosted zone and registered domain in the source account."""
+    config: Config = ctx.obj["config"]
+    accounts = Accounts(source_profile, dest_profile)
+    route53, domains = accounts.route53_src, accounts.domains_src
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    out = Path(output_dir) if output_dir else default_backup_root(config) / stamp
+    out.mkdir(parents=True, exist_ok=True)
+
+    zones = route53.list_hosted_zones()["HostedZones"]
+    for zone in zones:
+        zone_id = zone_id_of(zone)
+        payload = {
+            "zone": zone,
+            "delegation_set": route53.get_hosted_zone(Id=zone_id)["DelegationSet"],
+            "records": list_records(route53, zone_id),
+        }
+        path = out / f"{zone['Name'].rstrip('.')}.json"
+        path.write_text(json.dumps(payload, indent=2, default=str))
+        console.print(
+            f"  {zone['Name']:<30} {len(payload['records']):>4} records -> {path.name}"
+        )
+
+    details = []
+    for name in sorted(registered_domains(domains)):
+        detail = domains.get_domain_detail(DomainName=name)
+        detail.pop("ResponseMetadata", None)
+        details.append(detail)
+    (out / "registered-domains.json").write_text(
+        json.dumps(details, indent=2, default=str)
+    )
+    console.print(
+        f"[green]Backed up {len(zones)} zones and {len(details)} registered domains to {out}[/green]"
+    )
+
+
+@route53_group.command(name="transfer")
+@profile_options
+@click.option(
+    "--state-dir",
+    help="Where to keep the one-time transfer password until accept succeeds "
+    "(default: <data-dir>/route53)",
+)
+@click.argument("domains", nargs=-1, required=True)
+@click.pass_context
+def transfer(
+    ctx: click.Context,
+    source_profile: str,
+    dest_profile: str,
+    state_dir: Optional[str],
+    domains: Tuple[str, ...],
+) -> None:
+    """Move domain registration from the source account to the destination."""
+    config: Config = ctx.obj["config"]
+    accounts = Accounts(source_profile, dest_profile)
+    root = Path(state_dir) if state_dir else default_backup_root(config)
+    dest_account = accounts.dest_account_id()
+
+    for domain in domains:
+        console.print(f"[blue]== {domain}: transfer to {dest_account}[/blue]")
+        offer = accounts.domains_src.transfer_domain_to_another_aws_account(
+            DomainName=domain, AccountId=dest_account
+        )
+        state_path = save_transfer_state(
+            root,
+            domain,
+            {
+                "operation_id": offer["OperationId"],
+                "password": offer["Password"],
+                "dest_account": dest_account,
+            },
+        )
+        console.print(
+            f"  transfer offered; password saved to {state_path} (valid 3 days)"
+        )
+        accept = accounts.domains_dst.accept_domain_transfer_from_another_aws_account(
+            DomainName=domain, Password=offer["Password"]
+        )
+        wait_for_operation(accounts.domains_dst, accept["OperationId"], "accept")
+        state_path.unlink()
+        console.print(f"[green]  {domain} is now registered in {dest_account}[/green]")
+
+
+def _ensure_destination_zone(
+    accounts: Accounts, domain: str, src_zone: Dict[str, Any]
+) -> str:
+    dst_zone = find_zone(accounts.route53_dst, domain)
+    if dst_zone:
+        console.print(f"  destination zone already exists: {zone_id_of(dst_zone)}")
+        return zone_id_of(dst_zone)
+    created = accounts.route53_dst.create_hosted_zone(
+        Name=src_zone["Name"],
+        CallerReference=f"migrate-{domain}-{int(time.time())}",
+        HostedZoneConfig={"Comment": f"migrated from {zone_id_of(src_zone)}"},
+    )["HostedZone"]
+    console.print(f"  created destination zone {zone_id_of(created)}")
+    return zone_id_of(created)
+
+
+def _migrate_one_zone(accounts: Accounts, domain: str) -> None:
+    src_zone = find_zone(accounts.route53_src, domain)
+    if not src_zone:
+        raise click.ClickException(
+            f"no public hosted zone for {domain} in {accounts.source_profile}"
+        )
+    if domain not in registered_domains(accounts.domains_dst):
+        raise click.ClickException(
+            f"{domain} is not registered in {accounts.dest_profile}; "
+            f"run `transfer {domain}` first"
+        )
+    src_zone_id = zone_id_of(src_zone)
+    records = list_records(accounts.route53_src, src_zone_id)
+    dst_zone_id = _ensure_destination_zone(accounts, domain, src_zone)
+
+    to_copy = records_to_copy(records, src_zone_id, dst_zone_id)
+    change_in_batches(accounts.route53_dst, dst_zone_id, "UPSERT", to_copy)
+    dst_count = len(list_records(accounts.route53_dst, dst_zone_id))
+    console.print(
+        f"  copied {len(to_copy)} records; destination has {dst_count}, source had {len(records)}"
+    )
+    if dst_count != len(records):
+        raise click.ClickException(
+            f"{domain}: record count mismatch; inspect before repointing name servers"
+        )
+
+    delegation = accounts.route53_dst.get_hosted_zone(Id=dst_zone_id)["DelegationSet"]
+    name_servers = delegation["NameServers"]
+    op = accounts.domains_dst.update_domain_nameservers(
+        DomainName=domain, Nameservers=[{"Name": ns} for ns in name_servers]
+    )
+    wait_for_operation(accounts.domains_dst, op["OperationId"], "update name servers")
+    console.print(f"[green]  registrar now points at: {' '.join(name_servers)}[/green]")
+    console.print(f"  verify: dig +short NS {domain} @{name_servers[0]}")
+
+
+@route53_group.command(name="migrate-zone")
+@profile_options
+@click.argument("domains", nargs=-1, required=True)
+def migrate_zone(
+    source_profile: str, dest_profile: str, domains: Tuple[str, ...]
+) -> None:
+    """Recreate the hosted zone in the destination and repoint the registrar.
+
+    Requires the domain to already be registered in the destination account.
+    Copies every record except the apex NS and SOA, checks the counts match,
+    then updates the registrar's name servers. Both zones answer identically
+    while the change propagates.
+    """
+    accounts = Accounts(source_profile, dest_profile)
+    for domain in domains:
+        console.print(f"[blue]== {domain}: migrate hosted zone[/blue]")
+        _migrate_one_zone(accounts, domain)
+
+
+def _check_cleanup_safe(accounts: Accounts, domain: str) -> Dict[str, Any]:
+    """Return the source zone if deleting it is safe, otherwise raise."""
+    src_zone = find_zone(accounts.route53_src, domain)
+    dst_zone = find_zone(accounts.route53_dst, domain)
+    if not src_zone or not dst_zone:
+        raise click.ClickException(
+            f"{domain}: need a zone in both accounts before deleting the source one"
+        )
+    detail = accounts.domains_dst.get_domain_detail(DomainName=domain)
+    registrar_ns = {ns["Name"] for ns in detail["Nameservers"]}
+    delegation = accounts.route53_dst.get_hosted_zone(Id=zone_id_of(dst_zone))[
+        "DelegationSet"
+    ]
+    if registrar_ns != set(delegation["NameServers"]):
+        raise click.ClickException(
+            f"{domain}: registrar name servers do not match the destination zone; not deleting"
+        )
+    return src_zone
+
+
+@route53_group.command(name="cleanup")
+@profile_options
+@click.option("--confirm", is_flag=True, help="Skip the confirmation prompt")
+@click.argument("domains", nargs=-1, required=True)
+def cleanup(
+    source_profile: str, dest_profile: str, confirm: bool, domains: Tuple[str, ...]
+) -> None:
+    """Delete the old source zone once the registrar points at the destination.
+
+    Refuses unless a zone exists in both accounts and the registrar already
+    points at the destination zone's name servers. Wait at least two days
+    after migrate-zone so TLD name server caches have expired.
+    """
+    accounts = Accounts(source_profile, dest_profile)
+    for domain in domains:
+        src_zone = _check_cleanup_safe(accounts, domain)
+        src_zone_id = zone_id_of(src_zone)
+        leftovers = [
+            r
+            for r in list_records(accounts.route53_src, src_zone_id)
+            if not is_apex_ns_or_soa(r, src_zone["Name"])
+        ]
+        if not confirm:
+            console.print(
+                f"[red]This will permanently delete zone {src_zone_id} ({domain}) "
+                f"and its {len(leftovers)} records from {source_profile}.[/red]"
+            )
+            if not click.confirm(f"Delete the source zone for {domain}?"):
+                console.print("[yellow]Skipped[/yellow]")
+                continue
+        if leftovers:
+            change_in_batches(accounts.route53_src, src_zone_id, "DELETE", leftovers)
+        accounts.route53_src.delete_hosted_zone(Id=src_zone_id)
+        console.print(
+            f"[green]== {domain}: deleted source zone {src_zone_id} "
+            f"({len(leftovers)} records)[/green]"
+        )
