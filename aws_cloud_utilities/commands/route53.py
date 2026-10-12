@@ -31,9 +31,11 @@ from ..core.utils import print_output
 logger = logging.getLogger(__name__)
 console = Console()
 
-BATCH_SIZE = 500
+MAX_BATCH_ELEMENTS = 1000
+MAX_BATCH_CHARS = 32000
 POLL_SECONDS = 15
 DOMAINS_REGION = "us-east-1"
+SOURCE_BOUND_FIELDS = ("HealthCheckId", "TrafficPolicyInstanceId", "CidrRoutingConfig")
 
 
 class Accounts:
@@ -51,6 +53,10 @@ class Accounts:
 
     def dest_account_id(self) -> str:
         return self._dst.get_account_id()
+
+
+def normalize_ns(name: str) -> str:
+    return name.lower().rstrip(".")
 
 
 def zone_id_of(zone: Dict[str, Any]) -> str:
@@ -133,8 +139,24 @@ def rewrite_record(
 def records_to_copy(
     records: List[Dict[str, Any]], src_zone_id: str, dst_zone_id: str
 ) -> List[Dict[str, Any]]:
-    """Everything except the apex NS and SOA, with self-referencing aliases rewritten."""
-    apex = next(r["Name"] for r in records if r["Type"] == "SOA")
+    """Everything except the apex NS and SOA, with self-referencing aliases rewritten.
+
+    Raises if a record references a health check, traffic policy, or CIDR
+    collection, since those belong to the source account and cannot be copied.
+    """
+    apex = next((r["Name"] for r in records if r["Type"] == "SOA"), None)
+    if apex is None:
+        raise click.ClickException("source zone has no SOA record; refusing to copy")
+    bound = [
+        f"{r['Name']} {r['Type']} ({', '.join(f for f in SOURCE_BOUND_FIELDS if f in r)})"
+        for r in records
+        if any(f in r for f in SOURCE_BOUND_FIELDS)
+    ]
+    if bound:
+        raise click.ClickException(
+            "these records reference resources in the source account and must be "
+            "recreated by hand in the destination first: " + "; ".join(bound)
+        )
     return [
         rewrite_record(r, src_zone_id, dst_zone_id)
         for r in records
@@ -142,14 +164,38 @@ def records_to_copy(
     ]
 
 
+def change_weight(action: str, record: Dict[str, Any]) -> Tuple[int, int]:
+    """Cost of one change against the Route 53 ChangeBatch limits.
+
+    Route 53 caps a batch at 1000 ResourceRecord elements and 32000 characters
+    of record values, and an UPSERT counts twice against both.
+    """
+    values = [rr["Value"] for rr in record.get("ResourceRecords", [])]
+    factor = 2 if action == "UPSERT" else 1
+    return max(len(values), 1) * factor, sum(len(v) for v in values) * factor
+
+
 def change_in_batches(
     route53: Any, zone_id: str, action: str, records: List[Dict[str, Any]]
 ) -> None:
-    for start in range(0, len(records), BATCH_SIZE):
-        changes = [
-            {"Action": action, "ResourceRecordSet": r}
-            for r in records[start : start + BATCH_SIZE]
-        ]
+    """Apply one action to every record, splitting to stay under the batch limits."""
+    changes: List[Dict[str, Any]] = []
+    elements = chars = 0
+    for record in records:
+        weight_elements, weight_chars = change_weight(action, record)
+        over_limit = (
+            elements + weight_elements > MAX_BATCH_ELEMENTS
+            or chars + weight_chars > MAX_BATCH_CHARS
+        )
+        if changes and over_limit:
+            route53.change_resource_record_sets(
+                HostedZoneId=zone_id, ChangeBatch={"Changes": changes}
+            )
+            changes, elements, chars = [], 0, 0
+        changes.append({"Action": action, "ResourceRecordSet": record})
+        elements += weight_elements
+        chars += weight_chars
+    if changes:
         route53.change_resource_record_sets(
             HostedZoneId=zone_id, ChangeBatch={"Changes": changes}
         )
@@ -160,12 +206,22 @@ def default_backup_root(config: Config) -> Path:
 
 
 def save_transfer_state(root: Path, domain: str, state: Dict[str, Any]) -> Path:
-    """Persist the transfer password so a failed accept can be retried by hand."""
+    """Persist the transfer password so a failed accept can be retried."""
     path = root / "transfers" / f"{domain}.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(state, indent=2))
-    os.chmod(path, 0o600)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as handle:
+        handle.write(json.dumps(state, indent=2))
     return path
+
+
+def accept_retry_hint(domain: str, dest_profile: str, state_path: Path) -> str:
+    return (
+        f"the one-time password is kept in {state_path} (valid 3 days); retry with:\n"
+        f"  aws route53domains accept-domain-transfer-from-another-aws-account "
+        f"--region {DOMAINS_REGION} --profile {dest_profile} "
+        f"--domain-name {domain} --password <password>"
+    )
 
 
 def profile_options(func: Callable[..., None]) -> Callable[..., None]:
@@ -229,33 +285,38 @@ def migration_status(
 
 
 @route53_group.command(name="backup")
-@profile_options
+@click.option(
+    "--source-profile",
+    required=True,
+    help="AWS profile of the account to snapshot",
+)
 @click.option(
     "--output-dir",
     help="Directory to write the snapshot into (default: <data-dir>/route53/<timestamp>)",
 )
 @click.pass_context
-def backup(
-    ctx: click.Context,
-    source_profile: str,
-    dest_profile: str,
-    output_dir: Optional[str],
-) -> None:
+def backup(ctx: click.Context, source_profile: str, output_dir: Optional[str]) -> None:
     """Snapshot every hosted zone and registered domain in the source account."""
     config: Config = ctx.obj["config"]
-    accounts = Accounts(source_profile, dest_profile)
-    route53, domains = accounts.route53_src, accounts.domains_src
+    auth = AWSAuth(profile_name=source_profile, region_name=DOMAINS_REGION)
+    route53, domains = auth.get_client("route53"), auth.get_client("route53domains")
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     out = Path(output_dir) if output_dir else default_backup_root(config) / stamp
     out.mkdir(parents=True, exist_ok=True)
 
-    zones = route53.list_hosted_zones()["HostedZones"]
+    zones = [
+        z
+        for page in route53.get_paginator("list_hosted_zones").paginate()
+        for z in page["HostedZones"]
+    ]
     for zone in zones:
         zone_id = zone_id_of(zone)
+        detail = route53.get_hosted_zone(Id=zone_id)
         payload = {
             "zone": zone,
-            "delegation_set": route53.get_hosted_zone(Id=zone_id)["DelegationSet"],
+            "delegation_set": detail.get("DelegationSet"),
+            "vpcs": detail.get("VPCs", []),
             "records": list_records(route53, zone_id),
         }
         path = out / f"{zone['Name'].rstrip('.')}.json"
@@ -273,7 +334,8 @@ def backup(
         json.dumps(details, indent=2, default=str)
     )
     console.print(
-        f"[green]Backed up {len(zones)} zones and {len(details)} registered domains to {out}[/green]"
+        f"[green]Backed up {len(zones)} zones and {len(details)} registered domains "
+        f"to {out}[/green]"
     )
 
 
@@ -313,13 +375,17 @@ def transfer(
                 "dest_account": dest_account,
             },
         )
-        console.print(
-            f"  transfer offered; password saved to {state_path} (valid 3 days)"
-        )
-        accept = accounts.domains_dst.accept_domain_transfer_from_another_aws_account(
-            DomainName=domain, Password=offer["Password"]
-        )
-        wait_for_operation(accounts.domains_dst, accept["OperationId"], "accept")
+        console.print(f"  transfer offered; password saved to {state_path}")
+        try:
+            accept = (
+                accounts.domains_dst.accept_domain_transfer_from_another_aws_account(
+                    DomainName=domain, Password=offer["Password"]
+                )
+            )
+            wait_for_operation(accounts.domains_dst, accept["OperationId"], "accept")
+        except Exception as exc:
+            hint = accept_retry_hint(domain, dest_profile, state_path)
+            raise click.ClickException(f"{domain}: accept failed: {exc}\n{hint}")
         state_path.unlink()
         console.print(f"[green]  {domain} is now registered in {dest_account}[/green]")
 
@@ -404,11 +470,11 @@ def _check_cleanup_safe(accounts: Accounts, domain: str) -> Dict[str, Any]:
             f"{domain}: need a zone in both accounts before deleting the source one"
         )
     detail = accounts.domains_dst.get_domain_detail(DomainName=domain)
-    registrar_ns = {ns["Name"] for ns in detail["Nameservers"]}
+    registrar_ns = {normalize_ns(ns["Name"]) for ns in detail["Nameservers"]}
     delegation = accounts.route53_dst.get_hosted_zone(Id=zone_id_of(dst_zone))[
         "DelegationSet"
     ]
-    if registrar_ns != set(delegation["NameServers"]):
+    if registrar_ns != {normalize_ns(ns) for ns in delegation["NameServers"]}:
         raise click.ClickException(
             f"{domain}: registrar name servers do not match the destination zone; not deleting"
         )

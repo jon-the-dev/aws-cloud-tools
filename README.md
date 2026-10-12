@@ -102,6 +102,7 @@ Every command group and its operations. Invoke as
 | [`logs`](#logs) | CloudWatch Logs management and processing |
 | [`networking`](#networking) | Networking and IP-range utilities |
 | [`rds`](#rds) | RDS management and troubleshooting |
+| [`route53`](#route53) | Route 53 domain and hosted zone migration between accounts |
 | [`s3`](#s3) | S3 bucket and object management |
 | [`security`](#security) | Security monitoring and certificates |
 | [`stepfunctions`](#stepfunctions) | Step Functions management and monitoring |
@@ -211,6 +212,14 @@ Every command group and its operations. Invoke as
 
 - `troubleshoot-mysql` — Troubleshoot MySQL RDS connection issues
 - `list-instances` — List RDS instances in the current region
+
+### route53
+
+- `migration-status` — Show where each domain and hosted zone stands and which step is next
+- `backup` — Snapshot every hosted zone and registered domain in the source account
+- `transfer` — Transfer domain registration from the source account to the destination account
+- `migrate-zone` — Recreate the hosted zone in the destination, copy records, and repoint the registrar
+- `cleanup` — Delete the old source hosted zone once the registrar points at the destination
 
 ### s3
 
