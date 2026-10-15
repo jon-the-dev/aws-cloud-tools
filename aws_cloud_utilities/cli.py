@@ -24,6 +24,7 @@ from .commands import (
     logs,
     networking,
     rds,
+    route53,
     s3,
     security,
     stepfunctions,
@@ -171,6 +172,7 @@ main.add_command(ecr.ecr_group)
 main.add_command(inventory.inventory_group)
 main.add_command(logs.logs_group)
 main.add_command(rds.rds_group)
+main.add_command(route53.route53_group)
 main.add_command(security.security_group)
 main.add_command(stepfunctions.stepfunctions_group)
 main.add_command(s3.s3_group)
