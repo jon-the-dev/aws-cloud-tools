@@ -79,6 +79,7 @@ Click any command name for its full documentation, options, and examples.
 | [**logs**](commands/logs.md) | AWS CloudWatch Logs management and processing commands. | `aggregate`, `combine`, `delete-group`, `download`, `list-groups`, `set-retention` |
 | [**networking**](commands/networking.md) | AWS networking and IP management commands. | `ip-ranges`, `ip-summary` |
 | [**rds**](commands/rds.md) | RDS management and troubleshooting commands. | `list-instances`, `troubleshoot-mysql` |
+| [**route53**](commands/route53.md) | Migrate Route 53 registered domains and hosted zones between accounts. | `backup`, `cleanup`, `migrate-zone`, `migration-status`, `transfer` |
 | [**s3**](commands/s3.md) | AWS S3 bucket and object management commands. | `analyze-encryption`, `bucket-details`, `create-bucket`, `delete-versions`, `download`, `list-buckets`, `nuke-bucket`, `restore-objects` |
 | [**security**](commands/security.md) | AWS security monitoring and certificate management commands. | `create-certificate`, `list-certificates`, `metrics` |
 | [**stepfunctions**](commands/stepfunctions.md) | AWS Step Functions management and monitoring commands. | `describe`, `execute`, `list`, `list-executions`, `logs` |

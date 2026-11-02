@@ -1055,6 +1055,81 @@ aws-cloud-utilities rds troubleshoot-mysql DB_INSTANCE_IDENTIFIER [OPTIONS]
 |---|---|---|
 | `--output-file` | `TEXT` | Save detailed results to JSON file |
 
+## `route53`
+
+Migrate Route 53 registered domains and hosted zones between accounts.
+
+```bash
+aws-cloud-utilities route53 COMMAND
+```
+
+### `route53 backup`
+
+Snapshot every hosted zone and registered domain in the source account.
+
+```bash
+aws-cloud-utilities route53 backup [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--source-profile` | `TEXT` | **Required.** AWS profile of the account to snapshot |
+| `--output-dir` | `TEXT` | Directory to write the snapshot into (default: <data-dir>/route53/<timestamp>) |
+
+### `route53 cleanup`
+
+Delete the old source zone once the registrar points at the destination.
+
+```bash
+aws-cloud-utilities route53 cleanup DOMAINS [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--source-profile` | `TEXT` | **Required.** AWS profile of the account domains move out of |
+| `--dest-profile` | `TEXT` | **Required.** AWS profile of the account domains move into |
+| `--confirm` | flag | Skip the confirmation prompt |
+
+### `route53 migrate-zone`
+
+Recreate the hosted zone in the destination and repoint the registrar.
+
+```bash
+aws-cloud-utilities route53 migrate-zone DOMAINS [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--source-profile` | `TEXT` | **Required.** AWS profile of the account domains move out of |
+| `--dest-profile` | `TEXT` | **Required.** AWS profile of the account domains move into |
+
+### `route53 migration-status`
+
+Show each domain's registered account, zone location, and next step.
+
+```bash
+aws-cloud-utilities route53 migration-status [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--source-profile` | `TEXT` | **Required.** AWS profile of the account domains move out of |
+| `--dest-profile` | `TEXT` | **Required.** AWS profile of the account domains move into |
+
+### `route53 transfer`
+
+Move domain registration from the source account to the destination.
+
+```bash
+aws-cloud-utilities route53 transfer DOMAINS [OPTIONS]
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--source-profile` | `TEXT` | **Required.** AWS profile of the account domains move out of |
+| `--dest-profile` | `TEXT` | **Required.** AWS profile of the account domains move into |
+| `--state-dir` | `TEXT` | Where to keep the one-time transfer password until accept succeeds (default: <data-dir>/route53) |
+
 ## `s3`
 
 AWS S3 bucket and object management commands.

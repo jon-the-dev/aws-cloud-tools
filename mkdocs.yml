@@ -117,6 +117,7 @@ nav:
     - Log Management: commands/logs.md
     - Networking: commands/networking.md
     - RDS Management: commands/rds.md
+    - Route 53 Migration: commands/route53.md
     - S3 Storage: commands/s3.md
     - Security Tools: commands/security.md
     - Step Functions: commands/stepfunctions.md

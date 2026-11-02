@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- `route53` command group for moving a registered domain and its hosted zone
+  to another AWS account: `migration-status`, `backup`, `transfer`,
+  `migrate-zone`, and `cleanup`. The domain transfer does not move the zone on
+  its own, so `migrate-zone` recreates the zone, copies its records, and
+  repoints the registrar. Refs #314.
 
 ## [2.1.5] - 2026-08-05
 

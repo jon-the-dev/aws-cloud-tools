@@ -35,6 +35,7 @@ aws-cloud-utilities --profile production --region eu-west-1 s3 list-buckets --in
 | [**logs**](logs.md) | AWS CloudWatch Logs management and processing commands. | `aggregate`, `combine`, `delete-group`, `download`, `list-groups`, `set-retention` |
 | [**networking**](networking.md) | AWS networking and IP management commands. | `ip-ranges`, `ip-summary` |
 | [**rds**](rds.md) | RDS management and troubleshooting commands. | `list-instances`, `troubleshoot-mysql` |
+| [**route53**](route53.md) | Migrate Route 53 registered domains and hosted zones between accounts. | `backup`, `cleanup`, `migrate-zone`, `migration-status`, `transfer` |
 | [**s3**](s3.md) | AWS S3 bucket and object management commands. | `analyze-encryption`, `bucket-details`, `create-bucket`, `delete-versions`, `download`, `list-buckets`, `nuke-bucket`, `restore-objects` |
 | [**security**](security.md) | AWS security monitoring and certificate management commands. | `create-certificate`, `list-certificates`, `metrics` |
 | [**stepfunctions**](stepfunctions.md) | AWS Step Functions management and monitoring commands. | `describe`, `execute`, `list`, `list-executions`, `logs` |
@@ -114,6 +115,11 @@ aws-cloud-utilities --profile production --region eu-west-1 s3 list-buckets --in
 | `aws-cloud-utilities networking ip-summary` | Show summary statistics of AWS IP ranges. |
 | `aws-cloud-utilities rds list-instances` | List RDS instances in the current region. |
 | `aws-cloud-utilities rds troubleshoot-mysql` | Troubleshoot MySQL RDS connection issues. |
+| `aws-cloud-utilities route53 backup` | Snapshot every hosted zone and registered domain in the source account. |
+| `aws-cloud-utilities route53 cleanup` | Delete the old source zone once the registrar points at the destination. |
+| `aws-cloud-utilities route53 migrate-zone` | Recreate the hosted zone in the destination and repoint the registrar. |
+| `aws-cloud-utilities route53 migration-status` | Show each domain's registered account, zone location, and next step. |
+| `aws-cloud-utilities route53 transfer` | Move domain registration from the source account to the destination. |
 | `aws-cloud-utilities s3 analyze-encryption` | Analyze S3 bucket encryption configurations with parallel processing. |
 | `aws-cloud-utilities s3 bucket-details` | Get comprehensive details about an S3 bucket including configuration and settings. |
 | `aws-cloud-utilities s3 create-bucket` | Create a new S3 bucket with optional configuration. |
